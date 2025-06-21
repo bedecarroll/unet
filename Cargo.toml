@@ -5,6 +5,7 @@ members = [
     "crates/unet-server", 
     "crates/unet-cli",
     "crates/config-slicer",
+    "migrations",
 ]
 
 [workspace.package]
@@ -23,6 +24,7 @@ categories = ["command-line-utilities", "network-programming", "config"]
 # Core async runtime
 tokio = { version = "1.0", features = ["full"] }
 tokio-test = "0.4"
+async-trait = "0.1"
 
 # Serialization and data handling
 serde = { version = "1.0", features = ["derive"] }
@@ -38,9 +40,9 @@ thiserror = "1.0"
 config = "0.14"
 toml = "0.8"
 
-# Database and ORM (will be added when needed)
-# sea-orm = { version = "0.12", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
-# sea-orm-migration = "0.12"
+# Database and ORM
+sea-orm = { version = "0.12", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
+sea-orm-migration = "0.12"
 
 # HTTP client/server (will be added when needed)
 # axum = "0.7"
@@ -80,3 +82,6 @@ criterion = { version = "0.5", features = ["html_reports"] }
 # Development and testing dependencies
 assert_cmd = "2.0"
 predicates = "3.0"
+
+# Async runtime for migration
+async-std = { version = "1", features = ["attributes", "tokio1"] }

@@ -1,0 +1,30 @@
+[package]
+name = "migration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Database migrations for μNet"
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[[bin]]
+name = "migration"
+path = "src/main.rs"
+
+[dependencies]
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+sea-orm-migration = { workspace = true }
+
+[dependencies.sea-orm]
+workspace = true
+features = [
+  "sqlx-sqlite",
+  "runtime-tokio-rustls",
+  "macros",
+]
