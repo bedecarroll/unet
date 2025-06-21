@@ -1,0 +1,59 @@
+[package]
+name = "unet-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Core library for μNet network configuration management"
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Core async runtime
+tokio = { workspace = true }
+
+# Serialization and data handling
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+uuid = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Configuration management
+config = { workspace = true }
+toml = { workspace = true }
+
+# Database and ORM (will be added in milestone 1)
+# sea-orm = { workspace = true }
+# sea-orm-migration = { workspace = true }
+
+# Template engine (will be added in milestone 4)
+# minijinja = { workspace = true }
+
+# SNMP client (will be added in milestone 2)
+# snmp2 = { workspace = true }
+
+# Git integration (will be added in milestone 6)
+# git2 = { workspace = true }
+
+# Policy parsing (will be added in milestone 3)
+# pest = { workspace = true }
+# pest_derive = { workspace = true }
+
+# Configuration diffing
+similar = { workspace = true }
+
+# Logging and tracing
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
+criterion = { workspace = true }
+

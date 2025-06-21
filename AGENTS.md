@@ -6,6 +6,24 @@
 
 ---
 
+## File Synchronization
+
+### CLAUDE.md ↔ AGENTS.md Synchronization
+- **Implementation:** `CLAUDE.md` is a filesystem symlink to `AGENTS.md`
+- **Purpose:** Multiple LLM systems require identical guidance documents
+- **Maintenance:** 
+  - **ALWAYS** edit `AGENTS.md` as the canonical source
+  - **NEVER** edit `CLAUDE.md` directly (it's a symlink)
+  - **VERIFY** symlink integrity: `ls -la CLAUDE.md` should show `CLAUDE.md -> AGENTS.md`
+  - **RESTORE** if broken: `ln -sf AGENTS.md CLAUDE.md`
+- **Benefits:** 
+  - Single source of truth for all LLM development guidelines
+  - Automatic synchronization without manual copying
+  - Version control treats symlink as a single entity
+- **Cross-Platform Note:** Symlinks work on Linux/macOS/WSL and are supported by Git/jj
+
+---
+
 ## Core Principles
 
 ### 1. Architecture Respect
@@ -20,11 +38,15 @@
 - **ALWAYS** maintain async/await patterns consistently throughout the codebase
 - **NEVER** use blocking operations in async contexts
 
-### 3. Incremental Development
+### 3. Incremental Development & Task Management
+- **ALWAYS** complete tasks one at a time and wait for instructions to continue
+- **ALWAYS** update TODO.md file as tasks are completed
 - **ALWAYS** make the smallest possible change to achieve the desired outcome
 - **NEVER** rewrite large portions of code without explicit permission
 - **ALWAYS** maintain backward compatibility unless explicitly instructed otherwise
 - **NEVER** modify unrelated code during focused tasks
+- **ALWAYS** stop after completing each major task to allow for review and direction
+- **NEVER** proceed to the next milestone without explicit approval
 
 ---
 
@@ -184,6 +206,42 @@ fn test_node_creation() {
 - **NEVER** rely on shared test state
 - **ALWAYS** clean up test data after tests
 - **NEVER** use production data in tests
+
+---
+
+## TODO.md Management
+
+### Progress Tracking Requirements
+- **ALWAYS** update TODO.md immediately after completing any task
+- **NEVER** mark a task as complete unless it fully meets acceptance criteria
+- **ALWAYS** update task status when starting work (mark as "in progress")
+- **NEVER** proceed to subsequent tasks without completing dependencies
+- **ALWAYS** document any blockers or issues encountered in TODO.md
+- **NEVER** skip TODO.md updates even for small changes
+
+### Task Completion Protocol
+```markdown
+- [x] **M0.1.1** Initialize Cargo workspace in `/unet` ✅ COMPLETED
+  - **Status:** All workspace-level dependencies configured
+  - **Validation:** `cargo check --workspace` succeeds
+  - **Notes:** Simplified dependencies to avoid OpenSSL issues initially
+```
+
+### Milestone Tracking
+- **ALWAYS** mark milestones as complete only when ALL acceptance criteria are met
+- **NEVER** advance to next milestone without explicit human approval
+- **ALWAYS** include completion timestamps and validation notes
+- **NEVER** leave partially completed milestones unmarked
+
+### Milestone Completion Reporting
+- **ALWAYS** create a summary report in `docs/src/reports/` when milestones are completed
+- **ALWAYS** use the filename format: `$(TZ='America/Los_Angeles' date +"%Y-%m-%d_%H-%M-%S").md`
+- **ALWAYS** use America/Los_Angeles timezone for all dates and times in reports
+- **ALWAYS** include stakeholder-friendly language and technical summaries
+- **NEVER** skip report creation for completed milestones
+- **ALWAYS** update the documentation SUMMARY.md to include new reports
+- **NEVER** use technical jargon without explanation in stakeholder reports
+- **ALWAYS** format times as "YYYY-MM-DD HH:MM:SS PDT/PST" in report headers
 
 ---
 

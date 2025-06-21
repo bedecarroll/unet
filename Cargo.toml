@@ -1,0 +1,82 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/unet-core",
+    "crates/unet-server", 
+    "crates/unet-cli",
+    "crates/config-slicer",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+authors = ["μNet Development Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/example/unet"
+homepage = "https://github.com/example/unet"
+description = "Network configuration management and automation tool"
+keywords = ["network", "configuration", "automation", "snmp", "templates"]
+categories = ["command-line-utilities", "network-programming", "config"]
+
+[workspace.dependencies]
+# Core async runtime
+tokio = { version = "1.0", features = ["full"] }
+tokio-test = "0.4"
+
+# Serialization and data handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Configuration management
+config = "0.14"
+toml = "0.8"
+
+# Database and ORM (will be added when needed)
+# sea-orm = { version = "0.12", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+# sea-orm-migration = "0.12"
+
+# HTTP client/server (will be added when needed)
+# axum = "0.7"
+# tower = "0.4"
+# tower-http = { version = "0.5", features = ["cors", "trace"] }
+# reqwest = { version = "0.11", features = ["json"] }
+
+# CLI parsing
+clap = { version = "4.0", features = ["derive", "color", "suggestions"] }
+
+# Template engine
+minijinja = { version = "1.0", features = ["json"] }
+
+# SNMP client
+snmp2 = "0.4"
+
+# Git integration (will be added when needed)
+# git2 = "0.18"
+
+# Policy parsing
+pest = "2.7"
+pest_derive = "2.7"
+
+# Configuration diffing
+similar = "2.2"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# File handling
+tempfile = "3.8"
+
+# Testing
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Development and testing dependencies
+assert_cmd = "2.0"
+predicates = "3.0"

@@ -1,0 +1,50 @@
+[package]
+name = "unet-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Command-line interface for μNet network configuration management"
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "unet"
+path = "src/main.rs"
+
+[dependencies]
+# Core library
+unet-core = { path = "../unet-core" }
+
+# Core async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Configuration management
+config = { workspace = true }
+
+# CLI parsing
+clap = { workspace = true }
+
+# HTTP client (will be added when needed)
+# reqwest = { workspace = true }
+
+# Logging and tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+tempfile = { workspace = true }
