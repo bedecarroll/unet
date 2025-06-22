@@ -7,7 +7,7 @@
 //!
 //! ```rust
 //! use unet_core::{models::*, datastore::*};
-//! 
+//!
 //! // Create a new node using the builder pattern
 //! let node = NodeBuilder::new()
 //!     .name("router-01".to_string())
@@ -55,40 +55,53 @@ pub mod prelude {
     //! Common imports for μNet Core
     //!
     //! This module provides convenient re-exports of the most commonly used types.
-    
+
     // Core error types
     pub use crate::error::{Error, Result};
-    
+
     // Data models
     pub use crate::models::{
-        DeviceRole, Lifecycle, Link, Location, Node, Vendor,
-        LinkBuilder, LocationBuilder, NodeBuilder,
+        DeviceRole, Lifecycle, Link, LinkBuilder, Location, LocationBuilder, Node, NodeBuilder,
+        Vendor,
     };
-    
+
     // Derived state models
     pub use crate::models::derived::{
-        NodeStatus, SystemInfo, InterfaceStatus, InterfaceAdminStatus, InterfaceOperStatus,
-        InterfaceStats, PerformanceMetrics, EnvironmentalMetrics,
+        EnvironmentalMetrics, InterfaceAdminStatus, InterfaceOperStatus, InterfaceStats,
+        InterfaceStatus, NodeStatus, PerformanceMetrics, SystemInfo,
     };
-    
+
     // DataStore trait and common types
     pub use crate::datastore::{
-        DataStore, DataStoreError, DataStoreResult, Filter, FilterOperation, FilterValue,
-        PagedResult, Pagination, QueryOptions, Sort, SortDirection,
-        BatchOperation, BatchResult,
+        BatchOperation,
+        BatchResult,
+        DataStore,
+        DataStoreError,
+        DataStoreResult,
+        Filter,
+        FilterOperation,
+        FilterValue,
+        PagedResult,
+        Pagination,
+        QueryOptions,
+        Sort,
+        SortDirection,
         // Helper functions
-        filter_contains, filter_equals_string, filter_equals_uuid,
-        sort_asc, sort_desc,
+        filter_contains,
+        filter_equals_string,
+        filter_equals_uuid,
+        sort_asc,
+        sort_desc,
     };
-    
+
     // Configuration and logging
     pub use crate::config::Config;
     pub use crate::logging::{init_default_tracing, init_tracing};
-    
+
     // SNMP types
     pub use crate::snmp::{
-        SnmpClient, SnmpClientConfig, SnmpCredentials, SnmpError, SnmpResult, SnmpValue,
-        SessionConfig, PollingScheduler, PollingTask, PollingResult, PollingHandle, PollingConfig,
-        StandardOid, VendorOid, OidMap,
+        OidMap, PollingConfig, PollingHandle, PollingResult, PollingScheduler, PollingTask,
+        SessionConfig, SnmpClient, SnmpClientConfig, SnmpCredentials, SnmpError, SnmpResult,
+        SnmpValue, StandardOid, VendorOid,
     };
 }

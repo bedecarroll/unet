@@ -26,7 +26,7 @@
 | ------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
 | **G1** | **Single‑binary deploy** for both server & CLI                                                   | Eases ops; juniors avoid package hell             |
 | **G2** | **Separation of concerns** – data, policy, template engines are libraries reused by CLI & server | DRY & testable                                    |
-| **G3** | **Runtime‑loadable configuration** (policies, templates) via Git                                 | Network engineers can iterate without recompiling |
+| **G3** | **Runtime‑configurable** system (policies, templates via Git, domains, auth)                   | Network engineers can iterate without recompiling |
 | **G4** | **Support partial adoption** – users can template 5 % of config and diff that slice only         | Low friction entry                                |
 | **G5** | Be **MCP‑ready** (Model Context Protocol)                                                        | Future AI tooling alignment                       |
 
@@ -249,7 +249,7 @@ SNMP Poller ─┐          snmp2 lib          Policy Engine
 
 ---
 
-*Cross‑reference:* For deeper dives into data schema or CLI commands, jump to [02\_data\_models.md](02_data_models.md) and [05\_cli\_tool.md](05_cli_tool.md).
+*Cross‑reference:* For deeper dives into data schema or CLI commands, jump to [02\_data\_models.md](02_data_models.md) and [05\_cli\_tool.md](05_cli_tool.md). For production deployment and runtime configuration, see [14\_configuration.md](14_configuration.md).
 
 Happy hacking 🚀
 

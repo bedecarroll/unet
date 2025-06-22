@@ -1,3 +1,3 @@
 //! SNMP session management
 
-pub use super::{SnmpSession, SessionConfig, SnmpCredentials};
+pub use super::{SessionConfig, SnmpCredentials, SnmpSession};

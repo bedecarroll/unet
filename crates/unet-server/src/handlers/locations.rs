@@ -7,9 +7,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::api::{
-    ApiResponse, CreateLocationRequest, UpdateLocationRequest, PaginatedResponse
-};
+use crate::api::{ApiResponse, CreateLocationRequest, PaginatedResponse, UpdateLocationRequest};
 use crate::handlers::{ServerError, ServerResult};
 use unet_core::prelude::*;
 
@@ -32,16 +30,16 @@ pub async fn list_locations(
 ) -> ServerResult<Json<ApiResponse<PaginatedResponse<Location>>>> {
     // TODO: Implement actual datastore integration
     // For now, return mock data
-    
+
     let mock_locations = vec![
         Location::new_root("headquarters".to_string(), "building".to_string()),
         Location::new_root("branch-office".to_string(), "building".to_string()),
     ];
-    
+
     let page = query.page.unwrap_or(1);
     let per_page = query.per_page.unwrap_or(20);
     let total = mock_locations.len() as u64;
-    
+
     let paginated = PaginatedResponse {
         data: mock_locations,
         total,
@@ -51,16 +49,14 @@ pub async fn list_locations(
         has_next: page * per_page < total,
         has_prev: page > 1,
     };
-    
+
     Ok(Json(ApiResponse::success(paginated)))
 }
 
 /// Get a specific location by ID
-pub async fn get_location(
-    Path(id): Path<Uuid>,
-) -> ServerResult<Json<ApiResponse<Location>>> {
+pub async fn get_location(Path(id): Path<Uuid>) -> ServerResult<Json<ApiResponse<Location>>> {
     // TODO: Implement actual datastore lookup
-    
+
     let location = Location::new_root("headquarters".to_string(), "building".to_string());
     Ok(Json(ApiResponse::success(location)))
 }
@@ -69,11 +65,12 @@ pub async fn get_location(
 pub async fn create_location(
     Json(request): Json<CreateLocationRequest>,
 ) -> ServerResult<Json<ApiResponse<Location>>> {
-    let location = request.to_location()
+    let location = request
+        .to_location()
         .map_err(|e| ServerError::Validation(e.to_string()))?;
-    
+
     // TODO: Save to datastore
-    
+
     Ok(Json(ApiResponse::success_with_message(
         location,
         "Location created successfully".to_string(),
@@ -86,12 +83,16 @@ pub async fn update_location(
     Json(request): Json<UpdateLocationRequest>,
 ) -> ServerResult<Json<ApiResponse<Location>>> {
     // TODO: Fetch existing location from datastore and apply updates
-    
+
     let location = Location::new_root(
-        request.name.unwrap_or_else(|| "updated-location".to_string()),
-        request.location_type.unwrap_or_else(|| "building".to_string()),
+        request
+            .name
+            .unwrap_or_else(|| "updated-location".to_string()),
+        request
+            .location_type
+            .unwrap_or_else(|| "building".to_string()),
     );
-    
+
     Ok(Json(ApiResponse::success_with_message(
         location,
         "Location updated successfully".to_string(),
@@ -99,11 +100,9 @@ pub async fn update_location(
 }
 
 /// Delete a location
-pub async fn delete_location(
-    Path(id): Path<Uuid>,
-) -> ServerResult<Json<ApiResponse<()>>> {
+pub async fn delete_location(Path(id): Path<Uuid>) -> ServerResult<Json<ApiResponse<()>>> {
     // TODO: Delete from datastore
-    
+
     Ok(Json(ApiResponse::success_with_message(
         (),
         format!("Location {} deleted successfully", id),

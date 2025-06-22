@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     init_default_tracing();
 
     info!("Starting μNet server...");
-    
+
     // Start the server
     server::run().await
 }

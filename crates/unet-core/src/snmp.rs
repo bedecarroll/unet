@@ -12,10 +12,10 @@
 //! - [`poller`] - Background polling implementation
 //! - [`types`] - SNMP-specific data types
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, SystemTime};
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::sync::{RwLock, Semaphore};
 use tracing::{debug, info};
@@ -28,8 +28,8 @@ pub mod session;
 pub mod types;
 
 // Re-export main types
-pub use oids::{StandardOid, VendorOid, OidMap};
-pub use poller::{PollingScheduler, PollingTask, PollingResult, PollingHandle, PollingConfig};
+pub use oids::{OidMap, StandardOid, VendorOid};
+pub use poller::{PollingConfig, PollingHandle, PollingResult, PollingScheduler, PollingTask};
 pub use types::SnmpType;
 
 /// SNMP error types
@@ -38,30 +38,45 @@ pub enum SnmpError {
     /// Network connection error
     #[error("Network error: {0}")]
     Network(#[from] std::io::Error),
-    
+
     /// SNMP protocol error
     #[error("SNMP protocol error: {message}")]
-    Protocol { message: String },
-    
+    Protocol {
+        /// The protocol error message
+        message: String,
+    },
+
     /// Timeout error
     #[error("SNMP timeout after {duration:?}")]
-    Timeout { duration: Duration },
-    
+    Timeout {
+        /// The timeout duration that was exceeded
+        duration: Duration,
+    },
+
     /// Authentication failure
     #[error("SNMP authentication failed")]
     Authentication,
-    
+
     /// Invalid OID format
     #[error("Invalid OID: {oid}")]
-    InvalidOid { oid: String },
-    
+    InvalidOid {
+        /// The invalid OID string
+        oid: String,
+    },
+
     /// Response parsing error
     #[error("Failed to parse SNMP response: {reason}")]
-    ParseError { reason: String },
-    
+    ParseError {
+        /// The reason for the parsing failure
+        reason: String,
+    },
+
     /// Connection pool exhausted
     #[error("Connection pool exhausted, max connections: {max_connections}")]
-    PoolExhausted { max_connections: usize },
+    PoolExhausted {
+        /// The maximum number of connections in the pool
+        max_connections: usize,
+    },
 }
 
 /// SNMP operation result
@@ -117,13 +132,12 @@ impl SnmpValue {
             SnmpValue::EndOfMibView => "endOfMibView".to_string(),
         }
     }
-    
+
     /// Check if value represents an error condition
     pub fn is_error(&self) -> bool {
-        matches!(self, 
-            SnmpValue::NoSuchObject | 
-            SnmpValue::NoSuchInstance | 
-            SnmpValue::EndOfMibView
+        matches!(
+            self,
+            SnmpValue::NoSuchObject | SnmpValue::NoSuchInstance | SnmpValue::EndOfMibView
         )
     }
 }
@@ -208,17 +222,17 @@ impl SnmpSession {
             connection_attempts: RwLock::new(0),
         }
     }
-    
+
     /// Get session ID
     pub fn id(&self) -> Uuid {
         self.session_id
     }
-    
+
     /// Get session configuration
     pub fn config(&self) -> &SessionConfig {
         &self.config
     }
-    
+
     /// Perform SNMP GET operation
     pub async fn get(&self, oids: &[&str]) -> SnmpResult<HashMap<String, SnmpValue>> {
         debug!(
@@ -227,13 +241,13 @@ impl SnmpSession {
             oid_count = oids.len(),
             "Performing SNMP GET operation"
         );
-        
+
         // Increment connection attempts
         {
             let mut attempts = self.connection_attempts.write().await;
             *attempts += 1;
         }
-        
+
         // TODO: Implement actual SNMP GET using snmp2 crate
         // For now, return a placeholder implementation
         let mut result = HashMap::new();
@@ -247,23 +261,23 @@ impl SnmpSession {
             };
             result.insert(oid.to_string(), value);
         }
-        
+
         // Update last success timestamp
         {
             let mut last_success = self.last_success.write().await;
             *last_success = Some(SystemTime::now());
         }
-        
+
         info!(
             session_id = %self.session_id,
             target = %self.config.address,
             result_count = result.len(),
             "SNMP GET operation completed successfully"
         );
-        
+
         Ok(result)
     }
-    
+
     /// Perform SNMP GETNEXT operation (table walking)
     pub async fn get_next(&self, start_oid: &str) -> SnmpResult<HashMap<String, SnmpValue>> {
         debug!(
@@ -272,11 +286,11 @@ impl SnmpSession {
             start_oid = start_oid,
             "Performing SNMP GETNEXT operation"
         );
-        
+
         // TODO: Implement actual SNMP GETNEXT using snmp2 crate
         // For now, return a placeholder implementation
         let mut result = HashMap::new();
-        
+
         // Simulate walking an interface table
         if start_oid.starts_with("1.3.6.1.2.1.2.2.1") {
             for i in 1..=4 {
@@ -290,17 +304,17 @@ impl SnmpSession {
                 result.insert(oid, value);
             }
         }
-        
+
         info!(
             session_id = %self.session_id,
             target = %self.config.address,
             result_count = result.len(),
             "SNMP GETNEXT operation completed successfully"
         );
-        
+
         Ok(result)
     }
-    
+
     /// Check if session is healthy (recent successful operations)
     pub async fn is_healthy(&self, max_age: Duration) -> bool {
         let last_success = self.last_success.read().await;
@@ -312,7 +326,7 @@ impl SnmpSession {
             false
         }
     }
-    
+
     /// Get connection attempt count
     pub async fn connection_attempts(&self) -> u32 {
         *self.connection_attempts.read().await
@@ -372,9 +386,13 @@ impl SnmpClient {
             default_config: config.default_session,
         }
     }
-    
+
     /// Get or create session for target address
-    async fn get_session(&self, address: SocketAddr, config: Option<SessionConfig>) -> SnmpResult<SnmpSession> {
+    async fn get_session(
+        &self,
+        address: SocketAddr,
+        config: Option<SessionConfig>,
+    ) -> SnmpResult<SnmpSession> {
         // Check if session already exists
         {
             let sessions = self.sessions.read().await;
@@ -382,40 +400,40 @@ impl SnmpClient {
                 return Ok(session.clone());
             }
         }
-        
+
         // Create new session
         let mut sessions = self.sessions.write().await;
-        
+
         // Double-check after acquiring write lock
         if let Some(session) = sessions.get(&address) {
             return Ok(session.clone());
         }
-        
+
         // Check connection pool limit
         if sessions.len() >= self.max_connections {
             return Err(SnmpError::PoolExhausted {
                 max_connections: self.max_connections,
             });
         }
-        
+
         let session_config = config.unwrap_or_else(|| {
             let mut config = self.default_config.clone();
             config.address = address;
             config
         });
-        
+
         let session = SnmpSession::new(session_config);
         sessions.insert(address, session.clone());
-        
+
         info!(
             target = %address,
             session_count = sessions.len(),
             "Created new SNMP session"
         );
-        
+
         Ok(session)
     }
-    
+
     /// Perform SNMP GET operation on target
     pub async fn get(
         &self,
@@ -424,18 +442,18 @@ impl SnmpClient {
         config: Option<SessionConfig>,
     ) -> SnmpResult<HashMap<String, SnmpValue>> {
         // Acquire connection permit
-        let _permit = self
-            .connection_semaphore
-            .acquire()
-            .await
-            .map_err(|_| SnmpError::PoolExhausted {
-                max_connections: self.max_connections,
-            })?;
-        
+        let _permit =
+            self.connection_semaphore
+                .acquire()
+                .await
+                .map_err(|_| SnmpError::PoolExhausted {
+                    max_connections: self.max_connections,
+                })?;
+
         let session = self.get_session(address, config).await?;
         session.get(oids).await
     }
-    
+
     /// Perform SNMP table walk on target
     pub async fn walk(
         &self,
@@ -444,18 +462,18 @@ impl SnmpClient {
         config: Option<SessionConfig>,
     ) -> SnmpResult<HashMap<String, SnmpValue>> {
         // Acquire connection permit
-        let _permit = self
-            .connection_semaphore
-            .acquire()
-            .await
-            .map_err(|_| SnmpError::PoolExhausted {
-                max_connections: self.max_connections,
-            })?;
-        
+        let _permit =
+            self.connection_semaphore
+                .acquire()
+                .await
+                .map_err(|_| SnmpError::PoolExhausted {
+                    max_connections: self.max_connections,
+                })?;
+
         let session = self.get_session(address, config).await?;
         session.get_next(start_oid).await
     }
-    
+
     /// Get statistics about the client
     pub async fn stats(&self) -> SnmpClientStats {
         let sessions = self.sessions.read().await;
@@ -465,11 +483,11 @@ impl SnmpClient {
             available_permits: self.connection_semaphore.available_permits(),
         }
     }
-    
+
     /// Clean up inactive sessions
     pub async fn cleanup_sessions(&self, max_age: Duration) {
         let mut sessions_to_remove = Vec::new();
-        
+
         {
             let sessions = self.sessions.read().await;
             for (address, session) in sessions.iter() {
@@ -478,7 +496,7 @@ impl SnmpClient {
                 }
             }
         }
-        
+
         if !sessions_to_remove.is_empty() {
             let mut sessions = self.sessions.write().await;
             for address in sessions_to_remove {
@@ -504,17 +522,20 @@ pub struct SnmpClientStats {
 mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr};
-    
+
     #[test]
     fn test_snmp_value_to_string() {
         assert_eq!(SnmpValue::Integer(42).to_string(), "42");
         assert_eq!(SnmpValue::String("test".to_string()).to_string(), "test");
-        assert_eq!(SnmpValue::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)).to_string(), "127.0.0.1");
+        assert_eq!(
+            SnmpValue::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)).to_string(),
+            "127.0.0.1"
+        );
         assert_eq!(SnmpValue::Counter32(1000).to_string(), "1000");
         assert_eq!(SnmpValue::Null.to_string(), "null");
         assert_eq!(SnmpValue::NoSuchObject.to_string(), "noSuchObject");
     }
-    
+
     #[test]
     fn test_snmp_value_is_error() {
         assert!(!SnmpValue::Integer(42).is_error());
@@ -523,7 +544,7 @@ mod tests {
         assert!(SnmpValue::NoSuchInstance.is_error());
         assert!(SnmpValue::EndOfMibView.is_error());
     }
-    
+
     #[test]
     fn test_session_config_default() {
         let config = SessionConfig::default();
@@ -532,7 +553,7 @@ mod tests {
         assert_eq!(config.retries, 3);
         assert_eq!(config.max_vars_per_request, 10);
     }
-    
+
     #[test]
     fn test_snmp_credentials_default() {
         let creds = SnmpCredentials::default();
@@ -543,39 +564,39 @@ mod tests {
             _ => panic!("Expected community credentials"),
         }
     }
-    
+
     #[tokio::test]
     async fn test_snmp_session_creation() {
         let config = SessionConfig::default();
         let session = SnmpSession::new(config.clone());
-        
+
         assert_eq!(session.config().version, config.version);
         assert_eq!(session.config().timeout, config.timeout);
         assert!(!session.is_healthy(Duration::from_secs(1)).await);
     }
-    
+
     #[tokio::test]
     async fn test_snmp_client_creation() {
         let config = SnmpClientConfig::default();
         let client = SnmpClient::new(config.clone());
-        
+
         let stats = client.stats().await;
         assert_eq!(stats.active_sessions, 0);
         assert_eq!(stats.max_connections, config.max_connections);
         assert_eq!(stats.available_permits, config.max_connections);
     }
-    
+
     #[tokio::test]
     async fn test_snmp_get_operation() {
         let config = SnmpClientConfig::default();
         let client = SnmpClient::new(config);
-        
+
         let address = "127.0.0.1:161".parse().unwrap();
         let oids = vec!["1.3.6.1.2.1.1.1.0", "1.3.6.1.2.1.1.5.0"];
-        
+
         let result = client.get(address, &oids, None).await;
         assert!(result.is_ok());
-        
+
         let values = result.unwrap();
         assert_eq!(values.len(), 2);
         assert!(values.contains_key("1.3.6.1.2.1.1.1.0"));

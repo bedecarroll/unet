@@ -10,8 +10,8 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.77"
+edition = "2024"
+rust-version = "1.85"
 authors = ["μNet Development Team"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/example/unet"
@@ -57,8 +57,8 @@ clap = { version = "4.0", features = ["derive", "color", "suggestions"] }
 # Template engine
 minijinja = { version = "1.0", features = ["json"] }
 
-# SNMP client
-snmp2 = "0.4"
+# SNMP client  
+snmp2 = "0.4.8"
 
 # Git integration (will be added when needed)
 # git2 = "0.18"
@@ -69,6 +69,19 @@ pest_derive = "2.7"
 
 # Configuration diffing
 similar = "2.2"
+
+# Utility crates
+regex = "1.0"
+dashmap = "5.0"
+walkdir = "2.4"
+bytes = "1.0"
+futures-util = "0.3"
+strum = "0.26"
+strum_macros = "0.26"
+ipnet = "2.9"
+
+# Task scheduling
+tokio-cron-scheduler = "0.10"
 
 # Logging and tracing
 tracing = "0.1"
@@ -83,6 +96,8 @@ criterion = { version = "0.5", features = ["html_reports"] }
 # Development and testing dependencies
 assert_cmd = "2.0"
 predicates = "3.0"
+insta = "1.39"
+proptest = "1.5"
 
 # Async runtime for migration
 async-std = { version = "1", features = ["attributes", "tokio1"] }

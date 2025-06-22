@@ -1,8 +1,8 @@
 //! API data transfer objects and response types
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use unet_core::prelude::*;
+use uuid::Uuid;
 
 /// Standard API response wrapper
 #[derive(Debug, Serialize)]
@@ -24,7 +24,7 @@ impl<T> ApiResponse<T> {
             message: None,
         }
     }
-    
+
     /// Create a successful response with message
     pub fn success_with_message(data: T, message: String) -> Self {
         Self {
@@ -55,17 +55,17 @@ impl ApiError {
             success: false,
         }
     }
-    
+
     /// Create a validation error
     pub fn validation(message: String) -> Self {
         Self::new(message, "VALIDATION_ERROR".to_string())
     }
-    
+
     /// Create a not found error
     pub fn not_found(resource: String) -> Self {
         Self::new(format!("{} not found", resource), "NOT_FOUND".to_string())
     }
-    
+
     /// Create an internal server error
     pub fn internal(message: String) -> Self {
         Self::new(message, "INTERNAL_ERROR".to_string())
@@ -87,7 +87,7 @@ impl NodeResponse {
     pub fn new(node: Node, status: Option<NodeStatus>) -> Self {
         Self { node, status }
     }
-    
+
     /// Create from node only
     pub fn from_node(node: Node) -> Self {
         Self { node, status: None }
@@ -126,26 +126,27 @@ impl CreateNodeRequest {
             .model(self.model)
             .role(self.role)
             .lifecycle(self.lifecycle);
-        
+
         if let Some(domain) = self.domain {
             builder = builder.domain(domain);
         }
-        
+
         if let Some(location_id) = self.location_id {
             builder = builder.location_id(location_id);
         }
-        
+
         if let Some(management_ip) = self.management_ip {
             // Parse IP address string to IpAddr
-            let ip: std::net::IpAddr = management_ip.parse()
+            let ip: std::net::IpAddr = management_ip
+                .parse()
                 .map_err(|e| Error::Other(format!("Invalid IP address: {}", e)))?;
             builder = builder.management_ip(ip);
         }
-        
+
         if let Some(custom_data) = self.custom_data {
             builder = builder.custom_data(custom_data);
         }
-        
+
         builder.build().map_err(|e| Error::Other(e))
     }
 }
@@ -192,15 +193,15 @@ impl CreateLocationRequest {
         let mut builder = LocationBuilder::new()
             .name(self.name)
             .location_type(self.location_type);
-        
+
         if let Some(parent_id) = self.parent_id {
             builder = builder.parent_id(parent_id);
         }
-        
+
         if let Some(custom_data) = self.custom_data {
             builder = builder.custom_data(custom_data);
         }
-        
+
         builder.build().map_err(|e| Error::Other(e))
     }
 }
@@ -244,23 +245,23 @@ impl CreateLinkRequest {
             .name(self.name)
             .node_a_id(self.node_a_id)
             .node_a_interface(self.interface_a);
-        
+
         if let Some(node_z_id) = self.node_z_id {
             builder = builder.node_z_id(node_z_id);
         }
-        
+
         if let Some(interface_z) = self.interface_z {
             builder = builder.node_z_interface(interface_z);
         }
-        
+
         if let Some(bandwidth_bps) = self.bandwidth_bps {
             builder = builder.bandwidth(bandwidth_bps);
         }
-        
+
         if let Some(custom_data) = self.custom_data {
             builder = builder.custom_data(custom_data);
         }
-        
+
         builder.build().map_err(|e| Error::Other(e))
     }
 }

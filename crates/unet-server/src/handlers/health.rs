@@ -1,6 +1,6 @@
 //! Health check handlers
 
-use axum::{response::Json};
+use axum::response::Json;
 use serde_json::json;
 
 /// Health check endpoint

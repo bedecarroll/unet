@@ -11,12 +11,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Location::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Location::Id)
-                            .text()
-                            .not_null()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Location::Id).text().not_null().primary_key())
                     .col(ColumnDef::new(Location::Name).text().not_null())
                     .col(ColumnDef::new(Location::LocationType).text().not_null())
                     .col(ColumnDef::new(Location::Path).text().not_null())

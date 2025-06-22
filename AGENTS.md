@@ -26,6 +26,12 @@
 
 ## Core Principles
 
+### 0. PROJECT INTEGRITY (HIGHEST PRIORITY)
+- **NEVER** claim work is complete unless it demonstrably functions
+- **NEVER** mark milestones complete with incomplete tasks
+- **ALWAYS** verify implementations exist before marking tasks complete
+- **ALWAYS** require human approval before milestone advancement
+
 ### 1. Architecture Respect
 - **NEVER** violate the established component boundaries defined in `docs/src/01_architecture.md`
 - **ALWAYS** maintain separation of concerns between `unet-core`, `unet-server`, and `unet-cli`
@@ -40,7 +46,9 @@
 
 ### 3. Incremental Development & Task Management
 - **ALWAYS** complete tasks one at a time and wait for instructions to continue
-- **ALWAYS** update TODO.md file as tasks are completed
+- **ALWAYS** update TODO.md file as tasks are completed with granular deliverable tracking
+- **ALWAYS** check off individual deliverables as they are implemented and verified
+- **NEVER** mark high-level tasks complete without completing ALL sub-deliverables
 - **ALWAYS** make the smallest possible change to achieve the desired outcome
 - **NEVER** rewrite large portions of code without explicit permission
 - **ALWAYS** maintain backward compatibility unless explicitly instructed otherwise
@@ -219,6 +227,51 @@ fn test_node_creation() {
 - **ALWAYS** document any blockers or issues encountered in TODO.md
 - **NEVER** skip TODO.md updates even for small changes
 
+### CRITICAL: Task Completion Verification Protocol
+Before marking ANY task as complete, you MUST verify:
+1. **Functional verification:** The described functionality actually works
+2. **Code verification:** Implementation exists and compiles
+3. **Test verification:** Required tests pass
+4. **Documentation verification:** Changes are documented
+5. **TODO.md granular tracking:** ALL sub-tasks within the task are marked complete
+
+### MANDATORY: Granular Task Tracking in TODO.md
+EVERY task has detailed sub-tasks (deliverables) that MUST be individually tracked:
+
+**CORRECT approach:**
+```markdown
+- [x] **M1.4.2** Node CRUD commands ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Implement `unet nodes add` with full validation ✅
+    - [x] Implement `unet nodes list` with filtering ✅
+    - [x] Implement `unet nodes show` with detailed output ✅
+    - [x] Implement `unet nodes update` with partial updates ✅
+    - [x] Implement `unet nodes delete` with confirmation ✅
+    - [x] Add comprehensive error handling for all commands ✅
+    - [x] Add integration tests for all CRUD operations ✅
+```
+
+**INCORRECT approach (NEVER DO THIS):**
+```markdown
+- [x] **M1.4.2** Node CRUD commands ✅ **COMPLETED**
+  - **Deliverables:**
+    - [ ] Implement `unet nodes add` with full validation
+    - [ ] Implement `unet nodes list` with filtering
+    - [x] Implement `unet nodes show` with detailed output ✅
+    - [ ] Implement `unet nodes update` with partial updates
+    - [ ] Implement `unet nodes delete` with confirmation
+    - [ ] Add comprehensive error handling for all commands
+    - [ ] Add integration tests for all CRUD operations
+```
+
+**VIOLATION EXAMPLES TO NEVER REPEAT:**
+- ❌ Marking "CLI CRUD operations" complete when only stubs exist
+- ❌ Marking "CI/CD pipeline" complete when workflows aren't implemented
+- ❌ Marking "API endpoints" complete when handlers return empty responses
+- ❌ Claiming milestone completion with multiple incomplete tasks
+- ❌ Marking high-level task complete when sub-tasks remain incomplete
+- ❌ Skipping granular TODO.md updates for individual deliverables
+
 ### Task Completion Protocol
 ```markdown
 - [x] **M0.1.1** Initialize Cargo workspace in `/unet` ✅ COMPLETED
@@ -232,6 +285,32 @@ fn test_node_creation() {
 - **NEVER** advance to next milestone without explicit human approval
 - **ALWAYS** include completion timestamps and validation notes
 - **NEVER** leave partially completed milestones unmarked
+
+### MANDATORY: Milestone Audit Protocol
+Before claiming milestone completion, you MUST:
+1. **Audit ALL tasks:** Review every task in the milestone section
+2. **Verify granular completeness:** Confirm ALL sub-tasks/deliverables are checked ✅
+3. **Verify functional completion:** Test that all functionality actually works
+4. **Check acceptance criteria:** Confirm ALL criteria are genuinely met
+5. **Document gaps:** If any tasks are incomplete, they MUST be moved to future milestones
+6. **Create completion report:** Required summary report with validation evidence
+
+**MILESTONE COMPLETION CHECKLIST:**
+- [ ] ALL tasks AND their sub-deliverables are marked complete in TODO.md
+- [ ] Every deliverable line item has been individually verified and checked ✅
+- [ ] All tasks marked complete have been functionally verified
+- [ ] All acceptance criteria have been tested and confirmed
+- [ ] No placeholder implementations remain
+- [ ] No incomplete sub-tasks exist under completed high-level tasks
+- [ ] Completion report created in docs/src/reports/
+- [ ] Human approval obtained before proceeding to next milestone
+
+### TODO.md Granular Tracking Rules
+**RULE 1:** No high-level task can be marked complete unless ALL its deliverables are complete
+**RULE 2:** Each deliverable must be individually checked ✅ when implemented
+**RULE 3:** Partial completion must be clearly visible (mix of [ ] and [x])
+**RULE 4:** Milestone sections must show 100% deliverable completion before milestone is marked complete
+**RULE 5:** Any incomplete deliverables must be moved to appropriate future milestones
 
 ### Milestone Completion Reporting
 - **ALWAYS** create a summary report in `docs/src/reports/` when milestones are completed

@@ -1,14 +1,14 @@
 //! Standard and vendor-specific OID definitions
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Standard SNMP OIDs commonly used for network device monitoring
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum StandardOid {
     /// System description (1.3.6.1.2.1.1.1.0)
     SysDescr,
-    /// System object identifier (1.3.6.1.2.1.1.2.0) 
+    /// System object identifier (1.3.6.1.2.1.1.2.0)
     SysObjectId,
     /// System uptime (1.3.6.1.2.1.1.3.0)
     SysUpTime,
@@ -86,7 +86,7 @@ impl StandardOid {
             StandardOid::IfOutErrors => "1.3.6.1.2.1.2.2.1.20",
         }
     }
-    
+
     /// Get description of this OID
     pub fn description(&self) -> &'static str {
         match self {
@@ -116,7 +116,7 @@ impl StandardOid {
             StandardOid::IfOutErrors => "Interface output errors",
         }
     }
-    
+
     /// Get all standard system OIDs for basic device information
     pub fn system_oids() -> Vec<StandardOid> {
         vec![
@@ -129,7 +129,7 @@ impl StandardOid {
             StandardOid::SysServices,
         ]
     }
-    
+
     /// Get all interface table OIDs for interface monitoring
     pub fn interface_oids() -> Vec<StandardOid> {
         vec![
@@ -198,7 +198,7 @@ impl VendorOid {
             VendorOid::Generic { oid, .. } => oid,
         }
     }
-    
+
     /// Get the description
     pub fn description(&self) -> &str {
         match self {
@@ -208,7 +208,7 @@ impl VendorOid {
             VendorOid::Generic { description, .. } => description,
         }
     }
-    
+
     /// Get the vendor name
     pub fn vendor(&self) -> &str {
         match self {
@@ -218,7 +218,7 @@ impl VendorOid {
             VendorOid::Generic { vendor, .. } => vendor,
         }
     }
-    
+
     /// Create common Cisco OIDs
     pub fn cisco_common() -> Vec<VendorOid> {
         vec![
@@ -236,7 +236,7 @@ impl VendorOid {
             },
         ]
     }
-    
+
     /// Create common Juniper OIDs
     pub fn juniper_common() -> Vec<VendorOid> {
         vec![
@@ -274,7 +274,7 @@ impl Default for OidMap {
             vendor: HashMap::new(),
             custom: HashMap::new(),
         };
-        
+
         // Populate with all standard OIDs
         for oid in StandardOid::system_oids() {
             map.standard.insert(format!("{:?}", oid), oid);
@@ -282,15 +282,21 @@ impl Default for OidMap {
         for oid in StandardOid::interface_oids() {
             map.standard.insert(format!("{:?}", oid), oid);
         }
-        
+
         // Populate with common vendor OIDs
         for oid in VendorOid::cisco_common() {
-            map.vendor.insert(format!("Cisco_{}", oid.description().replace(' ', "_")), oid);
+            map.vendor.insert(
+                format!("Cisco_{}", oid.description().replace(' ', "_")),
+                oid,
+            );
         }
         for oid in VendorOid::juniper_common() {
-            map.vendor.insert(format!("Juniper_{}", oid.description().replace(' ', "_")), oid);
+            map.vendor.insert(
+                format!("Juniper_{}", oid.description().replace(' ', "_")),
+                oid,
+            );
         }
-        
+
         map
     }
 }
@@ -300,37 +306,37 @@ impl OidMap {
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Add a standard OID to the map
     pub fn add_standard(&mut self, name: String, oid: StandardOid) {
         self.standard.insert(name, oid);
     }
-    
+
     /// Add a vendor OID to the map  
     pub fn add_vendor(&mut self, name: String, oid: VendorOid) {
         self.vendor.insert(name, oid);
     }
-    
+
     /// Add a custom OID to the map
     pub fn add_custom(&mut self, name: String, oid: String) {
         self.custom.insert(name, oid);
     }
-    
+
     /// Get standard OID by name
     pub fn get_standard(&self, name: &str) -> Option<&StandardOid> {
         self.standard.get(name)
     }
-    
+
     /// Get vendor OID by name
     pub fn get_vendor(&self, name: &str) -> Option<&VendorOid> {
         self.vendor.get(name)
     }
-    
+
     /// Get custom OID by name
     pub fn get_custom(&self, name: &str) -> Option<&str> {
         self.custom.get(name).map(|s| s.as_str())
     }
-    
+
     /// Resolve any OID name to its string representation
     pub fn resolve(&self, name: &str) -> Option<String> {
         if let Some(oid) = self.get_standard(name) {
@@ -343,7 +349,7 @@ impl OidMap {
             None
         }
     }
-    
+
     /// Get all OID names in the map
     pub fn list_names(&self) -> Vec<String> {
         let mut names = Vec::new();
@@ -353,21 +359,21 @@ impl OidMap {
         names.sort();
         names
     }
-    
+
     /// Get all standard OID names
     pub fn list_standard(&self) -> Vec<String> {
         let mut names: Vec<String> = self.standard.keys().cloned().collect();
         names.sort();
         names
     }
-    
+
     /// Get all vendor OID names  
     pub fn list_vendor(&self) -> Vec<String> {
         let mut names: Vec<String> = self.vendor.keys().cloned().collect();
         names.sort();
         names
     }
-    
+
     /// Get all custom OID names
     pub fn list_custom(&self) -> Vec<String> {
         let mut names: Vec<String> = self.custom.keys().cloned().collect();
@@ -379,28 +385,28 @@ impl OidMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_standard_oid_basic() {
         assert_eq!(StandardOid::SysDescr.oid(), "1.3.6.1.2.1.1.1.0");
         assert_eq!(StandardOid::SysName.oid(), "1.3.6.1.2.1.1.5.0");
         assert!(StandardOid::SysDescr.description().contains("System"));
     }
-    
+
     #[test]
     fn test_vendor_oid_cisco() {
         let cisco_oids = VendorOid::cisco_common();
         assert!(!cisco_oids.is_empty());
         assert!(cisco_oids.iter().all(|oid| oid.vendor() == "Cisco"));
     }
-    
+
     #[test]
     fn test_vendor_oid_juniper() {
         let juniper_oids = VendorOid::juniper_common();
         assert!(!juniper_oids.is_empty());
         assert!(juniper_oids.iter().all(|oid| oid.vendor() == "Juniper"));
     }
-    
+
     #[test]
     fn test_oid_map_default() {
         let map = OidMap::default();
@@ -408,30 +414,30 @@ mod tests {
         assert!(!map.vendor.is_empty());
         assert!(map.custom.is_empty());
     }
-    
+
     #[test]
     fn test_oid_map_operations() {
         let mut map = OidMap::new();
-        
+
         // Add custom OID
         map.add_custom("test_oid".to_string(), "1.2.3.4.5".to_string());
         assert_eq!(map.get_custom("test_oid"), Some("1.2.3.4.5"));
-        
+
         // Test resolution
         assert!(map.resolve("SysDescr").is_some());
         assert_eq!(map.resolve("test_oid"), Some("1.2.3.4.5".to_string()));
         assert_eq!(map.resolve("nonexistent"), None);
     }
-    
+
     #[test]
     fn test_oid_map_list_operations() {
         let map = OidMap::default();
-        
+
         let all_names = map.list_names();
         let standard_names = map.list_standard();
         let vendor_names = map.list_vendor();
         let custom_names = map.list_custom();
-        
+
         assert!(!standard_names.is_empty());
         assert!(!vendor_names.is_empty());
         assert!(custom_names.is_empty());

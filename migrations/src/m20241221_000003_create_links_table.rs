@@ -11,12 +11,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Link::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Link::Id)
-                            .text()
-                            .not_null()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Link::Id).text().not_null().primary_key())
                     .col(ColumnDef::new(Link::Name).text().not_null())
                     .col(ColumnDef::new(Link::NodeAId).text().not_null())
                     .col(ColumnDef::new(Link::InterfaceA).text().not_null())
@@ -24,7 +19,12 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Link::InterfaceB).text())
                     .col(ColumnDef::new(Link::Capacity).big_integer())
                     .col(ColumnDef::new(Link::Utilization).double())
-                    .col(ColumnDef::new(Link::IsInternetCircuit).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(Link::IsInternetCircuit)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(ColumnDef::new(Link::CircuitId).text())
                     .col(ColumnDef::new(Link::Provider).text())
                     .col(ColumnDef::new(Link::Description).text())

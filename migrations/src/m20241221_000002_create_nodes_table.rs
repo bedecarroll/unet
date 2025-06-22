@@ -11,12 +11,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Node::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Node::Id)
-                            .text()
-                            .not_null()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Node::Id).text().not_null().primary_key())
                     .col(ColumnDef::new(Node::Name).text().not_null())
                     .col(ColumnDef::new(Node::Fqdn).text())
                     .col(ColumnDef::new(Node::Domain).text())

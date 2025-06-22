@@ -30,6 +30,12 @@
 
 - [Implementation Plan](unet_implementation_plan.md)
 - [Development Thoughts](THOUGHTS.md)
+- [Dependencies & Coding Conventions](13_dependencies.md)
+- [Configuration Management](14_configuration.md)
+
+# Quality Assurance
+
+- [Pre-Milestone 3 Quality Report](quality_report_pre_milestone_3.md)
 
 # Progress Reports
 

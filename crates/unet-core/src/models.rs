@@ -271,9 +271,16 @@ impl Node {
         if self.name.is_empty() {
             return Err("Node name cannot be empty".to_string());
         }
-        
-        if !self.name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
-            return Err("Node name must contain only alphanumeric characters, hyphens, and underscores".to_string());
+
+        if !self
+            .name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
+            return Err(
+                "Node name must contain only alphanumeric characters, hyphens, and underscores"
+                    .to_string(),
+            );
         }
 
         // Validate domain
@@ -287,7 +294,7 @@ impl Node {
         } else {
             format!("{}.{}", self.name, self.domain)
         };
-        
+
         if self.fqdn != expected_fqdn {
             return Err("FQDN must match name.domain format".to_string());
         }
@@ -314,7 +321,7 @@ impl Node {
         // Simple dot-notation path traversal
         let parts: Vec<&str> = path.split('.').collect();
         let mut current = &self.custom_data;
-        
+
         for part in parts {
             if let Value::Object(obj) = current {
                 current = obj.get(part)?;
@@ -322,7 +329,7 @@ impl Node {
                 return None;
             }
         }
-        
+
         Some(current)
     }
 
@@ -352,14 +359,16 @@ impl Node {
             } else {
                 // Navigate deeper, creating objects as needed
                 if let Value::Object(obj) = current {
-                    let entry = obj.entry(part.to_string()).or_insert_with(|| Value::Object(serde_json::Map::new()));
+                    let entry = obj
+                        .entry(part.to_string())
+                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
                     current = entry;
                 } else {
                     return Err("Cannot navigate through non-object".to_string());
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -528,6 +537,7 @@ impl NodeBuilder {
 
 /// Network link/connection between nodes
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::similar_names)]
 pub struct Link {
     /// Unique identifier for the link
     pub id: Uuid,
@@ -578,11 +588,7 @@ impl Link {
     }
 
     /// Creates a new internet circuit (single-ended link)
-    pub fn new_internet_circuit(
-        name: String,
-        node_a_id: Uuid,
-        node_a_interface: String,
-    ) -> Self {
+    pub fn new_internet_circuit(name: String, node_a_id: Uuid, node_a_interface: String) -> Self {
         Self {
             id: Uuid::new_v4(),
             name,
@@ -675,8 +681,8 @@ impl Link {
 
     /// Checks if this link connects the two specified nodes
     pub fn connects_nodes(&self, node1_id: Uuid, node2_id: Uuid) -> bool {
-        (self.node_a_id == node1_id && Some(node2_id) == self.node_z_id) ||
-        (self.node_a_id == node2_id && Some(node1_id) == self.node_z_id)
+        (self.node_a_id == node1_id && Some(node2_id) == self.node_z_id)
+            || (self.node_a_id == node2_id && Some(node1_id) == self.node_z_id)
     }
 
     /// Checks if this link involves the specified node
@@ -689,7 +695,7 @@ impl Link {
         // Simple dot-notation path traversal (same as Node)
         let parts: Vec<&str> = path.split('.').collect();
         let mut current = &self.custom_data;
-        
+
         for part in parts {
             if let Value::Object(obj) = current {
                 current = obj.get(part)?;
@@ -697,7 +703,7 @@ impl Link {
                 return None;
             }
         }
-        
+
         Some(current)
     }
 
@@ -727,14 +733,16 @@ impl Link {
             } else {
                 // Navigate deeper, creating objects as needed
                 if let Value::Object(obj) = current {
-                    let entry = obj.entry(part.to_string()).or_insert_with(|| Value::Object(serde_json::Map::new()));
+                    let entry = obj
+                        .entry(part.to_string())
+                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
                     current = entry;
                 } else {
                     return Err("Cannot navigate through non-object".to_string());
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -831,7 +839,9 @@ impl LinkBuilder {
     pub fn build(self) -> Result<Link, String> {
         let name = self.name.ok_or("Name is required")?;
         let node_a_id = self.node_a_id.ok_or("Node A ID is required")?;
-        let node_a_interface = self.node_a_interface.ok_or("Node A interface is required")?;
+        let node_a_interface = self
+            .node_a_interface
+            .ok_or("Node A interface is required")?;
         let is_internet_circuit = self.is_internet_circuit.unwrap_or(false);
 
         let link = Link {
@@ -890,11 +900,7 @@ impl Location {
     }
 
     /// Creates a new child location with the given parent
-    pub fn new_child(
-        name: String,
-        location_type: String,
-        parent_path: String,
-    ) -> Self {
+    pub fn new_child(name: String, location_type: String, parent_path: String) -> Self {
         let path = if parent_path.is_empty() {
             name.clone()
         } else {
@@ -975,8 +981,10 @@ impl Location {
 
     /// Checks if this location is an ancestor of another location
     pub fn is_ancestor_of(&self, other: &Location) -> bool {
-        other.path.starts_with(&format!("{}/", self.path)) || 
-        (self.parent_id.is_none() && other.parent_id.is_some() && other.path.starts_with(&self.path))
+        other.path.starts_with(&format!("{}/", self.path))
+            || (self.parent_id.is_none()
+                && other.parent_id.is_some()
+                && other.path.starts_with(&self.path))
     }
 
     /// Checks if this location is a descendant of another location
@@ -999,7 +1007,7 @@ impl Location {
         // Simple dot-notation path traversal (same as Node and Link)
         let parts: Vec<&str> = path.split('.').collect();
         let mut current = &self.custom_data;
-        
+
         for part in parts {
             if let Value::Object(obj) = current {
                 current = obj.get(part)?;
@@ -1007,7 +1015,7 @@ impl Location {
                 return None;
             }
         }
-        
+
         Some(current)
     }
 
@@ -1037,14 +1045,16 @@ impl Location {
             } else {
                 // Navigate deeper, creating objects as needed
                 if let Value::Object(obj) = current {
-                    let entry = obj.entry(part.to_string()).or_insert_with(|| Value::Object(serde_json::Map::new()));
+                    let entry = obj
+                        .entry(part.to_string())
+                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
                     current = entry;
                 } else {
                     return Err("Cannot navigate through non-object".to_string());
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -1170,10 +1180,7 @@ impl Location {
     }
 
     /// Gets all ancestors of a location
-    pub fn get_ancestors<'a>(
-        &self,
-        all_locations: &'a [Location],
-    ) -> Vec<&'a Location> {
+    pub fn get_ancestors<'a>(&self, all_locations: &'a [Location]) -> Vec<&'a Location> {
         let mut ancestors = Vec::new();
         let mut current = self;
 
@@ -1190,10 +1197,7 @@ impl Location {
     }
 
     /// Gets all descendants of a location
-    pub fn get_descendants<'a>(
-        &self,
-        all_locations: &'a [Location],
-    ) -> Vec<&'a Location> {
+    pub fn get_descendants<'a>(&self, all_locations: &'a [Location]) -> Vec<&'a Location> {
         let mut descendants = Vec::new();
         let mut to_check = vec![self.id];
 
@@ -1210,10 +1214,7 @@ impl Location {
     }
 
     /// Gets direct children of a location
-    pub fn get_children<'a>(
-        &self,
-        all_locations: &'a [Location],
-    ) -> Vec<&'a Location> {
+    pub fn get_children<'a>(&self, all_locations: &'a [Location]) -> Vec<&'a Location> {
         all_locations
             .iter()
             .filter(|l| l.parent_id == Some(self.id))
@@ -1229,9 +1230,9 @@ fn is_valid_interface_name(interface: &str) -> bool {
 
     // Allow alphanumeric characters, slashes, dashes, dots, and colons
     // Common patterns: eth0, GigabitEthernet0/0/1, xe-0/0/0, etc.
-    interface.chars().all(|c| {
-        c.is_ascii_alphanumeric() || c == '/' || c == '-' || c == '.' || c == ':'
-    })
+    interface
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '/' || c == '-' || c == '.' || c == ':')
 }
 
 /// Helper function to validate domain names
@@ -1242,8 +1243,8 @@ fn is_valid_domain(domain: &str) -> bool {
 
     // Check for valid domain format (simplified validation)
     domain.split('.').all(|label| {
-        !label.is_empty() 
-            && label.len() <= 63 
+        !label.is_empty()
+            && label.len() <= 63
             && label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
             && !label.starts_with('-')
             && !label.ends_with('-')
@@ -1266,10 +1267,16 @@ mod tests {
     #[test]
     fn test_lifecycle_from_str() {
         assert_eq!("planned".parse::<Lifecycle>().unwrap(), Lifecycle::Planned);
-        assert_eq!("IMPLEMENTING".parse::<Lifecycle>().unwrap(), Lifecycle::Implementing);
+        assert_eq!(
+            "IMPLEMENTING".parse::<Lifecycle>().unwrap(),
+            Lifecycle::Implementing
+        );
         assert_eq!("Live".parse::<Lifecycle>().unwrap(), Lifecycle::Live);
-        assert_eq!("DECOMMISSIONED".parse::<Lifecycle>().unwrap(), Lifecycle::Decommissioned);
-        
+        assert_eq!(
+            "DECOMMISSIONED".parse::<Lifecycle>().unwrap(),
+            Lifecycle::Decommissioned
+        );
+
         assert!("invalid".parse::<Lifecycle>().is_err());
     }
 
@@ -1284,7 +1291,7 @@ mod tests {
         let planned = Lifecycle::Planned;
         let json = serde_json::to_string(&planned).unwrap();
         assert_eq!(json, "\"planned\"");
-        
+
         let deserialized: Lifecycle = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized, planned);
     }
@@ -1296,7 +1303,10 @@ mod tests {
         assert_eq!(DeviceRole::Firewall.to_string(), "firewall");
         assert_eq!(DeviceRole::LoadBalancer.to_string(), "loadbalancer");
         assert_eq!(DeviceRole::AccessPoint.to_string(), "accesspoint");
-        assert_eq!(DeviceRole::SecurityAppliance.to_string(), "securityappliance");
+        assert_eq!(
+            DeviceRole::SecurityAppliance.to_string(),
+            "securityappliance"
+        );
         assert_eq!(DeviceRole::Monitor.to_string(), "monitor");
         assert_eq!(DeviceRole::Server.to_string(), "server");
         assert_eq!(DeviceRole::Storage.to_string(), "storage");
@@ -1307,8 +1317,11 @@ mod tests {
     fn test_device_role_from_str() {
         assert_eq!("router".parse::<DeviceRole>().unwrap(), DeviceRole::Router);
         assert_eq!("SWITCH".parse::<DeviceRole>().unwrap(), DeviceRole::Switch);
-        assert_eq!("Firewall".parse::<DeviceRole>().unwrap(), DeviceRole::Firewall);
-        
+        assert_eq!(
+            "Firewall".parse::<DeviceRole>().unwrap(),
+            DeviceRole::Firewall
+        );
+
         assert!("invalid".parse::<DeviceRole>().is_err());
     }
 
@@ -1323,7 +1336,7 @@ mod tests {
         let router = DeviceRole::Router;
         let json = serde_json::to_string(&router).unwrap();
         assert_eq!(json, "\"router\"");
-        
+
         let deserialized: DeviceRole = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized, router);
     }
@@ -1348,7 +1361,7 @@ mod tests {
         assert_eq!("cisco".parse::<Vendor>().unwrap(), Vendor::Cisco);
         assert_eq!("JUNIPER".parse::<Vendor>().unwrap(), Vendor::Juniper);
         assert_eq!("Arista".parse::<Vendor>().unwrap(), Vendor::Arista);
-        
+
         assert!("invalid".parse::<Vendor>().is_err());
     }
 
@@ -1363,7 +1376,7 @@ mod tests {
         let cisco = Vendor::Cisco;
         let json = serde_json::to_string(&cisco).unwrap();
         assert_eq!(json, "\"cisco\"");
-        
+
         let deserialized: Vendor = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized, cisco);
     }
@@ -1377,7 +1390,7 @@ mod tests {
             Lifecycle::Live,
             Lifecycle::Decommissioned,
         ];
-        
+
         for lifecycle in lifecycles {
             let json = serde_json::to_string(&lifecycle).unwrap();
             let deserialized: Lifecycle = serde_json::from_str(&json).unwrap();
@@ -1396,7 +1409,7 @@ mod tests {
             DeviceRole::Storage,
             DeviceRole::Other,
         ];
-        
+
         for role in roles {
             let json = serde_json::to_string(&role).unwrap();
             let deserialized: DeviceRole = serde_json::from_str(&json).unwrap();
@@ -1416,7 +1429,7 @@ mod tests {
             Vendor::Ubiquiti,
             Vendor::Generic,
         ];
-        
+
         for vendor in vendors {
             let json = serde_json::to_string(&vendor).unwrap();
             let deserialized: Vendor = serde_json::from_str(&json).unwrap();
@@ -1482,7 +1495,11 @@ mod tests {
         node.model = "ISR4331".to_string();
 
         assert!(node.validate().is_err());
-        assert!(node.validate().unwrap_err().contains("name cannot be empty"));
+        assert!(
+            node.validate()
+                .unwrap_err()
+                .contains("name cannot be empty")
+        );
     }
 
     #[test]
@@ -1512,7 +1529,11 @@ mod tests {
         node.update_fqdn();
 
         assert!(node.validate().is_err());
-        assert!(node.validate().unwrap_err().contains("Invalid domain format"));
+        assert!(
+            node.validate()
+                .unwrap_err()
+                .contains("Invalid domain format")
+        );
     }
 
     #[test]
@@ -1525,7 +1546,11 @@ mod tests {
         );
 
         assert!(node.validate().is_err());
-        assert!(node.validate().unwrap_err().contains("Model cannot be empty"));
+        assert!(
+            node.validate()
+                .unwrap_err()
+                .contains("Model cannot be empty")
+        );
     }
 
     #[test]
@@ -1578,8 +1603,11 @@ mod tests {
 
         // Test nested path
         let nested_value = serde_json::json!(42);
-        assert!(node.set_custom_data("config.ports.count", nested_value.clone()).is_ok());
-        
+        assert!(
+            node.set_custom_data("config.ports.count", nested_value.clone())
+                .is_ok()
+        );
+
         let retrieved_nested = node.get_custom_data("config.ports.count");
         assert_eq!(retrieved_nested, Some(&nested_value));
 
@@ -1612,7 +1640,10 @@ mod tests {
         assert_eq!(node.model, "ISR4331");
         assert_eq!(node.role, DeviceRole::Router);
         assert_eq!(node.lifecycle, Lifecycle::Live);
-        assert_eq!(node.management_ip, Some(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))));
+        assert_eq!(
+            node.management_ip,
+            Some(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)))
+        );
         assert_eq!(node.platform, Some("IOS XE".to_string()));
         assert_eq!(node.version, Some("16.12.04".to_string()));
     }
@@ -1662,7 +1693,7 @@ mod tests {
 
         assert_eq!(node.custom_data, custom_data);
         assert_eq!(
-            node.get_custom_data("config.vlans"), 
+            node.get_custom_data("config.vlans"),
             Some(&serde_json::json!([10, 20, 30]))
         );
     }
@@ -1701,7 +1732,9 @@ mod tests {
         assert!(!is_valid_domain("invalid..domain"));
         assert!(!is_valid_domain("-invalid.com"));
         assert!(!is_valid_domain("invalid-.com"));
-        assert!(!is_valid_domain("too-long-label-that-exceeds-sixty-three-characters-which-is-invalid.com"));
+        assert!(!is_valid_domain(
+            "too-long-label-that-exceeds-sixty-three-characters-which-is-invalid.com"
+        ));
     }
 
     // Link tests
@@ -1709,7 +1742,7 @@ mod tests {
     fn test_link_new() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1730,12 +1763,9 @@ mod tests {
     #[test]
     fn test_link_new_internet_circuit() {
         let node_a_id = Uuid::new_v4();
-        
-        let link = Link::new_internet_circuit(
-            "internet-link".to_string(),
-            node_a_id,
-            "eth0".to_string(),
-        );
+
+        let link =
+            Link::new_internet_circuit("internet-link".to_string(), node_a_id, "eth0".to_string());
 
         assert_eq!(link.name, "internet-link");
         assert_eq!(link.node_a_id, node_a_id);
@@ -1749,7 +1779,7 @@ mod tests {
     fn test_link_validation_success() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1764,12 +1794,9 @@ mod tests {
     #[test]
     fn test_link_validation_internet_circuit_success() {
         let node_a_id = Uuid::new_v4();
-        
-        let link = Link::new_internet_circuit(
-            "internet-link".to_string(),
-            node_a_id,
-            "eth0".to_string(),
-        );
+
+        let link =
+            Link::new_internet_circuit("internet-link".to_string(), node_a_id, "eth0".to_string());
 
         assert!(link.validate().is_ok());
     }
@@ -1778,7 +1805,7 @@ mod tests {
     fn test_link_validation_empty_name() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "".to_string(),
             node_a_id,
@@ -1788,14 +1815,18 @@ mod tests {
         );
 
         assert!(link.validate().is_err());
-        assert!(link.validate().unwrap_err().contains("name cannot be empty"));
+        assert!(
+            link.validate()
+                .unwrap_err()
+                .contains("name cannot be empty")
+        );
     }
 
     #[test]
     fn test_link_validation_empty_interface() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1805,14 +1836,18 @@ mod tests {
         );
 
         assert!(link.validate().is_err());
-        assert!(link.validate().unwrap_err().contains("Node A interface cannot be empty"));
+        assert!(
+            link.validate()
+                .unwrap_err()
+                .contains("Node A interface cannot be empty")
+        );
     }
 
     #[test]
     fn test_link_validation_invalid_interface() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1822,13 +1857,17 @@ mod tests {
         );
 
         assert!(link.validate().is_err());
-        assert!(link.validate().unwrap_err().contains("Invalid node A interface name format"));
+        assert!(
+            link.validate()
+                .unwrap_err()
+                .contains("Invalid node A interface name format")
+        );
     }
 
     #[test]
     fn test_link_validation_self_link() {
         let node_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "self-link".to_string(),
             node_id,
@@ -1838,42 +1877,48 @@ mod tests {
         );
 
         assert!(link.validate().is_err());
-        assert!(link.validate().unwrap_err().contains("cannot connect a node to itself"));
+        assert!(
+            link.validate()
+                .unwrap_err()
+                .contains("cannot connect a node to itself")
+        );
     }
 
     #[test]
     fn test_link_validation_internet_circuit_with_node_z() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
-        let mut link = Link::new_internet_circuit(
-            "internet-link".to_string(),
-            node_a_id,
-            "eth0".to_string(),
-        );
-        
+
+        let mut link =
+            Link::new_internet_circuit("internet-link".to_string(), node_a_id, "eth0".to_string());
+
         // Manually set node_z_id (invalid for internet circuit)
         link.node_z_id = Some(node_z_id);
 
         assert!(link.validate().is_err());
-        assert!(link.validate().unwrap_err().contains("Internet circuits cannot have node Z"));
+        assert!(
+            link.validate()
+                .unwrap_err()
+                .contains("Internet circuits cannot have node Z")
+        );
     }
 
     #[test]
     fn test_link_validation_regular_link_missing_node_z() {
         let node_a_id = Uuid::new_v4();
-        
-        let mut link = Link::new_internet_circuit(
-            "regular-link".to_string(),
-            node_a_id,
-            "eth0".to_string(),
-        );
-        
+
+        let mut link =
+            Link::new_internet_circuit("regular-link".to_string(), node_a_id, "eth0".to_string());
+
         // Make it not an internet circuit but leave node_z_id as None
         link.is_internet_circuit = false;
 
         assert!(link.validate().is_err());
-        assert!(link.validate().unwrap_err().contains("Regular links must have node Z"));
+        assert!(
+            link.validate()
+                .unwrap_err()
+                .contains("Regular links must have node Z")
+        );
     }
 
     #[test]
@@ -1881,7 +1926,7 @@ mod tests {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1900,7 +1945,7 @@ mod tests {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1919,7 +1964,7 @@ mod tests {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1939,7 +1984,7 @@ mod tests {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
-        
+
         let link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -1957,7 +2002,7 @@ mod tests {
     fn test_link_custom_data() {
         let node_a_id = Uuid::new_v4();
         let node_z_id = Uuid::new_v4();
-        
+
         let mut link = Link::new(
             "link1".to_string(),
             node_a_id,
@@ -2000,7 +2045,10 @@ mod tests {
         assert_eq!(link.node_a_id, node_a_id);
         assert_eq!(link.node_a_interface, "GigabitEthernet0/0/1");
         assert_eq!(link.node_z_id, Some(node_z_id));
-        assert_eq!(link.node_z_interface, Some("GigabitEthernet0/0/2".to_string()));
+        assert_eq!(
+            link.node_z_interface,
+            Some("GigabitEthernet0/0/2".to_string())
+        );
         assert_eq!(link.description, Some("Core network link".to_string()));
         assert_eq!(link.bandwidth, Some(1_000_000_000));
         assert_eq!(link.link_type, Some("fiber".to_string()));
@@ -2095,7 +2143,7 @@ mod tests {
         assert!(!is_valid_interface_name("invalid@interface"));
         assert!(!is_valid_interface_name("interface with spaces"));
         assert!(!is_valid_interface_name("interface#with#hash"));
-        
+
         // Test length limit
         let long_interface = "a".repeat(65);
         assert!(!is_valid_interface_name(&long_interface));
@@ -2156,23 +2204,38 @@ mod tests {
     fn test_location_validation_empty_name() {
         let location = Location::new_root("".to_string(), "country".to_string());
         assert!(location.validate().is_err());
-        assert!(location.validate().unwrap_err().contains("name cannot be empty"));
+        assert!(
+            location
+                .validate()
+                .unwrap_err()
+                .contains("name cannot be empty")
+        );
     }
 
     #[test]
     fn test_location_validation_empty_type() {
         let location = Location::new_root("USA".to_string(), "".to_string());
         assert!(location.validate().is_err());
-        assert!(location.validate().unwrap_err().contains("type cannot be empty"));
+        assert!(
+            location
+                .validate()
+                .unwrap_err()
+                .contains("type cannot be empty")
+        );
     }
 
     #[test]
     fn test_location_validation_root_path_mismatch() {
         let mut location = Location::new_root("USA".to_string(), "country".to_string());
         location.path = "Wrong".to_string();
-        
+
         assert!(location.validate().is_err());
-        assert!(location.validate().unwrap_err().contains("Root location path must equal name"));
+        assert!(
+            location
+                .validate()
+                .unwrap_err()
+                .contains("Root location path must equal name")
+        );
     }
 
     #[test]
@@ -2184,15 +2247,20 @@ mod tests {
         );
         location.parent_id = Some(Uuid::new_v4());
         location.path = "USA/WrongState".to_string();
-        
+
         assert!(location.validate().is_err());
-        assert!(location.validate().unwrap_err().contains("path must end with location name"));
+        assert!(
+            location
+                .validate()
+                .unwrap_err()
+                .contains("path must end with location name")
+        );
     }
 
     #[test]
     fn test_location_update_path() {
         let mut location = Location::new_root("California".to_string(), "state".to_string());
-        
+
         // Update with parent path
         location.update_path(Some("USA"));
         assert_eq!(location.path, "USA/California");
@@ -2243,13 +2311,16 @@ mod tests {
             "city".to_string(),
             "USA/California".to_string(),
         );
-        assert_eq!(grandchild.get_path_components(), vec!["USA", "California", "San Francisco"]);
+        assert_eq!(
+            grandchild.get_path_components(),
+            vec!["USA", "California", "San Francisco"]
+        );
     }
 
     #[test]
     fn test_location_hierarchy_relationships() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
-        
+
         let mut child = Location::new_child(
             "California".to_string(),
             "state".to_string(),
@@ -2289,7 +2360,7 @@ mod tests {
     #[test]
     fn test_location_detect_circular_reference() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
-        
+
         let mut child = Location::new_child(
             "California".to_string(),
             "state".to_string(),
@@ -2300,19 +2371,25 @@ mod tests {
         let locations = vec![root.clone(), child.clone()];
 
         // Test self-reference
-        assert!(Location::detect_circular_reference(&locations, root.id, root.id));
+        assert!(Location::detect_circular_reference(
+            &locations, root.id, root.id
+        ));
 
         // Test valid parent-child
-        assert!(!Location::detect_circular_reference(&locations, root.id, child.id));
+        assert!(!Location::detect_circular_reference(
+            &locations, root.id, child.id
+        ));
 
         // Test circular reference (child becoming parent of its ancestor)
-        assert!(Location::detect_circular_reference(&locations, child.id, root.id));
+        assert!(Location::detect_circular_reference(
+            &locations, child.id, root.id
+        ));
     }
 
     #[test]
     fn test_location_get_ancestors() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
-        
+
         let mut child = Location::new_child(
             "California".to_string(),
             "state".to_string(),
@@ -2348,7 +2425,7 @@ mod tests {
     #[test]
     fn test_location_get_descendants() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
-        
+
         let mut child1 = Location::new_child(
             "California".to_string(),
             "state".to_string(),
@@ -2356,11 +2433,8 @@ mod tests {
         );
         child1.parent_id = Some(root.id);
 
-        let mut child2 = Location::new_child(
-            "Texas".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child2 =
+            Location::new_child("Texas".to_string(), "state".to_string(), "USA".to_string());
         child2.parent_id = Some(root.id);
 
         let mut grandchild = Location::new_child(
@@ -2370,7 +2444,12 @@ mod tests {
         );
         grandchild.parent_id = Some(child1.id);
 
-        let locations = vec![root.clone(), child1.clone(), child2.clone(), grandchild.clone()];
+        let locations = vec![
+            root.clone(),
+            child1.clone(),
+            child2.clone(),
+            grandchild.clone(),
+        ];
 
         // Root has all others as descendants
         let root_descendants = root.get_descendants(&locations);
@@ -2393,7 +2472,7 @@ mod tests {
     #[test]
     fn test_location_get_children() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
-        
+
         let mut child1 = Location::new_child(
             "California".to_string(),
             "state".to_string(),
@@ -2401,11 +2480,8 @@ mod tests {
         );
         child1.parent_id = Some(root.id);
 
-        let mut child2 = Location::new_child(
-            "Texas".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child2 =
+            Location::new_child("Texas".to_string(), "state".to_string(), "USA".to_string());
         child2.parent_id = Some(root.id);
 
         let mut grandchild = Location::new_child(
@@ -2415,7 +2491,12 @@ mod tests {
         );
         grandchild.parent_id = Some(child1.id);
 
-        let locations = vec![root.clone(), child1.clone(), child2.clone(), grandchild.clone()];
+        let locations = vec![
+            root.clone(),
+            child1.clone(),
+            child2.clone(),
+            grandchild.clone(),
+        ];
 
         // Root has two direct children
         let root_children = root.get_children(&locations);
@@ -2448,8 +2529,12 @@ mod tests {
 
         // Test nested path
         let coords = serde_json::json!({"lat": 37.7749, "lng": -122.4194});
-        assert!(location.set_custom_data("coordinates.center", coords.clone()).is_ok());
-        
+        assert!(
+            location
+                .set_custom_data("coordinates.center", coords.clone())
+                .is_ok()
+        );
+
         let retrieved_coords = location.get_custom_data("coordinates.center");
         assert_eq!(retrieved_coords, Some(&coords));
     }
@@ -2472,8 +2557,14 @@ mod tests {
         assert_eq!(location.location_type, "building");
         assert_eq!(location.parent_id, Some(parent_id));
         assert_eq!(location.path, "USA/California/San Francisco/Building A");
-        assert_eq!(location.description, Some("Main office building".to_string()));
-        assert_eq!(location.address, Some("123 Main St, San Francisco, CA".to_string()));
+        assert_eq!(
+            location.description,
+            Some("Main office building".to_string())
+        );
+        assert_eq!(
+            location.address,
+            Some("123 Main St, San Francisco, CA".to_string())
+        );
     }
 
     #[test]
@@ -2489,7 +2580,10 @@ mod tests {
         assert_eq!(location.location_type, "country");
         assert_eq!(location.parent_id, None);
         assert_eq!(location.path, "USA");
-        assert_eq!(location.description, Some("United States of America".to_string()));
+        assert_eq!(
+            location.description,
+            Some("United States of America".to_string())
+        );
     }
 
     #[test]

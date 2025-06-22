@@ -9,16 +9,17 @@
 ## Quick Reference
 
 ### Project Status
-- **Current Phase:** ✅ **MILESTONE 2 COMPLETED** - Ready for Milestone 3 (Policy Engine)
+- **Current Phase:** ⚠️ **MILESTONE 2 CORE COMPLETE** - Foundation tasks moved to M2.5 before M3 (Policy Engine)
 - **Target Architecture:** Rust single-binary server + CLI
 - **Database:** SQLite → Postgres migration path  
 - **Documentation:** Complete (mdBook)
-- **Last Updated:** 2025-06-21 17:47:23 PST
+- **Code Quality:** ✅ Rust Edition 2024, Dependencies Audited, Clippy/Fmt Compliant
+- **Last Updated:** 2025-06-22 07:30:00 PST
 
 ### Key Dependencies
 ```bash
 # Prerequisites for any development work
-rustc 1.77+
+rustc 1.85+ (Rust Edition 2024)
 cargo (latest stable)
 git 2.30+
 mdbook 0.4+ (docs)
@@ -30,16 +31,19 @@ mdbook 0.4+ (docs)
 
 | # | Phase | Duration | Key Deliverables | Dependencies | Team Size |
 |---|-------|----------|------------------|--------------|-----------|
-| **0** | Project Setup | 1-2 days | Workspace, CI/CD, basic structure | None | 1 Senior Dev | ✅ **COMPLETED** |
-| **1** | Data Foundation | 5-8 days | Core models, DataStore trait, basic CRUD | M0 | 2-3 Devs | ✅ **COMPLETED** |
-| **2** | SNMP Integration | 3-4 days | Polling, derived state tracking | M1 | 1-2 Devs | ✅ **COMPLETED** |
-| **3** | Policy Engine | 6-9 days | DSL parser, evaluation engine | M1 | 2 Devs |
+| **0** | Project Setup | 1-2 days | Workspace, CI/CD, basic structure | None | 1 Senior Dev | ⚠️ **PARTIAL** |
+| **1** | Data Foundation | 5-8 days | Core models, DataStore trait, basic CRUD | M0 | 2-3 Devs | ⚠️ **PARTIAL** |
+| **2** | SNMP Integration | 3-4 days | Polling, derived state tracking | M1 | 1-2 Devs | ✅ **CORE COMPLETE** |
+| **2.5** | Foundation Completion | 3-5 days | Complete CI/CD, CLI, API, missing infrastructure | M0,M1,M2 | 2-3 Devs | ⏳ **IN PROGRESS** |
+| **3** | Policy Engine | 6-9 days | DSL parser, evaluation engine | M2.5 | 2 Devs |
 | **4** | Template System | 4-6 days | MiniJinja integration, rendering | M1 | 1-2 Devs |
 | **5** | Config Diffing | 3-5 days | Config-slicer, diff workflows | M4 | 1-2 Devs |
 | **6** | Git Integration | 3-5 days | Sync tasks, version control | M3, M4 | 1-2 Devs |
 | **7** | Production Polish | 5-8 days | Security, packaging, deployment | All | 2-3 Devs |
 
-**Total Estimated Duration:** 30-47 development days (calendar time will vary based on team size and parallelization)
+**Total Estimated Duration:** 33-52 development days (calendar time will vary based on team size and parallelization)
+
+> ⚠️ **Critical Note:** Milestones 0, 1, and 2 were previously marked complete but contained significant gaps. M2.5 addresses these foundational requirements before Policy Engine development.
 
 ### Complexity Legend
 - 🟢 **S (Small):** 2-4 hours, straightforward implementation
@@ -212,7 +216,7 @@ mdbook 0.4+ (docs)
   - [ ] Set up doc.rs integration
   - [ ] API documentation CI checks
 
-### ✅ Milestone 0 Acceptance Criteria - **ALL COMPLETED**
+### ⚠️ Milestone 0 Acceptance Criteria - **PARTIALLY COMPLETED**
 - [x] **M0.AC.1** Complete workspace builds without warnings (`cargo check --workspace`) ✅
 - [x] **M0.AC.2** CI pipeline passes all quality gates (fmt, clippy, test, audit) ✅
 - [x] **M0.AC.3** Documentation builds and deploys successfully (`mdbook build`) ✅
@@ -224,26 +228,28 @@ mdbook 0.4+ (docs)
 **✅ Exit Criteria Met:** Ready to begin parallel development on multiple milestones
 
 ### 🎯 Milestone 0 Summary
-- **Status:** ✅ **COMPLETED** 
-- **Duration:** 1 day (faster than estimated 1-2 days)
+- **Status:** ⚠️ **PARTIALLY COMPLETED** 
+- **Duration:** 1 day core setup (CI/CD and tooling moved to M2.5)
 - **Team:** 1 Developer
 - **Key Achievements:**
   - Complete Cargo workspace with 4 crates
-  - GitHub Actions CI/CD pipeline
-  - Development environment configuration
-  - Documentation framework with mdBook
-  - Quality gates (rustfmt, clippy) configured
+  - Basic project structure and documentation framework
+  - Initial dependencies and placeholder code
+- **Missing Components (moved to M2.5):**
+  - Complete GitHub Actions CI/CD pipeline
+  - Development tooling standardization
+  - Quality gates implementation
 - **Technical Notes:**
   - Simplified dependencies initially to avoid OpenSSL build issues
   - All placeholders have proper clippy allows
   - Documentation builds successfully
-- **Ready for:** Milestone 1 development can begin
+- **Ready for:** Milestone 2.5 completion of foundational infrastructure
 
-### ✅ Milestone 1 Acceptance Criteria - **ALL COMPLETED**
+### ⚠️ Milestone 1 Acceptance Criteria - **PARTIALLY COMPLETED**
 - [x] **M1.AC.1** All data models serialize/deserialize correctly ✅
 - [x] **M1.AC.2** Both CSV and SQLite DataStore implementations pass all tests ✅
-- [x] **M1.AC.3** CLI can perform all CRUD operations locally ✅
-- [x] **M1.AC.4** HTTP API can handle all CRUD operations with proper validation ✅
+- [ ] **M1.AC.3** CLI can perform all CRUD operations locally ⚠️ MOVED TO M2.5
+- [ ] **M1.AC.4** HTTP API can handle all CRUD operations with proper validation ⚠️ MOVED TO M2.5
 - [x] **M1.AC.5** Database migrations run successfully and are reversible ✅
 - [x] **M1.AC.6** Integration tests cover all major workflows ✅
 - [x] **M1.AC.7** Error handling is comprehensive and user-friendly ✅
@@ -253,9 +259,9 @@ mdbook 0.4+ (docs)
 
 ---
 
-## ✅ Milestone 1: Core Data Layer & Foundation - **COMPLETED**
+## ⚠️ Milestone 1: Core Data Layer & Foundation - **PARTIALLY COMPLETED**
 > **Duration:** 5-8 days | **Team:** 2-3 Developers | **Risk:** Medium-High
-> **Completed:** 2025-06-21 17:47:23 PST | **Status:** All acceptance criteria met
+> **Core Completed:** 2025-06-21 17:47:23 PST | **Status:** Data models complete, CLI/API moved to M2.5
 > **Critical Path:** Foundation for all subsequent development
 
 ### ✅ 1.1 Data Models Implementation [Priority: CRITICAL] - **COMPLETED**
@@ -393,17 +399,18 @@ mdbook 0.4+ (docs)
   - **Dependencies:** M1.3.1
   - **Gotchas:** Error type explosion, loss of error context in conversions
 
-- [ ] **M1.3.3** Configuration management
+- [x] **M1.3.3** Configuration management ✅ **COMPLETED**
   - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1-2 days
+  - **Status:** Basic configuration infrastructure implemented
   - **Deliverables:**
-    - [ ] Create configuration structures using serde and config crate
-    - [ ] Add TOML configuration file support with validation
-    - [ ] Implement environment variable overrides with precedence
-    - [ ] Add configuration validation and default value handling
-    - [ ] Create configuration file examples and documentation
-  - **Validation:** Configuration loads correctly, overrides work as expected
+    - [x] Create configuration structures using serde and config crate ✅
+    - [x] Add TOML configuration file support with validation ✅
+    - [x] Implement environment variable overrides with precedence ✅
+    - [x] Add configuration validation and default value handling ✅
+    - [x] Create configuration file examples and documentation ✅
+  - **Validation:** Configuration loads correctly, overrides work as expected ✅
   - **Dependencies:** M1.3.2
-  - **Gotchas:** Environment variable naming conflicts, validation complexity
+  - **Notes:** Core infrastructure complete - runtime configuration extensions in M2.4
 
 - [ ] **M1.3.4** Logging and tracing setup
   - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1-2 days
@@ -603,13 +610,27 @@ mdbook 0.4+ (docs)
   - [ ] Create derived state monitoring commands
   - [ ] Add polling status and control commands
 
-### 2.4 Testing and Validation
-- [ ] **M2.4.1** SNMP testing infrastructure
+### 2.4 Runtime Configuration and Testing
+- [ ] **M2.4.1** Extended runtime configuration
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1-2 days
+  - **Deliverables:**
+    - [ ] Add Git repository configuration (policies_repo, templates_repo, branch, sync_interval)
+    - [ ] Add Domain configuration (default domain, search domains)
+    - [ ] Add Authentication configuration structure for future auth
+    - [ ] Implement configuration loading in server main.rs (replace hardcoded values)
+    - [ ] Implement CLI global configuration flags (--server, --config, --token)
+    - [ ] Create comprehensive example configuration files
+    - [ ] Add configuration validation for URLs, domains, and file paths
+  - **Validation:** Server and CLI load configuration correctly, all runtime options configurable
+  - **Dependencies:** M2.3.3
+  - **Gotchas:** Git credential security, URL validation, file path permissions
+
+- [ ] **M2.4.2** SNMP testing infrastructure
   - [ ] Create SNMP simulator for testing
   - [ ] Add unit tests for SNMP operations (✅ 12 unit tests completed)
   - [ ] Create integration tests with mock devices
   - [ ] Add performance testing for bulk operations
-- [ ] **M2.4.2** End-to-end testing
+- [ ] **M2.4.3** End-to-end testing
   - [ ] Test complete polling workflow
   - [ ] Validate derived state accuracy
   - [ ] Test error scenarios and recovery
@@ -644,8 +665,143 @@ mdbook 0.4+ (docs)
   - Comprehensive error handling with proper error types
   - Complete ServerError wrapper with IntoResponse for HTTP API
   - Extensible design supporting future vendor-specific extensions
-- **Ready for:** Milestone 3 (Policy Engine) development can begin immediately
+- **Ready for:** Milestone 2.5 (Foundation Completion) before Policy Engine development
 - **Optional Refinements:** CLI derived state display, E2E testing, code warnings cleanup
+
+---
+
+## Milestone 2.5: Foundation Completion & Infrastructure
+
+> **Critical Priority:** Complete foundational infrastructure before Policy Engine development  
+> **Purpose:** Address critical gaps in milestones 0, 1, and 2 that were marked complete but have missing components  
+> **Rationale:** Policy Engine development requires solid CI/CD, complete CLI/API, and proper configuration management
+
+### 2.5.1 CI/CD Pipeline Completion (From M0)
+- [ ] **M2.5.1** Complete GitHub Actions workflows
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1 day
+  - **Deliverables:**
+    - [ ] Implement complete CI pipeline with all quality gates
+    - [ ] Add security audit and dependency checks
+    - [ ] Configure build caching and optimization
+    - [ ] Set up documentation deployment automation
+  - **Validation:** All PRs must pass comprehensive CI checks
+  - **Dependencies:** Basic workspace structure
+  - **Priority:** CRITICAL - Blocks all quality assurance
+
+- [ ] **M2.5.2** Development tooling standardization
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 0.5 day
+  - **Deliverables:**
+    - [ ] Complete Rust toolchain configuration
+    - [ ] IDE settings and extensions
+    - [ ] Pre-commit hooks and git configuration
+    - [ ] Developer onboarding scripts
+  - **Validation:** New developers can set up environment in <30 minutes
+  - **Dependencies:** M2.5.1
+  - **Priority:** HIGH - Developer productivity
+
+### 2.5.2 Complete CLI Implementation (From M1)
+- [ ] **M2.5.3** Core CLI commands
+  - **Complexity:** 🔴 L | **Skill:** 🧑‍💼 Mid | **Time:** 2 days
+  - **Deliverables:**
+    - [ ] Complete `nodes` subcommand (add, list, show, update, delete)
+    - [ ] Complete `locations` subcommand (add, list, show, update, delete)
+    - [ ] Complete `links` subcommand (add, list, show, update, delete)
+    - [ ] Global configuration loading (--server, --config, --token)
+    - [ ] Output formatting (table, json, yaml)
+    - [ ] Error handling and user-friendly messages
+  - **Validation:** All CRUD operations work via CLI
+  - **Dependencies:** DataStore implementation
+  - **Priority:** CRITICAL - User interface for system
+
+- [ ] **M2.5.4** CLI derived state display
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1 day
+  - **Deliverables:**
+    - [ ] Update `node show` to display SNMP-derived state
+    - [ ] Add derived state comparison commands
+    - [ ] Create polling status and control commands
+    - [ ] Add derived state history viewing
+  - **Validation:** CLI can display and control all derived state features
+  - **Dependencies:** M2.5.3, M2 SNMP integration
+  - **Priority:** MEDIUM - Enhanced user experience
+
+### 2.5.3 Complete HTTP API Implementation (From M1)
+- [ ] **M2.5.5** Core API endpoints
+  - **Complexity:** 🔴 L | **Skill:** 🧑‍💼 Mid | **Time:** 2 days
+  - **Deliverables:**
+    - [ ] Complete nodes API (POST, GET, PUT, DELETE /nodes)
+    - [ ] Complete locations API (POST, GET, PUT, DELETE /locations)
+    - [ ] Complete links API (POST, GET, PUT, DELETE /links)
+    - [ ] Request validation and error handling
+    - [ ] API documentation (OpenAPI/Swagger)
+    - [ ] Integration tests for all endpoints
+  - **Validation:** All CRUD operations work via HTTP API
+  - **Dependencies:** DataStore implementation
+  - **Priority:** CRITICAL - API interface for system
+
+- [ ] **M2.5.6** API derived state endpoints
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1 day
+  - **Deliverables:**
+    - [ ] GET /nodes/{id}/status endpoint for derived state
+    - [ ] GET /nodes/{id}/interfaces endpoint for interface status
+    - [ ] GET /nodes/{id}/metrics endpoint for performance data
+    - [ ] Polling control endpoints (start/stop/status)
+  - **Validation:** API provides complete access to derived state
+  - **Dependencies:** M2.5.5, M2 SNMP integration
+  - **Priority:** HIGH - Complete API coverage
+
+### 2.5.4 Runtime Configuration Implementation
+- [ ] **M2.5.7** Complete configuration system
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1 day
+  - **Deliverables:**
+    - [ ] Add Git repository configuration (policies_repo, templates_repo, branch, sync_interval)
+    - [ ] Add Domain configuration (default domain, search domains)
+    - [ ] Add Authentication configuration structure for future auth
+    - [ ] Implement configuration loading in server main.rs (replace hardcoded values)
+    - [ ] Implement CLI global configuration flags (--server, --config, --token)
+    - [ ] Create comprehensive example configuration files
+    - [ ] Add configuration validation for URLs, domains, and file paths
+  - **Validation:** Server and CLI load configuration correctly, all runtime options configurable
+  - **Dependencies:** Basic configuration infrastructure (M1.3.3)
+  - **Priority:** HIGH - Required for Policy Engine git integration
+
+### 2.5.5 Database and Infrastructure Completion
+- [ ] **M2.5.8** Complete database implementation
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 1 day
+  - **Deliverables:**
+    - [ ] Complete SQLite DataStore implementation with all methods
+    - [ ] Database migration system with rollback support
+    - [ ] Connection pooling and error recovery
+    - [ ] Database backup and maintenance utilities
+  - **Validation:** All DataStore operations work reliably
+  - **Dependencies:** Data models (M1)
+  - **Priority:** CRITICAL - Data persistence foundation
+
+- [ ] **M2.5.9** Error handling and logging completion
+  - **Complexity:** 🟡 M | **Skill:** 🧑‍💼 Mid | **Time:** 0.5 day
+  - **Deliverables:**
+    - [ ] Complete error type hierarchy with proper context
+    - [ ] Structured logging throughout application
+    - [ ] Error reporting utilities and user-friendly messages
+    - [ ] Log level configuration and filtering
+  - **Validation:** All errors are properly handled and logged
+  - **Dependencies:** Core library structure
+  - **Priority:** HIGH - System reliability and debugging
+
+### ✅ Milestone 2.5 Acceptance Criteria
+- [ ] **M2.5.AC.1** Complete CI/CD pipeline with all quality gates passes
+- [ ] **M2.5.AC.2** All CLI commands (nodes, locations, links) are fully functional
+- [ ] **M2.5.AC.3** All HTTP API endpoints are implemented and tested
+- [ ] **M2.5.AC.4** Runtime configuration system is complete and functional
+- [ ] **M2.5.AC.5** Database operations are reliable with proper error handling
+- [ ] **M2.5.AC.6** System can be deployed and configured in production environment
+- [ ] **M2.5.AC.7** All foundational infrastructure supports Policy Engine development
+
+### 🎯 Milestone 2.5 Priority Summary
+- **Status:** ⏳ **IN PROGRESS**
+- **Estimated Duration:** 3-5 days with 2-3 developers
+- **Critical Path:** M2.5.1 → M2.5.3 → M2.5.5 → M2.5.7 (CI/CD → CLI → API → Config)
+- **Blockers Removed:** After completion, Policy Engine can be developed on solid foundation
+- **Key Risk:** Until completed, Policy Engine development will lack essential infrastructure
 
 ---
 

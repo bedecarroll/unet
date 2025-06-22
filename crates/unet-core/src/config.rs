@@ -77,38 +77,39 @@ impl Config {
             .add_source(File::with_name(path.as_ref().to_str().unwrap_or("config")))
             .add_source(Environment::with_prefix("UNET").separator("_"));
 
-        let config = builder.build().map_err(|e| {
-            Error::Config(format!("Failed to build configuration: {}", e))
-        })?;
+        let config = builder
+            .build()
+            .map_err(|e| Error::Config(format!("Failed to build configuration: {}", e)))?;
 
-        config.try_deserialize().map_err(|e| {
-            Error::Config(format!("Failed to deserialize configuration: {}", e))
-        })
+        config
+            .try_deserialize()
+            .map_err(|e| Error::Config(format!("Failed to deserialize configuration: {}", e)))
     }
 
     /// Loads configuration from environment variables only
     pub fn from_env() -> Result<Self> {
-        let builder = ConfigBuilder::builder()
-            .add_source(Environment::with_prefix("UNET").separator("_"));
+        let builder =
+            ConfigBuilder::builder().add_source(Environment::with_prefix("UNET").separator("_"));
 
         let config = builder.build().map_err(|e| {
-            Error::Config(format!("Failed to build configuration from environment: {}", e))
+            Error::Config(format!(
+                "Failed to build configuration from environment: {}",
+                e
+            ))
         })?;
 
-        config.try_deserialize().map_err(|e| {
-            Error::Config(format!("Failed to deserialize configuration: {}", e))
-        })
+        config
+            .try_deserialize()
+            .map_err(|e| Error::Config(format!("Failed to deserialize configuration: {}", e)))
     }
 
     /// Saves configuration to a TOML file
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let toml_string = toml::to_string_pretty(self).map_err(|e| {
-            Error::Config(format!("Failed to serialize configuration: {}", e))
-        })?;
+        let toml_string = toml::to_string_pretty(self)
+            .map_err(|e| Error::Config(format!("Failed to serialize configuration: {}", e)))?;
 
-        std::fs::write(path, toml_string).map_err(|e| {
-            Error::Config(format!("Failed to write configuration file: {}", e))
-        })
+        std::fs::write(path, toml_string)
+            .map_err(|e| Error::Config(format!("Failed to write configuration file: {}", e)))
     }
 
     /// Gets the database URL with environment variable override
@@ -162,20 +163,20 @@ mod tests {
     fn test_config_save_and_load() {
         let config = Config::default();
         let temp_file = NamedTempFile::new().unwrap();
-        
+
         // Save configuration
         config.save_to_file(temp_file.path()).unwrap();
-        
+
         // Load configuration with explicit file extension
         let path_str = temp_file.path().to_str().unwrap();
         let toml_path = format!("{}.toml", path_str);
         std::fs::copy(temp_file.path(), &toml_path).unwrap();
-        
+
         let loaded_config = Config::from_file(&toml_path).unwrap();
-        
+
         // Clean up
         std::fs::remove_file(&toml_path).ok();
-        
+
         assert_eq!(config.database.url, loaded_config.database.url);
         assert_eq!(config.logging.level, loaded_config.logging.level);
         assert_eq!(config.snmp.community, loaded_config.snmp.community);

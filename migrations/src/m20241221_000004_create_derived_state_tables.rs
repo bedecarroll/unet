@@ -18,11 +18,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(NodeStatus::NodeId)
-                            .uuid()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(NodeStatus::NodeId).uuid().not_null())
                     .col(
                         ColumnDef::new(NodeStatus::LastUpdated)
                             .timestamp_with_time_zone()
@@ -34,34 +30,13 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(false),
                     )
-                    .col(
-                        ColumnDef::new(NodeStatus::SystemInfo)
-                            .json(),
-                    )
-                    .col(
-                        ColumnDef::new(NodeStatus::Performance)
-                            .json(),
-                    )
-                    .col(
-                        ColumnDef::new(NodeStatus::Environmental)
-                            .json(),
-                    )
-                    .col(
-                        ColumnDef::new(NodeStatus::VendorMetrics)
-                            .json(),
-                    )
-                    .col(
-                        ColumnDef::new(NodeStatus::RawSnmpData)
-                            .json(),
-                    )
-                    .col(
-                        ColumnDef::new(NodeStatus::LastSnmpSuccess)
-                            .timestamp_with_time_zone(),
-                    )
-                    .col(
-                        ColumnDef::new(NodeStatus::LastError)
-                            .text(),
-                    )
+                    .col(ColumnDef::new(NodeStatus::SystemInfo).json())
+                    .col(ColumnDef::new(NodeStatus::Performance).json())
+                    .col(ColumnDef::new(NodeStatus::Environmental).json())
+                    .col(ColumnDef::new(NodeStatus::VendorMetrics).json())
+                    .col(ColumnDef::new(NodeStatus::RawSnmpData).json())
+                    .col(ColumnDef::new(NodeStatus::LastSnmpSuccess).timestamp_with_time_zone())
+                    .col(ColumnDef::new(NodeStatus::LastError).text())
                     .col(
                         ColumnDef::new(NodeStatus::ConsecutiveFailures)
                             .integer()
@@ -107,33 +82,16 @@ impl MigrationTrait for Migration {
                             .uuid()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(InterfaceStatus::Index)
-                            .integer()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(InterfaceStatus::Name)
-                            .string()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(InterfaceStatus::Index).integer().not_null())
+                    .col(ColumnDef::new(InterfaceStatus::Name).string().not_null())
                     .col(
                         ColumnDef::new(InterfaceStatus::InterfaceType)
                             .integer()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(InterfaceStatus::Mtu)
-                            .integer(),
-                    )
-                    .col(
-                        ColumnDef::new(InterfaceStatus::Speed)
-                            .big_integer(),
-                    )
-                    .col(
-                        ColumnDef::new(InterfaceStatus::PhysicalAddress)
-                            .string(),
-                    )
+                    .col(ColumnDef::new(InterfaceStatus::Mtu).integer())
+                    .col(ColumnDef::new(InterfaceStatus::Speed).big_integer())
+                    .col(ColumnDef::new(InterfaceStatus::PhysicalAddress).string())
                     .col(
                         ColumnDef::new(InterfaceStatus::AdminStatus)
                             .string()
@@ -146,10 +104,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default("unknown"),
                     )
-                    .col(
-                        ColumnDef::new(InterfaceStatus::LastChange)
-                            .integer(),
-                    )
+                    .col(ColumnDef::new(InterfaceStatus::LastChange).integer())
                     .col(
                         ColumnDef::new(InterfaceStatus::InputStats)
                             .json()
@@ -195,21 +150,9 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(PollingTasks::NodeId)
-                            .uuid()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(PollingTasks::Target)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(PollingTasks::Oids)
-                            .json()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(PollingTasks::NodeId).uuid().not_null())
+                    .col(ColumnDef::new(PollingTasks::Target).string().not_null())
+                    .col(ColumnDef::new(PollingTasks::Oids).json().not_null())
                     .col(
                         ColumnDef::new(PollingTasks::IntervalSeconds)
                             .big_integer()
@@ -237,14 +180,8 @@ impl MigrationTrait for Migration {
                             .timestamp_with_time_zone()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(PollingTasks::LastSuccess)
-                            .timestamp_with_time_zone(),
-                    )
-                    .col(
-                        ColumnDef::new(PollingTasks::LastError)
-                            .text(),
-                    )
+                    .col(ColumnDef::new(PollingTasks::LastSuccess).timestamp_with_time_zone())
+                    .col(ColumnDef::new(PollingTasks::LastError).text())
                     .col(
                         ColumnDef::new(PollingTasks::ConsecutiveFailures)
                             .integer()

@@ -1,6 +1,6 @@
 //! SNMP data types
 
-pub use super::{SnmpValue, SnmpError, SnmpResult};
+pub use super::{SnmpError, SnmpResult, SnmpValue};
 
 /// SNMP data type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
