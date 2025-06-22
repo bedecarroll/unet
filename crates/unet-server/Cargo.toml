@@ -33,6 +33,9 @@ thiserror = { workspace = true }
 # Configuration management
 config = { workspace = true }
 
+# CLI parsing
+clap = { workspace = true }
+
 # HTTP server
 axum = { workspace = true }
 tower = { workspace = true }

@@ -12,7 +12,8 @@
 Key features:
 
 - **Rust single‑binary** server & CLI—no Python/JDK runtime surprises.
-- **SQLite first** (Postgres later) via SeaORM.
+- **SQLite database** with full ACID transactions via SeaORM and complete CRUD operations.
+- **Example data fixtures** for quick onboarding and testing with realistic network topologies.
 - **Custom DSL** policy engine, familiar **MiniJinja** templates.
 - **Hierarchical config diff** via the stand‑alone `config‑slicer` crate.
 
@@ -40,6 +41,12 @@ unet/                       # ← you are here
 │   ├── unet-cli/           # binary: Clap command‑line interface
 │   └── config-slicer/      # library + CLI for cfg hierarchy slicing
 ├── migrations/             # SeaORM migration files (timestamped)
+├── fixtures/               # Example data for quick onboarding
+│   ├── examples/           # Network topology examples
+│   │   ├── small-office/   # Small business network (10-50 users)
+│   │   ├── datacenter/     # Enterprise datacenter topology
+│   │   └── campus/         # Multi-building campus network
+│   └── schemas/            # JSON schemas for validation
 ├── policies/               # Sample *.rules checked into Git (optional)
 ├── templates/              # Sample *.jinja templates (optional)
 ├── docker/                 # Container build context
@@ -74,11 +81,13 @@ $ cargo check --workspace --all-targets
 $ cargo test --workspace
 
 # 4. Start the demo server (SQLite, fixtures)
-$ cp fixtures/demo/unet.db ./unet.db
-$ cargo run -p unet-server -- --config fixtures/demo/config.toml
+$ cargo run -p unet-cli -- init --database ./unet.db
+$ cargo run -p unet-cli -- import --from fixtures/examples/small-office/
+$ cargo run -p unet-server -- --database-url sqlite:./unet.db
 
 # 5. Open a new shell – list demo nodes via CLI
-$ cargo run -p unet-cli -- node list -o table
+$ cargo run -p unet-cli -- nodes list
+$ cargo run -p unet-cli -- locations list
 
 # 6. View docs (mdBook)
 $ mdbook serve docs --open   # http://localhost:3000

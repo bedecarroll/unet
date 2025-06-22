@@ -1,0 +1,53 @@
+# μNet Configuration File
+# This file demonstrates the runtime configuration system
+
+[database]
+# Database URL - supports SQLite and PostgreSQL
+url = "sqlite:./unet.db?mode=rwc"
+# Maximum number of connections in the pool
+max_connections = 10
+# Connection timeout in seconds
+timeout = 30
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+# Log format: json, pretty
+format = "pretty"
+# Optional log file path
+# file = "./unet.log"
+
+[snmp]
+# Default SNMP community string
+community = "public"
+# Default timeout in seconds
+timeout = 5
+# Default retry count
+retries = 3
+
+[server]
+# Server bind address
+host = "127.0.0.1"
+# Server port
+port = 8080
+# Maximum request size in bytes (1MB)
+max_request_size = 1048576
+
+[git]
+# Git repository configuration for Policy Engine
+# policies_repo = "https://github.com/example/unet-policies.git"
+# templates_repo = "https://github.com/example/unet-templates.git"
+branch = "main"
+sync_interval = 300  # 5 minutes
+
+[domain]
+# Domain configuration
+# default_domain = "example.com"
+search_domains = []
+# search_domains = ["local", "internal.com"]
+
+[auth]
+# Authentication configuration (future extensibility)
+enabled = false
+# token_endpoint = "https://auth.example.com/validate"
+token_expiry = 3600  # 1 hour

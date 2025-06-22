@@ -19,6 +19,12 @@ pub struct Config {
     pub snmp: SnmpConfig,
     /// Server configuration
     pub server: ServerConfig,
+    /// Git repository configuration
+    pub git: GitConfig,
+    /// Domain configuration
+    pub domain: DomainConfig,
+    /// Authentication configuration
+    pub auth: AuthConfig,
 }
 
 /// Database configuration
@@ -65,6 +71,39 @@ pub struct ServerConfig {
     pub max_request_size: usize,
 }
 
+/// Git repository configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitConfig {
+    /// Policies repository URL
+    pub policies_repo: Option<String>,
+    /// Templates repository URL
+    pub templates_repo: Option<String>,
+    /// Git branch to use
+    pub branch: String,
+    /// Sync interval in seconds
+    pub sync_interval: u64,
+}
+
+/// Domain configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DomainConfig {
+    /// Default domain suffix
+    pub default_domain: Option<String>,
+    /// Search domains list
+    pub search_domains: Vec<String>,
+}
+
+/// Authentication configuration (future extensibility)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    /// Authentication enabled
+    pub enabled: bool,
+    /// Token validation endpoint (future)
+    pub token_endpoint: Option<String>,
+    /// Default token expiry in seconds
+    pub token_expiry: u64,
+}
+
 impl Config {
     /// Creates a new configuration with defaults
     pub fn new() -> Self {
@@ -79,11 +118,11 @@ impl Config {
 
         let config = builder
             .build()
-            .map_err(|e| Error::Config(format!("Failed to build configuration: {}", e)))?;
+            .map_err(|e| Error::config_with_source("Failed to build configuration", e))?;
 
         config
             .try_deserialize()
-            .map_err(|e| Error::Config(format!("Failed to deserialize configuration: {}", e)))
+            .map_err(|e| Error::config_with_source("Failed to deserialize configuration", e))
     }
 
     /// Loads configuration from environment variables only
@@ -92,29 +131,113 @@ impl Config {
             ConfigBuilder::builder().add_source(Environment::with_prefix("UNET").separator("_"));
 
         let config = builder.build().map_err(|e| {
-            Error::Config(format!(
-                "Failed to build configuration from environment: {}",
-                e
-            ))
+            Error::config_with_source("Failed to build configuration from environment", e)
         })?;
 
         config
             .try_deserialize()
-            .map_err(|e| Error::Config(format!("Failed to deserialize configuration: {}", e)))
+            .map_err(|e| Error::config_with_source("Failed to deserialize configuration", e))
     }
 
     /// Saves configuration to a TOML file
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let toml_string = toml::to_string_pretty(self)
-            .map_err(|e| Error::Config(format!("Failed to serialize configuration: {}", e)))?;
+            .map_err(|e| Error::config_with_source("Failed to serialize configuration", e))?;
 
         std::fs::write(path, toml_string)
-            .map_err(|e| Error::Config(format!("Failed to write configuration file: {}", e)))
+            .map_err(|e| Error::config_with_source("Failed to write configuration file", e))
     }
 
     /// Gets the database URL with environment variable override
     pub fn database_url(&self) -> String {
         std::env::var("DATABASE_URL").unwrap_or_else(|_| self.database.url.clone())
+    }
+
+    /// Validates the configuration for correctness
+    pub fn validate(&self) -> Result<()> {
+        // Validate database URL
+        if self.database.url.is_empty() {
+            return Err(Error::validation(
+                "database.url",
+                "Database URL cannot be empty",
+            ));
+        }
+
+        // Validate server configuration
+        if self.server.host.is_empty() {
+            return Err(Error::validation(
+                "server.host",
+                "Server host cannot be empty",
+            ));
+        }
+        if self.server.port == 0 {
+            return Err(Error::validation(
+                "server.port",
+                "Server port must be greater than 0",
+            ));
+        }
+
+        // Validate Git repositories if specified
+        if let Some(ref repo) = self.git.policies_repo {
+            if !repo.is_empty() && !Self::is_valid_git_url(repo) {
+                return Err(Error::validation_with_value(
+                    "git.policies_repo",
+                    "Invalid Git repository URL format",
+                    repo,
+                ));
+            }
+        }
+        if let Some(ref repo) = self.git.templates_repo {
+            if !repo.is_empty() && !Self::is_valid_git_url(repo) {
+                return Err(Error::validation_with_value(
+                    "git.templates_repo",
+                    "Invalid Git repository URL format",
+                    repo,
+                ));
+            }
+        }
+
+        // Validate domain names
+        if let Some(ref domain) = self.domain.default_domain {
+            if !Self::is_valid_domain(domain) {
+                return Err(Error::validation_with_value(
+                    "domain.default_domain",
+                    "Invalid domain name format",
+                    domain,
+                ));
+            }
+        }
+        for domain in &self.domain.search_domains {
+            if !Self::is_valid_domain(domain) {
+                return Err(Error::validation_with_value(
+                    "domain.search_domains",
+                    "Invalid domain name format",
+                    domain,
+                ));
+            }
+        }
+
+        // Validate logging configuration using utility functions
+        crate::logging::validate_log_level(&self.logging.level)?;
+        crate::logging::validate_log_format(&self.logging.format)?;
+
+        Ok(())
+    }
+
+    /// Validates a Git URL
+    fn is_valid_git_url(url: &str) -> bool {
+        url.starts_with("https://") || url.starts_with("git@") || url.starts_with("ssh://")
+    }
+
+    /// Validates a domain name
+    fn is_valid_domain(domain: &str) -> bool {
+        !domain.is_empty()
+            && domain.len() <= 253
+            && !domain.starts_with('.')
+            && !domain.ends_with('.')
+            && domain
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
     }
 }
 
@@ -140,6 +263,21 @@ impl Default for Config {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
                 max_request_size: 1_048_576, // 1MB
+            },
+            git: GitConfig {
+                policies_repo: None,
+                templates_repo: None,
+                branch: "main".to_string(),
+                sync_interval: 300, // 5 minutes
+            },
+            domain: DomainConfig {
+                default_domain: None,
+                search_domains: vec![],
+            },
+            auth: AuthConfig {
+                enabled: false,
+                token_endpoint: None,
+                token_expiry: 3600, // 1 hour
             },
         }
     }
@@ -185,9 +323,13 @@ mod tests {
 
     #[test]
     fn test_database_url_override() {
-        std::env::set_var("DATABASE_URL", "postgresql://test");
+        unsafe {
+            std::env::set_var("DATABASE_URL", "postgresql://test");
+        }
         let config = Config::default();
         assert_eq!(config.database_url(), "postgresql://test");
-        std::env::remove_var("DATABASE_URL");
+        unsafe {
+            std::env::remove_var("DATABASE_URL");
+        }
     }
 }

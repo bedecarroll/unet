@@ -67,7 +67,7 @@ pub async fn list_links(
 }
 
 /// Get a specific link by ID
-pub async fn get_link(Path(id): Path<Uuid>) -> ServerResult<Json<ApiResponse<Link>>> {
+pub async fn get_link(Path(_id): Path<Uuid>) -> ServerResult<Json<ApiResponse<Link>>> {
     // TODO: Implement actual datastore lookup
 
     let node_a = Uuid::new_v4();
@@ -102,7 +102,7 @@ pub async fn create_link(
 
 /// Update an existing link
 pub async fn update_link(
-    Path(id): Path<Uuid>,
+    Path(_id): Path<Uuid>,
     Json(request): Json<UpdateLinkRequest>,
 ) -> ServerResult<Json<ApiResponse<Link>>> {
     // TODO: Fetch existing link from datastore and apply updates

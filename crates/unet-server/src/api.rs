@@ -137,9 +137,13 @@ impl CreateNodeRequest {
 
         if let Some(management_ip) = self.management_ip {
             // Parse IP address string to IpAddr
-            let ip: std::net::IpAddr = management_ip
-                .parse()
-                .map_err(|e| Error::Other(format!("Invalid IP address: {}", e)))?;
+            let ip: std::net::IpAddr = management_ip.parse().map_err(|_| {
+                Error::validation_with_value(
+                    "management_ip",
+                    "Invalid IP address format",
+                    &management_ip,
+                )
+            })?;
             builder = builder.management_ip(ip);
         }
 
@@ -147,7 +151,11 @@ impl CreateNodeRequest {
             builder = builder.custom_data(custom_data);
         }
 
-        builder.build().map_err(|e| Error::Other(e))
+        builder.build().map_err(|e| Error::Other {
+            context: "Node creation".to_string(),
+            message: e,
+            source: None,
+        })
     }
 }
 
@@ -202,7 +210,11 @@ impl CreateLocationRequest {
             builder = builder.custom_data(custom_data);
         }
 
-        builder.build().map_err(|e| Error::Other(e))
+        builder.build().map_err(|e| Error::Other {
+            context: "Location creation".to_string(),
+            message: e,
+            source: None,
+        })
     }
 }
 
@@ -262,7 +274,11 @@ impl CreateLinkRequest {
             builder = builder.custom_data(custom_data);
         }
 
-        builder.build().map_err(|e| Error::Other(e))
+        builder.build().map_err(|e| Error::Other {
+            context: "Link creation".to_string(),
+            message: e,
+            source: None,
+        })
     }
 }
 

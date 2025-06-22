@@ -430,6 +430,34 @@ pub trait DataStore: Send + Sync {
 
     /// Gets datastore statistics (implementation-specific)
     async fn get_statistics(&self) -> DataStoreResult<HashMap<String, serde_json::Value>>;
+
+    // Derived state operations (basic implementation)
+    /// Gets node status (derived state) by node ID
+    async fn get_node_status(
+        &self,
+        node_id: &Uuid,
+    ) -> DataStoreResult<Option<crate::models::derived::NodeStatus>> {
+        // Default implementation returns a basic status
+        Ok(Some(crate::models::derived::NodeStatus::new(*node_id)))
+    }
+
+    /// Gets interface status for a specific node
+    async fn get_node_interfaces(
+        &self,
+        _node_id: &Uuid,
+    ) -> DataStoreResult<Vec<crate::models::derived::InterfaceStatus>> {
+        // Default implementation returns empty list
+        Ok(Vec::new())
+    }
+
+    /// Gets performance metrics for a specific node
+    async fn get_node_metrics(
+        &self,
+        _node_id: &Uuid,
+    ) -> DataStoreResult<Option<crate::models::derived::PerformanceMetrics>> {
+        // Default implementation returns None
+        Ok(None)
+    }
 }
 
 // Helper functions for creating common query options
@@ -1212,13 +1240,171 @@ pub mod csv {
 pub mod sqlite {
     use super::*;
     use sea_orm::{
-        ConnectOptions, Database, DatabaseConnection, DatabaseTransaction, TransactionTrait,
+        ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, 
+        DatabaseTransaction, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, 
+        QuerySelect, Set, TransactionTrait,
     };
+    use crate::entities::{nodes, links, locations};
+    use crate::models::{DeviceRole, Lifecycle, Vendor};
+    use chrono::Utc;
     use std::time::Duration;
 
     /// SQLite-based DataStore implementation
     pub struct SqliteStore {
         db: DatabaseConnection,
+    }
+
+    /// Helper function to convert SeaORM link entity to our Link model
+    fn entity_to_link(entity: links::Model) -> DataStoreResult<Link> {
+        let id = entity.id.parse::<Uuid>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid UUID: {}", e),
+            })?;
+
+        let node_a_id = entity.node_a_id.parse::<Uuid>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid node A UUID: {}", e),
+            })?;
+
+        let node_z_id = if let Some(node_b_id_str) = entity.node_b_id {
+            Some(node_b_id_str.parse::<Uuid>()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid node B UUID: {}", e),
+                })?)
+        } else {
+            None
+        };
+
+        let custom_data = if let Some(ref data_str) = entity.custom_data {
+            serde_json::from_str(data_str).unwrap_or_default()
+        } else {
+            serde_json::Value::Null
+        };
+
+        Ok(Link {
+            id,
+            name: entity.name,
+            node_a_id,
+            node_a_interface: entity.interface_a,
+            node_z_id,
+            node_z_interface: entity.interface_b,
+            description: entity.description,
+            bandwidth: entity.capacity.map(|c| c as u64),
+            link_type: None, // Not stored in entity yet
+            is_internet_circuit: entity.is_internet_circuit != 0,
+            custom_data,
+        })
+    }
+
+    /// Helper function to convert SeaORM location entity to our Location model
+    fn entity_to_location(entity: locations::Model) -> DataStoreResult<Location> {
+        let id = entity.id.parse::<Uuid>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid UUID: {}", e),
+            })?;
+
+        let parent_id = if let Some(parent_id_str) = entity.parent_id {
+            Some(parent_id_str.parse::<Uuid>()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid parent UUID: {}", e),
+                })?)
+        } else {
+            None
+        };
+
+        let custom_data = if let Some(ref data_str) = entity.custom_data {
+            serde_json::from_str(data_str).unwrap_or_default()
+        } else {
+            serde_json::Value::Null
+        };
+
+        Ok(Location {
+            id,
+            name: entity.name,
+            location_type: entity.location_type,
+            parent_id,
+            path: entity.path,
+            description: entity.description,
+            address: entity.address,
+            custom_data,
+        })
+    }
+
+    /// Helper function to convert SeaORM node entity to our Node model
+    fn entity_to_node(entity: nodes::Model) -> DataStoreResult<Node> {
+        let vendor = entity.vendor.parse::<Vendor>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid vendor: {}", e),
+            })?;
+
+        let role = entity.role.parse::<DeviceRole>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid role: {}", e),
+            })?;
+
+        let lifecycle = entity.lifecycle.parse::<Lifecycle>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid lifecycle: {}", e),
+            })?;
+
+        let id = entity.id.parse::<Uuid>()
+            .map_err(|e| DataStoreError::ValidationError {
+                message: format!("Invalid UUID: {}", e),
+            })?;
+
+        let location_id = if let Some(loc_id_str) = entity.location_id {
+            Some(loc_id_str.parse::<Uuid>()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid location UUID: {}", e),
+                })?)
+        } else {
+            None
+        };
+
+        let management_ip = if let Some(ip_str) = entity.management_ip {
+            Some(ip_str.parse()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid IP address: {}", e),
+                })?)
+        } else {
+            None
+        };
+
+        let custom_data = if let Some(ref data_str) = entity.custom_data {
+            serde_json::from_str(data_str).unwrap_or_default()
+        } else {
+            serde_json::Value::Null
+        };
+
+        let domain = entity.domain.clone().unwrap_or_default();
+        let name = entity.name.clone();
+        let fqdn = entity.fqdn.unwrap_or_else(|| {
+            if !domain.is_empty() {
+                format!("{}.{}", name, domain)
+            } else {
+                name.clone()
+            }
+        });
+
+        Ok(Node {
+            id,
+            name,
+            domain,
+            fqdn,
+            vendor,
+            model: entity.model,
+            role,
+            lifecycle,
+            management_ip,
+            location_id,
+            platform: None, // Not stored in entity yet
+            version: None,  // Not stored in entity yet
+            serial_number: entity.serial_number,
+            asset_tag: entity.asset_tag,
+            purchase_date: None,    // Not stored in entity yet
+            warranty_expires: None, // Not stored in entity yet
+            custom_data,
+        })
     }
 
     /// SeaORM transaction wrapper
@@ -1304,129 +1490,648 @@ pub mod sqlite {
         // Note: For now, we'll implement stub methods that return UnsupportedOperation
         // These would be implemented with actual SeaORM entities once we have migrations set up
 
-        async fn create_node(&self, _node: &Node) -> DataStoreResult<Node> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "create_node not yet implemented - awaiting migrations".to_string(),
+        async fn create_node(&self, node: &Node) -> DataStoreResult<Node> {
+            let active_node = nodes::ActiveModel {
+                id: Set(node.id.to_string()),
+                name: Set(node.name.clone()),
+                fqdn: Set(Some(node.fqdn.clone())),
+                domain: Set(Some(node.domain.clone())),
+                vendor: Set(node.vendor.to_string()),
+                model: Set(node.model.clone()),
+                role: Set(node.role.to_string()),
+                lifecycle: Set(node.lifecycle.to_string()),
+                serial_number: Set(node.serial_number.clone()),
+                asset_tag: Set(node.asset_tag.clone()),
+                location_id: Set(node.location_id.map(|id| id.to_string())),
+                management_ip: Set(node.management_ip.map(|ip| ip.to_string())),
+                description: Set(None), // Not used in Node model yet
+                custom_data: Set(Some(serde_json::to_string(&node.custom_data).unwrap_or_default())),
+                created_at: Set(Utc::now().to_rfc3339()),
+                updated_at: Set(Utc::now().to_rfc3339()),
+            };
+
+            active_node
+                .insert(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to create node: {}", e),
+                })?;
+
+            // Convert back to Node model
+            self.get_node(&node.id).await?.ok_or_else(|| DataStoreError::NotFound {
+                entity_type: "Node".to_string(),
+                id: node.id.to_string(),
             })
         }
 
-        async fn get_node(&self, _id: &Uuid) -> DataStoreResult<Option<Node>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "get_node not yet implemented - awaiting migrations".to_string(),
+        async fn get_node(&self, id: &Uuid) -> DataStoreResult<Option<Node>> {
+            let entity = nodes::Entity::find_by_id(id.to_string())
+                .one(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query node: {}", e),
+                })?;
+
+            match entity {
+                Some(e) => Ok(Some(entity_to_node(e)?)),
+                None => Ok(None),
+            }
+        }
+
+        async fn list_nodes(&self, options: &QueryOptions) -> DataStoreResult<PagedResult<Node>> {
+            let mut query = nodes::Entity::find();
+
+            // Apply filters
+            for filter in &options.filters {
+                match filter.field.as_str() {
+                    "name" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(nodes::Column::Name.contains(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Name filter must be a string".to_string(),
+                        }),
+                    },
+                    "vendor" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(nodes::Column::Vendor.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Vendor filter must be a string".to_string(),
+                        }),
+                    },
+                    "role" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(nodes::Column::Role.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Role filter must be a string".to_string(),
+                        }),
+                    },
+                    "lifecycle" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(nodes::Column::Lifecycle.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Lifecycle filter must be a string".to_string(),
+                        }),
+                    },
+                    _ => return Err(DataStoreError::ValidationError {
+                        message: format!("Unsupported filter field: {}", filter.field),
+                    }),
+                }
+            }
+
+            // Apply sorting
+            for sort in &options.sort {
+                match sort.field.as_str() {
+                    "name" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(nodes::Column::Name),
+                            SortDirection::Descending => query.order_by_desc(nodes::Column::Name),
+                        };
+                    }
+                    "created_at" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(nodes::Column::CreatedAt),
+                            SortDirection::Descending => query.order_by_desc(nodes::Column::CreatedAt),
+                        };
+                    }
+                    _ => return Err(DataStoreError::ValidationError {
+                        message: format!("Unsupported sort field: {}", sort.field),
+                    }),
+                }
+            }
+
+            // Get total count
+            let total_count = query.clone()
+                .count(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to count nodes: {}", e),
+                })?;
+
+            // Apply pagination
+            if let Some(pagination) = &options.pagination {
+                query = query.offset(pagination.offset as u64).limit(pagination.limit as u64);
+            }
+
+            // Execute query
+            let entities = query
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query nodes: {}", e),
+                })?;
+
+            // Convert entities to Node models
+            let mut nodes = Vec::new();
+            for entity in entities {
+                nodes.push(entity_to_node(entity)?);
+            }
+
+            Ok(PagedResult::new(nodes, total_count as usize, options.pagination.as_ref()))
+        }
+
+        async fn update_node(&self, node: &Node) -> DataStoreResult<Node> {
+            let active_node = nodes::ActiveModel {
+                id: Set(node.id.to_string()),
+                name: Set(node.name.clone()),
+                fqdn: Set(Some(node.fqdn.clone())),
+                domain: Set(Some(node.domain.clone())),
+                vendor: Set(node.vendor.to_string()),
+                model: Set(node.model.clone()),
+                role: Set(node.role.to_string()),
+                lifecycle: Set(node.lifecycle.to_string()),
+                serial_number: Set(node.serial_number.clone()),
+                asset_tag: Set(node.asset_tag.clone()),
+                location_id: Set(node.location_id.map(|id| id.to_string())),
+                management_ip: Set(node.management_ip.map(|ip| ip.to_string())),
+                description: Set(None), // Not used in Node model yet
+                custom_data: Set(Some(serde_json::to_string(&node.custom_data).unwrap_or_default())),
+                created_at: Set(Utc::now().to_rfc3339()), // This should ideally preserve original
+                updated_at: Set(Utc::now().to_rfc3339()),
+            };
+
+            active_node
+                .update(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to update node: {}", e),
+                })?;
+
+            self.get_node(&node.id).await?.ok_or_else(|| DataStoreError::NotFound {
+                entity_type: "Node".to_string(),
+                id: node.id.to_string(),
             })
         }
 
-        async fn list_nodes(&self, _options: &QueryOptions) -> DataStoreResult<PagedResult<Node>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "list_nodes not yet implemented - awaiting migrations".to_string(),
+        async fn delete_node(&self, id: &Uuid) -> DataStoreResult<()> {
+            let result = nodes::Entity::delete_by_id(id.to_string())
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to delete node: {}", e),
+                })?;
+
+            if result.rows_affected == 0 {
+                return Err(DataStoreError::NotFound {
+                    entity_type: "Node".to_string(),
+                    id: id.to_string(),
+                });
+            }
+
+            Ok(())
+        }
+
+        async fn get_nodes_by_location(&self, location_id: &Uuid) -> DataStoreResult<Vec<Node>> {
+            let entities = nodes::Entity::find()
+                .filter(nodes::Column::LocationId.eq(location_id.to_string()))
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query nodes by location: {}", e),
+                })?;
+
+            let mut nodes = Vec::new();
+            for entity in entities {
+                nodes.push(entity_to_node(entity)?);
+            }
+
+            Ok(nodes)
+        }
+
+        async fn search_nodes_by_name(&self, name: &str) -> DataStoreResult<Vec<Node>> {
+            let entities = nodes::Entity::find()
+                .filter(nodes::Column::Name.contains(name))
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to search nodes by name: {}", e),
+                })?;
+
+            let mut nodes = Vec::new();
+            for entity in entities {
+                nodes.push(entity_to_node(entity)?);
+            }
+
+            Ok(nodes)
+        }
+
+        async fn create_link(&self, link: &Link) -> DataStoreResult<Link> {
+            let active_link = links::ActiveModel {
+                id: Set(link.id.to_string()),
+                name: Set(link.name.clone()),
+                node_a_id: Set(link.node_a_id.to_string()),
+                interface_a: Set(link.node_a_interface.clone()),
+                node_b_id: Set(link.node_z_id.map(|id| id.to_string())),
+                interface_b: Set(link.node_z_interface.clone()),
+                capacity: Set(link.bandwidth.map(|b| b as i64)),
+                utilization: Set(None), // Not in Link model yet
+                is_internet_circuit: Set(if link.is_internet_circuit { 1 } else { 0 }),
+                circuit_id: Set(None), // Not in Link model yet
+                provider: Set(None), // Not in Link model yet
+                description: Set(link.description.clone()),
+                custom_data: Set(Some(serde_json::to_string(&link.custom_data).unwrap_or_default())),
+                created_at: Set(Utc::now().to_rfc3339()),
+                updated_at: Set(Utc::now().to_rfc3339()),
+            };
+
+            active_link
+                .insert(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to create link: {}", e),
+                })?;
+
+            self.get_link(&link.id).await?.ok_or_else(|| DataStoreError::NotFound {
+                entity_type: "Link".to_string(),
+                id: link.id.to_string(),
             })
         }
 
-        async fn update_node(&self, _node: &Node) -> DataStoreResult<Node> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "update_node not yet implemented - awaiting migrations".to_string(),
+        async fn get_link(&self, id: &Uuid) -> DataStoreResult<Option<Link>> {
+            let entity = links::Entity::find_by_id(id.to_string())
+                .one(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query link: {}", e),
+                })?;
+
+            match entity {
+                Some(e) => Ok(Some(entity_to_link(e)?)),
+                None => Ok(None),
+            }
+        }
+
+        async fn list_links(&self, options: &QueryOptions) -> DataStoreResult<PagedResult<Link>> {
+            let mut query = links::Entity::find();
+
+            // Apply filters
+            for filter in &options.filters {
+                match filter.field.as_str() {
+                    "name" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(links::Column::Name.contains(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Name filter must be a string".to_string(),
+                        }),
+                    },
+                    "node_a_id" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(links::Column::NodeAId.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Node A ID filter must be a string".to_string(),
+                        }),
+                    },
+                    "node_b_id" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(links::Column::NodeBId.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Node B ID filter must be a string".to_string(),
+                        }),
+                    },
+                    _ => return Err(DataStoreError::ValidationError {
+                        message: format!("Unsupported filter field: {}", filter.field),
+                    }),
+                }
+            }
+
+            // Apply sorting
+            for sort in &options.sort {
+                match sort.field.as_str() {
+                    "name" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(links::Column::Name),
+                            SortDirection::Descending => query.order_by_desc(links::Column::Name),
+                        };
+                    }
+                    "created_at" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(links::Column::CreatedAt),
+                            SortDirection::Descending => query.order_by_desc(links::Column::CreatedAt),
+                        };
+                    }
+                    _ => return Err(DataStoreError::ValidationError {
+                        message: format!("Unsupported sort field: {}", sort.field),
+                    }),
+                }
+            }
+
+            // Get total count
+            let total_count = query.clone()
+                .count(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to count links: {}", e),
+                })?;
+
+            // Apply pagination
+            if let Some(pagination) = &options.pagination {
+                query = query.offset(pagination.offset as u64).limit(pagination.limit as u64);
+            }
+
+            // Execute query
+            let entities = query
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query links: {}", e),
+                })?;
+
+            // Convert entities to Link models
+            let mut links = Vec::new();
+            for entity in entities {
+                links.push(entity_to_link(entity)?);
+            }
+
+            Ok(PagedResult::new(links, total_count as usize, options.pagination.as_ref()))
+        }
+
+        async fn update_link(&self, link: &Link) -> DataStoreResult<Link> {
+            let active_link = links::ActiveModel {
+                id: Set(link.id.to_string()),
+                name: Set(link.name.clone()),
+                node_a_id: Set(link.node_a_id.to_string()),
+                interface_a: Set(link.node_a_interface.clone()),
+                node_b_id: Set(link.node_z_id.map(|id| id.to_string())),
+                interface_b: Set(link.node_z_interface.clone()),
+                capacity: Set(link.bandwidth.map(|b| b as i64)),
+                utilization: Set(None), // Not in Link model yet
+                is_internet_circuit: Set(if link.is_internet_circuit { 1 } else { 0 }),
+                circuit_id: Set(None), // Not in Link model yet
+                provider: Set(None), // Not in Link model yet
+                description: Set(link.description.clone()),
+                custom_data: Set(Some(serde_json::to_string(&link.custom_data).unwrap_or_default())),
+                created_at: Set(Utc::now().to_rfc3339()), // This should ideally preserve original
+                updated_at: Set(Utc::now().to_rfc3339()),
+            };
+
+            active_link
+                .update(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to update link: {}", e),
+                })?;
+
+            self.get_link(&link.id).await?.ok_or_else(|| DataStoreError::NotFound {
+                entity_type: "Link".to_string(),
+                id: link.id.to_string(),
             })
         }
 
-        async fn delete_node(&self, _id: &Uuid) -> DataStoreResult<()> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "delete_node not yet implemented - awaiting migrations".to_string(),
-            })
+        async fn delete_link(&self, id: &Uuid) -> DataStoreResult<()> {
+            let result = links::Entity::delete_by_id(id.to_string())
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to delete link: {}", e),
+                })?;
+
+            if result.rows_affected == 0 {
+                return Err(DataStoreError::NotFound {
+                    entity_type: "Link".to_string(),
+                    id: id.to_string(),
+                });
+            }
+
+            Ok(())
         }
 
-        async fn get_nodes_by_location(&self, _location_id: &Uuid) -> DataStoreResult<Vec<Node>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "get_nodes_by_location not yet implemented - awaiting migrations"
-                    .to_string(),
-            })
-        }
+        async fn get_links_for_node(&self, node_id: &Uuid) -> DataStoreResult<Vec<Link>> {
+            let entities = links::Entity::find()
+                .filter(
+                    links::Column::NodeAId.eq(node_id.to_string())
+                        .or(links::Column::NodeBId.eq(node_id.to_string()))
+                )
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query links for node: {}", e),
+                })?;
 
-        async fn search_nodes_by_name(&self, _name: &str) -> DataStoreResult<Vec<Node>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "search_nodes_by_name not yet implemented - awaiting migrations"
-                    .to_string(),
-            })
-        }
+            let mut links = Vec::new();
+            for entity in entities {
+                links.push(entity_to_link(entity)?);
+            }
 
-        async fn create_link(&self, _link: &Link) -> DataStoreResult<Link> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "create_link not yet implemented - awaiting migrations".to_string(),
-            })
-        }
-
-        async fn get_link(&self, _id: &Uuid) -> DataStoreResult<Option<Link>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "get_link not yet implemented - awaiting migrations".to_string(),
-            })
-        }
-
-        async fn list_links(&self, _options: &QueryOptions) -> DataStoreResult<PagedResult<Link>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "list_links not yet implemented - awaiting migrations".to_string(),
-            })
-        }
-
-        async fn update_link(&self, _link: &Link) -> DataStoreResult<Link> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "update_link not yet implemented - awaiting migrations".to_string(),
-            })
-        }
-
-        async fn delete_link(&self, _id: &Uuid) -> DataStoreResult<()> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "delete_link not yet implemented - awaiting migrations".to_string(),
-            })
-        }
-
-        async fn get_links_for_node(&self, _node_id: &Uuid) -> DataStoreResult<Vec<Link>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "get_links_for_node not yet implemented - awaiting migrations"
-                    .to_string(),
-            })
+            Ok(links)
         }
 
         async fn get_links_between_nodes(
             &self,
-            _first_node_id: &Uuid,
-            _second_node_id: &Uuid,
+            first_node_id: &Uuid,
+            second_node_id: &Uuid,
         ) -> DataStoreResult<Vec<Link>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "get_links_between_nodes not yet implemented - awaiting migrations"
-                    .to_string(),
+            let entities = links::Entity::find()
+                .filter(
+                    (
+                        links::Column::NodeAId.eq(first_node_id.to_string())
+                            .and(links::Column::NodeBId.eq(second_node_id.to_string()))
+                    ).or(
+                        links::Column::NodeAId.eq(second_node_id.to_string())
+                            .and(links::Column::NodeBId.eq(first_node_id.to_string()))
+                    )
+                )
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query links between nodes: {}", e),
+                })?;
+
+            let mut links = Vec::new();
+            for entity in entities {
+                links.push(entity_to_link(entity)?);
+            }
+
+            Ok(links)
+        }
+
+        async fn create_location(&self, location: &Location) -> DataStoreResult<Location> {
+            let active_location = locations::ActiveModel {
+                id: Set(location.id.to_string()),
+                name: Set(location.name.clone()),
+                location_type: Set(location.location_type.clone()),
+                path: Set(location.path.clone()),
+                parent_id: Set(location.parent_id.map(|id| id.to_string())),
+                description: Set(location.description.clone()),
+                address: Set(location.address.clone()),
+                coordinates: Set(None), // Not in Location model yet
+                custom_data: Set(Some(serde_json::to_string(&location.custom_data).unwrap_or_default())),
+                created_at: Set(Utc::now().to_rfc3339()),
+                updated_at: Set(Utc::now().to_rfc3339()),
+            };
+
+            active_location
+                .insert(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to create location: {}", e),
+                })?;
+
+            self.get_location(&location.id).await?.ok_or_else(|| DataStoreError::NotFound {
+                entity_type: "Location".to_string(),
+                id: location.id.to_string(),
             })
         }
 
-        async fn create_location(&self, _location: &Location) -> DataStoreResult<Location> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "create_location not yet implemented - awaiting migrations".to_string(),
-            })
-        }
+        async fn get_location(&self, id: &Uuid) -> DataStoreResult<Option<Location>> {
+            let entity = locations::Entity::find_by_id(id.to_string())
+                .one(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query location: {}", e),
+                })?;
 
-        async fn get_location(&self, _id: &Uuid) -> DataStoreResult<Option<Location>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "get_location not yet implemented - awaiting migrations".to_string(),
-            })
+            match entity {
+                Some(e) => Ok(Some(entity_to_location(e)?)),
+                None => Ok(None),
+            }
         }
 
         async fn list_locations(
             &self,
-            _options: &QueryOptions,
+            options: &QueryOptions,
         ) -> DataStoreResult<PagedResult<Location>> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "list_locations not yet implemented - awaiting migrations".to_string(),
+            let mut query = locations::Entity::find();
+
+            // Apply filters
+            for filter in &options.filters {
+                match filter.field.as_str() {
+                    "name" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(locations::Column::Name.contains(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Name filter must be a string".to_string(),
+                        }),
+                    },
+                    "location_type" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(locations::Column::LocationType.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Location type filter must be a string".to_string(),
+                        }),
+                    },
+                    "parent_id" => match &filter.value {
+                        FilterValue::String(s) => {
+                            query = query.filter(locations::Column::ParentId.eq(s));
+                        }
+                        _ => return Err(DataStoreError::ValidationError {
+                            message: "Parent ID filter must be a string".to_string(),
+                        }),
+                    },
+                    _ => return Err(DataStoreError::ValidationError {
+                        message: format!("Unsupported filter field: {}", filter.field),
+                    }),
+                }
+            }
+
+            // Apply sorting
+            for sort in &options.sort {
+                match sort.field.as_str() {
+                    "name" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(locations::Column::Name),
+                            SortDirection::Descending => query.order_by_desc(locations::Column::Name),
+                        };
+                    }
+                    "path" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(locations::Column::Path),
+                            SortDirection::Descending => query.order_by_desc(locations::Column::Path),
+                        };
+                    }
+                    "created_at" => {
+                        query = match sort.direction {
+                            SortDirection::Ascending => query.order_by_asc(locations::Column::CreatedAt),
+                            SortDirection::Descending => query.order_by_desc(locations::Column::CreatedAt),
+                        };
+                    }
+                    _ => return Err(DataStoreError::ValidationError {
+                        message: format!("Unsupported sort field: {}", sort.field),
+                    }),
+                }
+            }
+
+            // Get total count
+            let total_count = query.clone()
+                .count(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to count locations: {}", e),
+                })?;
+
+            // Apply pagination
+            if let Some(pagination) = &options.pagination {
+                query = query.offset(pagination.offset as u64).limit(pagination.limit as u64);
+            }
+
+            // Execute query
+            let entities = query
+                .all(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to query locations: {}", e),
+                })?;
+
+            // Convert entities to Location models
+            let mut locations = Vec::new();
+            for entity in entities {
+                locations.push(entity_to_location(entity)?);
+            }
+
+            Ok(PagedResult::new(locations, total_count as usize, options.pagination.as_ref()))
+        }
+
+        async fn update_location(&self, location: &Location) -> DataStoreResult<Location> {
+            let active_location = locations::ActiveModel {
+                id: Set(location.id.to_string()),
+                name: Set(location.name.clone()),
+                location_type: Set(location.location_type.clone()),
+                path: Set(location.path.clone()),
+                parent_id: Set(location.parent_id.map(|id| id.to_string())),
+                description: Set(location.description.clone()),
+                address: Set(location.address.clone()),
+                coordinates: Set(None), // Not in Location model yet
+                custom_data: Set(Some(serde_json::to_string(&location.custom_data).unwrap_or_default())),
+                created_at: Set(Utc::now().to_rfc3339()), // This should ideally preserve original
+                updated_at: Set(Utc::now().to_rfc3339()),
+            };
+
+            active_location
+                .update(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to update location: {}", e),
+                })?;
+
+            self.get_location(&location.id).await?.ok_or_else(|| DataStoreError::NotFound {
+                entity_type: "Location".to_string(),
+                id: location.id.to_string(),
             })
         }
 
-        async fn update_location(&self, _location: &Location) -> DataStoreResult<Location> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "update_location not yet implemented - awaiting migrations".to_string(),
-            })
-        }
+        async fn delete_location(&self, id: &Uuid) -> DataStoreResult<()> {
+            let result = locations::Entity::delete_by_id(id.to_string())
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataStoreError::InternalError {
+                    message: format!("Failed to delete location: {}", e),
+                })?;
 
-        async fn delete_location(&self, _id: &Uuid) -> DataStoreResult<()> {
-            Err(DataStoreError::UnsupportedOperation {
-                operation: "delete_location not yet implemented - awaiting migrations".to_string(),
-            })
+            if result.rows_affected == 0 {
+                return Err(DataStoreError::NotFound {
+                    entity_type: "Location".to_string(),
+                    id: id.to_string(),
+                });
+            }
+
+            Ok(())
         }
 
         async fn get_child_locations(&self, _parent_id: &Uuid) -> DataStoreResult<Vec<Location>> {

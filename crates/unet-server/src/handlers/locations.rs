@@ -54,7 +54,7 @@ pub async fn list_locations(
 }
 
 /// Get a specific location by ID
-pub async fn get_location(Path(id): Path<Uuid>) -> ServerResult<Json<ApiResponse<Location>>> {
+pub async fn get_location(Path(_id): Path<Uuid>) -> ServerResult<Json<ApiResponse<Location>>> {
     // TODO: Implement actual datastore lookup
 
     let location = Location::new_root("headquarters".to_string(), "building".to_string());
@@ -79,7 +79,7 @@ pub async fn create_location(
 
 /// Update an existing location
 pub async fn update_location(
-    Path(id): Path<Uuid>,
+    Path(_id): Path<Uuid>,
     Json(request): Json<UpdateLocationRequest>,
 ) -> ServerResult<Json<ApiResponse<Location>>> {
     // TODO: Fetch existing location from datastore and apply updates

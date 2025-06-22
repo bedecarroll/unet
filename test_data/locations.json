@@ -1,0 +1,12 @@
+[
+  {
+    "id": "384bb3bf-0af9-4b5d-a393-47029ae79257",
+    "name": "Test Datacenter",
+    "location_type": "datacenter",
+    "parent_id": null,
+    "path": "Test Datacenter",
+    "description": null,
+    "address": "123 Main St, Anytown, USA",
+    "custom_data": null
+  }
+]

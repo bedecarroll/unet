@@ -6,17 +6,35 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
+use unet_core::{
+    config::Config,
+    datastore::{DataStore, sqlite::SqliteStore},
+};
 
 use crate::handlers;
 
-/// Run the μNet HTTP server
-pub async fn run() -> Result<()> {
-    let app = create_app().await?;
+/// Application state shared across handlers
+#[derive(Clone)]
+pub struct AppState {
+    pub datastore: Arc<dyn DataStore + Send + Sync>,
+}
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+/// Run the μNet HTTP server
+pub async fn run(config: Config, database_url: String) -> Result<()> {
+    let app = create_app(config.clone(), database_url).await?;
+
+    let addr = SocketAddr::from((
+        config
+            .server
+            .host
+            .parse::<std::net::IpAddr>()
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
+        config.server.port,
+    ));
     info!("μNet server listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -26,7 +44,17 @@ pub async fn run() -> Result<()> {
 }
 
 /// Create the Axum application with all routes
-async fn create_app() -> Result<Router> {
+async fn create_app(_config: Config, database_url: String) -> Result<Router> {
+    // Initialize SQLite datastore
+    info!("Initializing SQLite datastore with URL: {}", database_url);
+    let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(
+        SqliteStore::new(&database_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to initialize SQLite datastore: {}", e))?,
+    );
+
+    let app_state = AppState { datastore };
+
     let app = Router::new()
         // Node endpoints
         .route("/api/v1/nodes", get(handlers::nodes::list_nodes))
@@ -37,6 +65,14 @@ async fn create_app() -> Result<Router> {
         .route(
             "/api/v1/nodes/:id/status",
             get(handlers::nodes::get_node_status),
+        )
+        .route(
+            "/api/v1/nodes/:id/interfaces",
+            get(handlers::nodes::get_node_interfaces),
+        )
+        .route(
+            "/api/v1/nodes/:id/metrics",
+            get(handlers::nodes::get_node_metrics),
         )
         // Location endpoints
         .route(
@@ -67,10 +103,49 @@ async fn create_app() -> Result<Router> {
         .route("/api/v1/links/:id", delete(handlers::links::delete_link))
         // Health check
         .route("/health", get(handlers::health::health_check))
+        // Add application state
+        .with_state(app_state)
         // Add middleware
         .layer(
             ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(|request: &axum::http::Request<_>| {
+                            // Add request ID for tracking
+                            let request_id = uuid::Uuid::new_v4();
+                            tracing::info_span!(
+                                "request",
+                                method = %request.method(),
+                                uri = %request.uri(),
+                                request_id = %request_id,
+                            )
+                        })
+                        .on_request(|_request: &axum::http::Request<_>, _span: &tracing::Span| {
+                            tracing::info!("Processing request");
+                        })
+                        .on_response(
+                            |response: &axum::http::Response<_>,
+                             latency: std::time::Duration,
+                             _span: &tracing::Span| {
+                                tracing::info!(
+                                    status = response.status().as_u16(),
+                                    latency_ms = latency.as_millis(),
+                                    "Request completed"
+                                );
+                            },
+                        )
+                        .on_failure(
+                            |error: tower_http::classify::ServerErrorsFailureClass,
+                             latency: std::time::Duration,
+                             _span: &tracing::Span| {
+                                tracing::error!(
+                                    error = %error,
+                                    latency_ms = latency.as_millis(),
+                                    "Request failed"
+                                );
+                            },
+                        ),
+                )
                 .layer(CorsLayer::permissive()),
         );
 

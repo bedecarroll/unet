@@ -583,7 +583,7 @@ mod tests {
         let polling_config = PollingConfig::default();
         let snmp_config = SnmpClientConfig::default();
 
-        let (mut scheduler, _handle) = PollingScheduler::new(polling_config, snmp_config);
+        let (scheduler, _handle) = PollingScheduler::new(polling_config, snmp_config);
 
         // Verify scheduler was created with empty task list
         let tasks = scheduler.tasks.read().await;

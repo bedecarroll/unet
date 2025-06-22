@@ -19,8 +19,18 @@ path = "src/main.rs"
 # Core library
 unet-core = { path = "../unet-core" }
 
+# Database migrations
+migration = { path = "../../migrations" }
+sea-orm = { workspace = true }
+
 # Core async runtime
 tokio = { workspace = true }
+
+# UUID support
+uuid = { workspace = true }
+
+# Time handling
+chrono = { workspace = true }
 
 # Serialization
 serde = { workspace = true }

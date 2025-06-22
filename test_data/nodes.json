@@ -1,0 +1,21 @@
+[
+  {
+    "id": "7b2ed6c2-e111-409c-bbee-4479a61e4d92",
+    "name": "test-router",
+    "domain": "example.com",
+    "fqdn": "test-router.example.com",
+    "vendor": "cisco",
+    "model": "ISR4431",
+    "role": "router",
+    "lifecycle": "planned",
+    "management_ip": null,
+    "location_id": null,
+    "platform": null,
+    "version": null,
+    "serial_number": null,
+    "asset_tag": null,
+    "purchase_date": null,
+    "warranty_expires": null,
+    "custom_data": null
+  }
+]

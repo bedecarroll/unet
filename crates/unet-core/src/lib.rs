@@ -40,6 +40,7 @@
 // Public modules
 pub mod config;
 pub mod datastore;
+pub mod entities;
 pub mod error;
 pub mod logging;
 pub mod models;

@@ -14,28 +14,24 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(NodeStatus::Id)
-                            .uuid()
+                            .text()
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(NodeStatus::NodeId).uuid().not_null())
-                    .col(
-                        ColumnDef::new(NodeStatus::LastUpdated)
-                            .timestamp_with_time_zone()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(NodeStatus::NodeId).text().not_null())
+                    .col(ColumnDef::new(NodeStatus::LastUpdated).text().not_null())
                     .col(
                         ColumnDef::new(NodeStatus::Reachable)
                             .boolean()
                             .not_null()
                             .default(false),
                     )
-                    .col(ColumnDef::new(NodeStatus::SystemInfo).json())
-                    .col(ColumnDef::new(NodeStatus::Performance).json())
-                    .col(ColumnDef::new(NodeStatus::Environmental).json())
-                    .col(ColumnDef::new(NodeStatus::VendorMetrics).json())
-                    .col(ColumnDef::new(NodeStatus::RawSnmpData).json())
-                    .col(ColumnDef::new(NodeStatus::LastSnmpSuccess).timestamp_with_time_zone())
+                    .col(ColumnDef::new(NodeStatus::SystemInfo).text())
+                    .col(ColumnDef::new(NodeStatus::Performance).text())
+                    .col(ColumnDef::new(NodeStatus::Environmental).text())
+                    .col(ColumnDef::new(NodeStatus::VendorMetrics).text())
+                    .col(ColumnDef::new(NodeStatus::RawSnmpData).text())
+                    .col(ColumnDef::new(NodeStatus::LastSnmpSuccess).text())
                     .col(ColumnDef::new(NodeStatus::LastError).text())
                     .col(
                         ColumnDef::new(NodeStatus::ConsecutiveFailures)
@@ -43,24 +39,28 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(0),
                     )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk-node_status-node_id")
-                            .from(NodeStatus::Table, NodeStatus::NodeId)
-                            .to(Nodes::Table, Nodes::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx-node_status-node_id")
-                            .col(NodeStatus::NodeId)
-                            .unique(),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx-node_status-last_updated")
-                            .col(NodeStatus::LastUpdated),
-                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create indexes for node_status table
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_node_status_node_id")
+                    .table(NodeStatus::Table)
+                    .col(NodeStatus::NodeId)
+                    .unique()
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_node_status_last_updated")
+                    .table(NodeStatus::Table)
+                    .col(NodeStatus::LastUpdated)
                     .to_owned(),
             )
             .await?;
@@ -73,17 +73,17 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(InterfaceStatus::Id)
-                            .uuid()
+                            .text()
                             .not_null()
                             .primary_key(),
                     )
                     .col(
                         ColumnDef::new(InterfaceStatus::NodeStatusId)
-                            .uuid()
+                            .text()
                             .not_null(),
                     )
                     .col(ColumnDef::new(InterfaceStatus::Index).integer().not_null())
-                    .col(ColumnDef::new(InterfaceStatus::Name).string().not_null())
+                    .col(ColumnDef::new(InterfaceStatus::Name).text().not_null())
                     .col(
                         ColumnDef::new(InterfaceStatus::InterfaceType)
                             .integer()
@@ -91,49 +91,53 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(InterfaceStatus::Mtu).integer())
                     .col(ColumnDef::new(InterfaceStatus::Speed).big_integer())
-                    .col(ColumnDef::new(InterfaceStatus::PhysicalAddress).string())
+                    .col(ColumnDef::new(InterfaceStatus::PhysicalAddress).text())
                     .col(
                         ColumnDef::new(InterfaceStatus::AdminStatus)
-                            .string()
+                            .text()
                             .not_null()
                             .default("unknown"),
                     )
                     .col(
                         ColumnDef::new(InterfaceStatus::OperStatus)
-                            .string()
+                            .text()
                             .not_null()
                             .default("unknown"),
                     )
                     .col(ColumnDef::new(InterfaceStatus::LastChange).integer())
                     .col(
                         ColumnDef::new(InterfaceStatus::InputStats)
-                            .json()
+                            .text()
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(InterfaceStatus::OutputStats)
-                            .json()
+                            .text()
                             .not_null(),
                     )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk-interface_status-node_status_id")
-                            .from(InterfaceStatus::Table, InterfaceStatus::NodeStatusId)
-                            .to(NodeStatus::Table, NodeStatus::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx-interface_status-node_status_id")
-                            .col(InterfaceStatus::NodeStatusId),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx-interface_status-index")
-                            .col(InterfaceStatus::NodeStatusId)
-                            .col(InterfaceStatus::Index)
-                            .unique(),
-                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create indexes for interface_status table
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_interface_status_node_status_id")
+                    .table(InterfaceStatus::Table)
+                    .col(InterfaceStatus::NodeStatusId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_interface_status_index")
+                    .table(InterfaceStatus::Table)
+                    .col(InterfaceStatus::NodeStatusId)
+                    .col(InterfaceStatus::Index)
+                    .unique()
                     .to_owned(),
             )
             .await?;
@@ -146,13 +150,13 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(PollingTasks::Id)
-                            .uuid()
+                            .text()
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(PollingTasks::NodeId).uuid().not_null())
-                    .col(ColumnDef::new(PollingTasks::Target).string().not_null())
-                    .col(ColumnDef::new(PollingTasks::Oids).json().not_null())
+                    .col(ColumnDef::new(PollingTasks::NodeId).text().not_null())
+                    .col(ColumnDef::new(PollingTasks::Target).text().not_null())
+                    .col(ColumnDef::new(PollingTasks::Oids).text().not_null())
                     .col(
                         ColumnDef::new(PollingTasks::IntervalSeconds)
                             .big_integer()
@@ -160,7 +164,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(PollingTasks::SessionConfig)
-                            .json()
+                            .text()
                             .not_null(),
                     )
                     .col(
@@ -175,12 +179,8 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(true),
                     )
-                    .col(
-                        ColumnDef::new(PollingTasks::CreatedAt)
-                            .timestamp_with_time_zone()
-                            .not_null(),
-                    )
-                    .col(ColumnDef::new(PollingTasks::LastSuccess).timestamp_with_time_zone())
+                    .col(ColumnDef::new(PollingTasks::CreatedAt).text().not_null())
+                    .col(ColumnDef::new(PollingTasks::LastSuccess).text())
                     .col(ColumnDef::new(PollingTasks::LastError).text())
                     .col(
                         ColumnDef::new(PollingTasks::ConsecutiveFailures)
@@ -188,23 +188,27 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(0),
                     )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk-polling_tasks-node_id")
-                            .from(PollingTasks::Table, PollingTasks::NodeId)
-                            .to(Nodes::Table, Nodes::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx-polling_tasks-node_id")
-                            .col(PollingTasks::NodeId),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx-polling_tasks-enabled")
-                            .col(PollingTasks::Enabled),
-                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create indexes for polling_tasks table
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_polling_tasks_node_id")
+                    .table(PollingTasks::Table)
+                    .col(PollingTasks::NodeId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_polling_tasks_enabled")
+                    .table(PollingTasks::Table)
+                    .col(PollingTasks::Enabled)
                     .to_owned(),
             )
             .await?;
