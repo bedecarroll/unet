@@ -2,16 +2,22 @@
 //!
 //! REST API server for μNet network configuration management.
 
+mod api;
+mod error;
+mod handlers;
+mod server;
+
 use anyhow::Result;
-use tracing::{info, warn};
+use tracing::info;
+use unet_core::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize tracing
-    tracing_subscriber::fmt::init();
+    init_default_tracing();
 
     info!("Starting μNet server...");
-    warn!("Server implementation not yet complete");
-
-    Ok(())
+    
+    // Start the server
+    server::run().await
 }

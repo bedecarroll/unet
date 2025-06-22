@@ -33,10 +33,10 @@ thiserror = { workspace = true }
 # Configuration management
 config = { workspace = true }
 
-# HTTP server (will be added in milestone 1)
-# axum = { workspace = true }
-# tower = { workspace = true }
-# tower-http = { workspace = true }
+# HTTP server
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
 
 # Database and ORM (will be added in milestone 1)
 # sea-orm = { workspace = true }
@@ -44,6 +44,10 @@ config = { workspace = true }
 # Logging and tracing
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+# Additional dependencies
+uuid = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

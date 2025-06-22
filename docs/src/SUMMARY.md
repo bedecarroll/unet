@@ -35,3 +35,4 @@
 
 - [Milestone 0 Completion - 2025-06-21](reports/2025-06-21_11-19-46.md)
 - [Milestone 1 Completion - 2025-06-21](reports/2025-06-21_17-47-23.md)
+- [Milestone 2 Completion - 2025-06-21](reports/2025-06-21_21-07-53.md)

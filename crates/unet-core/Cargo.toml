@@ -37,8 +37,8 @@ sea-orm-migration = { workspace = true }
 # Template engine (will be added in milestone 4)
 # minijinja = { workspace = true }
 
-# SNMP client (will be added in milestone 2)
-# snmp2 = { workspace = true }
+# SNMP client
+snmp2 = { workspace = true }
 
 # Git integration (will be added in milestone 6)
 # git2 = { workspace = true }

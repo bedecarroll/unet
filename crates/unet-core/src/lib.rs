@@ -65,6 +65,12 @@ pub mod prelude {
         LinkBuilder, LocationBuilder, NodeBuilder,
     };
     
+    // Derived state models
+    pub use crate::models::derived::{
+        NodeStatus, SystemInfo, InterfaceStatus, InterfaceAdminStatus, InterfaceOperStatus,
+        InterfaceStats, PerformanceMetrics, EnvironmentalMetrics,
+    };
+    
     // DataStore trait and common types
     pub use crate::datastore::{
         DataStore, DataStoreError, DataStoreResult, Filter, FilterOperation, FilterValue,
@@ -78,4 +84,11 @@ pub mod prelude {
     // Configuration and logging
     pub use crate::config::Config;
     pub use crate::logging::{init_default_tracing, init_tracing};
+    
+    // SNMP types
+    pub use crate::snmp::{
+        SnmpClient, SnmpClientConfig, SnmpCredentials, SnmpError, SnmpResult, SnmpValue,
+        SessionConfig, PollingScheduler, PollingTask, PollingResult, PollingHandle, PollingConfig,
+        StandardOid, VendorOid, OidMap,
+    };
 }
