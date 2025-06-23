@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::models::{Link, Location, Node};
+use crate::policy::PolicyExecutionResult;
 
 /// Errors that can occur during datastore operations
 #[derive(Debug, Clone, thiserror::Error)]
@@ -457,6 +458,75 @@ pub trait DataStore: Send + Sync {
     ) -> DataStoreResult<Option<crate::models::derived::PerformanceMetrics>> {
         // Default implementation returns None
         Ok(None)
+    }
+
+    // Policy-related operations
+    /// Stores a policy execution result
+    async fn store_policy_result(
+        &self,
+        node_id: &Uuid,
+        rule_id: &str,
+        result: &PolicyExecutionResult,
+    ) -> DataStoreResult<()> {
+        // Default implementation is a no-op for backward compatibility
+        let _ = (node_id, rule_id, result);
+        Ok(())
+    }
+
+    /// Gets policy execution results for a node
+    async fn get_policy_results(
+        &self,
+        node_id: &Uuid,
+    ) -> DataStoreResult<Vec<PolicyExecutionResult>> {
+        // Default implementation returns empty results
+        let _ = node_id;
+        Ok(Vec::new())
+    }
+
+    /// Gets the latest policy execution results for a node
+    async fn get_latest_policy_results(
+        &self,
+        node_id: &Uuid,
+    ) -> DataStoreResult<Vec<PolicyExecutionResult>> {
+        // Default implementation delegates to get_policy_results
+        self.get_policy_results(node_id).await
+    }
+
+    /// Gets policy execution results for a specific rule across all nodes
+    async fn get_rule_results(
+        &self,
+        rule_id: &str,
+    ) -> DataStoreResult<Vec<(Uuid, PolicyExecutionResult)>> {
+        // Default implementation returns empty results
+        let _ = rule_id;
+        Ok(Vec::new())
+    }
+
+    /// Updates custom_data field for a node (used by SET actions)
+    async fn update_node_custom_data(
+        &self,
+        node_id: &Uuid,
+        custom_data: &serde_json::Value,
+    ) -> DataStoreResult<()> {
+        // Default implementation: get node, update custom_data, save node
+        if let Some(mut node) = self.get_node(node_id).await? {
+            node.custom_data = custom_data.clone();
+            self.update_node(&node).await?;
+            Ok(())
+        } else {
+            Err(DataStoreError::NotFound {
+                entity_type: "Node".to_string(),
+                id: node_id.to_string(),
+            })
+        }
+    }
+
+    /// Gets all nodes for policy evaluation
+    async fn get_nodes_for_policy_evaluation(&self) -> DataStoreResult<Vec<Node>> {
+        // Default implementation: get all nodes using list_nodes with no filters
+        let options = QueryOptions::default();
+        let result = self.list_nodes(&options).await?;
+        Ok(result.items)
     }
 }
 

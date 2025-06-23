@@ -3,6 +3,7 @@
 //! REST API server for μNet network configuration management.
 
 mod api;
+mod background;
 mod error;
 mod handlers;
 mod server;

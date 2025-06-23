@@ -13,14 +13,16 @@ use tracing::info;
 use unet_core::{
     config::Config,
     datastore::{DataStore, sqlite::SqliteStore},
+    policy_integration::PolicyService,
 };
 
-use crate::handlers;
+use crate::{background::BackgroundTasks, handlers};
 
 /// Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
     pub datastore: Arc<dyn DataStore + Send + Sync>,
+    pub policy_service: PolicyService,
 }
 
 /// Run the μNet HTTP server
@@ -44,7 +46,7 @@ pub async fn run(config: Config, database_url: String) -> Result<()> {
 }
 
 /// Create the Axum application with all routes
-async fn create_app(_config: Config, database_url: String) -> Result<Router> {
+async fn create_app(config: Config, database_url: String) -> Result<Router> {
     // Initialize SQLite datastore
     info!("Initializing SQLite datastore with URL: {}", database_url);
     let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(
@@ -53,7 +55,18 @@ async fn create_app(_config: Config, database_url: String) -> Result<Router> {
             .map_err(|e| anyhow::anyhow!("Failed to initialize SQLite datastore: {}", e))?,
     );
 
-    let app_state = AppState { datastore };
+    // Initialize policy service
+    info!("Initializing policy service");
+    let policy_service = PolicyService::new(config.git.clone());
+
+    let app_state = AppState { 
+        datastore: datastore.clone(), 
+        policy_service: policy_service.clone() 
+    };
+
+    // Start background tasks
+    let background_tasks = BackgroundTasks::new(config.clone(), datastore, policy_service);
+    background_tasks.start().await;
 
     let app = Router::new()
         // Node endpoints
@@ -101,6 +114,11 @@ async fn create_app(_config: Config, database_url: String) -> Result<Router> {
         .route("/api/v1/links/:id", get(handlers::links::get_link))
         .route("/api/v1/links/:id", put(handlers::links::update_link))
         .route("/api/v1/links/:id", delete(handlers::links::delete_link))
+        // Policy endpoints
+        .route("/api/v1/policies/evaluate", post(handlers::policies::evaluate_policies))
+        .route("/api/v1/policies/results", get(handlers::policies::get_policy_results))
+        .route("/api/v1/policies/validate", post(handlers::policies::validate_policies))
+        .route("/api/v1/policies/status", get(handlers::policies::get_policy_status))
         // Health check
         .route("/health", get(handlers::health::health_check))
         // Add application state

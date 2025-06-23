@@ -3,6 +3,7 @@ pub mod import;
 pub mod links;
 pub mod locations;
 pub mod nodes;
+pub mod policy;
 
 use anyhow::Result;
 use serde_json;

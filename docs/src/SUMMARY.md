@@ -16,6 +16,13 @@
 - [CI/CD Pipeline](07_ci_cd.md)
 - [Deployment](08_deployment.md)
 
+# Policy Development
+
+- [Policy Authoring Guide](15_policy_authoring_guide.md)
+- [Policy Examples](16_policy_examples.md)
+- [DSL Syntax Reference](17_dsl_syntax_reference.md)
+- [Policy Best Practices](18_policy_best_practices.md)
+
 # Tools and Utilities
 
 - [Config Match Tool](09_config_match_tool.md)
@@ -42,3 +49,4 @@
 - [Milestone 0 Completion - 2025-06-21](reports/2025-06-21_11-19-46.md)
 - [Milestone 1 Completion - 2025-06-21](reports/2025-06-21_17-47-23.md)
 - [Milestone 2 Completion - 2025-06-21](reports/2025-06-21_21-07-53.md)
+- [Milestone 3.5 Completion - 2025-06-23](reports/2025-06-23_16-42-47.md)

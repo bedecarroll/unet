@@ -45,6 +45,7 @@ pub mod error;
 pub mod logging;
 pub mod models;
 pub mod policy;
+pub mod policy_integration;
 pub mod snmp;
 pub mod template;
 
@@ -104,5 +105,10 @@ pub mod prelude {
         OidMap, PollingConfig, PollingHandle, PollingResult, PollingScheduler, PollingTask,
         SessionConfig, SnmpClient, SnmpClientConfig, SnmpCredentials, SnmpError, SnmpResult,
         SnmpValue, StandardOid, VendorOid,
+    };
+
+    // Policy integration types
+    pub use crate::policy_integration::{
+        DefaultPolicyEvaluationEngine, PolicyEvaluationEngine, PolicyService,
     };
 }

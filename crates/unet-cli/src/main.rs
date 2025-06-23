@@ -74,6 +74,9 @@ enum Commands {
     /// Link management commands
     #[command(subcommand)]
     Links(commands::links::LinkCommands),
+    /// Policy management commands
+    #[command(subcommand)]
+    Policy(commands::policy::PolicyCommands),
     /// Import data from fixtures or files
     Import(commands::import::ImportArgs),
     /// Export data to files
@@ -157,6 +160,9 @@ async fn main() -> Result<()> {
         }
         Commands::Links(link_cmd) => {
             commands::links::execute(link_cmd, datastore.as_ref(), cli.output).await
+        }
+        Commands::Policy(policy_cmd) => {
+            commands::policy::execute(policy_cmd, datastore.as_ref(), cli.output).await
         }
         Commands::Import(import_args) => {
             commands::import::execute(import_args, datastore.as_ref(), cli.output).await
