@@ -1,5 +1,5 @@
 //! Grammar definitions and parser generation for the Policy DSL
-//! 
+//!
 //! This module uses Pest to generate a parser from the policy.pest grammar file.
 
 use pest_derive::Parser;
@@ -25,21 +25,33 @@ mod tests {
     fn test_complex_condition_parsing() {
         let input = r#"WHEN node.vendor == "juniper" AND node.model CONTAINS "qfx" THEN SET custom_data.priority TO "high""#;
         let result = PolicyGrammar::parse(Rule::rule, input);
-        assert!(result.is_ok(), "Failed to parse complex condition: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to parse complex condition: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_regex_literal_parsing() {
         let input = r#"WHEN node.hostname MATCHES /^dist-\d+$/ THEN APPLY "dist-template.jinja""#;
         let result = PolicyGrammar::parse(Rule::rule, input);
-        assert!(result.is_ok(), "Failed to parse regex literal: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to parse regex literal: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_boolean_operators_parsing() {
         let input = r#"WHEN (node.vendor == "cisco" OR node.vendor == "juniper") AND NOT node.lifecycle == "decommissioned" THEN ASSERT node.snmp_enabled IS true"#;
         let result = PolicyGrammar::parse(Rule::rule, input);
-        assert!(result.is_ok(), "Failed to parse boolean operators: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to parse boolean operators: {:?}",
+            result
+        );
     }
 
     #[test]

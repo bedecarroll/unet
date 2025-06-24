@@ -1,13 +1,11 @@
 //! Parser implementation that converts Pest parse trees to AST
-//! 
+//!
 //! This module implements the conversion from Pest's parse tree to our
 //! strongly-typed AST structures.
 
-use crate::policy::ast::{
-    Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value,
-};
+use crate::policy::ast::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value};
 use crate::policy::grammar::{PolicyGrammar, Rule};
-use pest::{iterators::Pair, Parser};
+use pest::{Parser, iterators::Pair};
 use std::fmt;
 
 /// Parser for policy rules
@@ -23,7 +21,11 @@ pub struct ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.location {
-            Some((line, col)) => write!(f, "Parse error at line {}, column {}: {}", line, col, self.message),
+            Some((line, col)) => write!(
+                f,
+                "Parse error at line {}, column {}: {}",
+                line, col, self.message
+            ),
             None => write!(f, "Parse error: {}", self.message),
         }
     }
@@ -34,11 +36,10 @@ impl std::error::Error for ParseError {}
 impl PolicyParser {
     /// Parse a single policy rule from text
     pub fn parse_rule(input: &str) -> Result<PolicyRule, ParseError> {
-        let pairs = PolicyGrammar::parse(Rule::rule, input)
-            .map_err(|e| ParseError {
-                message: e.to_string(),
-                location: None,
-            })?;
+        let pairs = PolicyGrammar::parse(Rule::rule, input).map_err(|e| ParseError {
+            message: e.to_string(),
+            location: None,
+        })?;
 
         let rule_pair = pairs.into_iter().next().ok_or_else(|| ParseError {
             message: "No rule found in input".to_string(),
@@ -50,11 +51,10 @@ impl PolicyParser {
 
     /// Parse multiple policy rules from a policy file
     pub fn parse_file(input: &str) -> Result<Vec<PolicyRule>, ParseError> {
-        let pairs = PolicyGrammar::parse(Rule::policy_file, input)
-            .map_err(|e| ParseError {
-                message: e.to_string(),
-                location: None,
-            })?;
+        let pairs = PolicyGrammar::parse(Rule::policy_file, input).map_err(|e| ParseError {
+            message: e.to_string(),
+            location: None,
+        })?;
 
         let mut rules = Vec::new();
         for pair in pairs {
@@ -172,10 +172,10 @@ impl PolicyParser {
     fn parse_existence_check(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
         let field = Self::parse_field_ref(inner.next().unwrap())?;
-        
+
         // Skip "IS" token - it's implicit in the grammar
         let mut is_null = true; // Default to IS NULL
-        
+
         // Check if we have NOT NULL
         if let Some(next_token) = inner.next() {
             match next_token.as_str() {
@@ -187,7 +187,10 @@ impl PolicyParser {
                             is_null = false;
                         } else {
                             return Err(ParseError {
-                                message: format!("Expected NULL after NOT, got: {}", null_token.as_str()),
+                                message: format!(
+                                    "Expected NULL after NOT, got: {}",
+                                    null_token.as_str()
+                                ),
                                 location: None,
                             });
                         }
@@ -198,10 +201,15 @@ impl PolicyParser {
                         });
                     }
                 }
-                _ => return Err(ParseError {
-                    message: format!("Unexpected token in existence check: {}", next_token.as_str()),
-                    location: None,
-                }),
+                _ => {
+                    return Err(ParseError {
+                        message: format!(
+                            "Unexpected token in existence check: {}",
+                            next_token.as_str()
+                        ),
+                        location: None,
+                    });
+                }
             }
         }
 
@@ -226,10 +234,7 @@ impl PolicyParser {
     }
 
     fn parse_field_ref(pair: Pair<Rule>) -> Result<FieldRef, ParseError> {
-        let path = pair
-            .into_inner()
-            .map(|p| p.as_str().to_string())
-            .collect();
+        let path = pair.into_inner().map(|p| p.as_str().to_string()).collect();
         Ok(FieldRef { path })
     }
 
@@ -306,26 +311,29 @@ impl PolicyParser {
 
     fn parse_apply_template_action(pair: Pair<Rule>) -> Result<Action, ParseError> {
         let inner = pair.into_inner().next().unwrap();
-        
+
         // The inner should be a string_literal
         match inner.as_rule() {
             Rule::string_literal => {
                 // Extract the string content
                 if let Some(content_pair) = inner.into_inner().next() {
-                    Ok(Action::ApplyTemplate { 
-                        template_path: content_pair.as_str().to_string() 
+                    Ok(Action::ApplyTemplate {
+                        template_path: content_pair.as_str().to_string(),
                     })
                 } else {
                     // Empty string
-                    Ok(Action::ApplyTemplate { 
-                        template_path: String::new() 
+                    Ok(Action::ApplyTemplate {
+                        template_path: String::new(),
                     })
                 }
             }
             _ => Err(ParseError {
-                message: format!("Expected string literal for template path, got: {:?}", inner.as_rule()),
+                message: format!(
+                    "Expected string literal for template path, got: {:?}",
+                    inner.as_rule()
+                ),
                 location: None,
-            })
+            }),
         }
     }
 }
@@ -339,10 +347,14 @@ mod tests {
         let input = r#"WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1""#;
         let result = PolicyParser::parse_rule(input);
         assert!(result.is_ok(), "Failed to parse simple rule: {:?}", result);
-        
+
         let rule = result.unwrap();
         match rule.condition {
-            Condition::Comparison { field, operator, value } => {
+            Condition::Comparison {
+                field,
+                operator,
+                value,
+            } => {
                 assert_eq!(field.path, vec!["node", "vendor"]);
                 assert_eq!(operator, ComparisonOperator::Equal);
                 assert_eq!(value, Value::String("cisco".to_string()));
@@ -355,14 +367,22 @@ mod tests {
     fn test_parse_complex_condition() {
         let input = r#"WHEN node.vendor == "juniper" AND node.model CONTAINS "qfx" THEN SET custom_data.priority TO "high""#;
         let result = PolicyParser::parse_rule(input);
-        assert!(result.is_ok(), "Failed to parse complex condition: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to parse complex condition: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_parse_boolean_operators() {
         let input = r#"WHEN (node.vendor == "cisco" OR node.vendor == "juniper") AND NOT node.lifecycle == "decommissioned" THEN ASSERT node.snmp_enabled IS true"#;
         let result = PolicyParser::parse_rule(input);
-        assert!(result.is_ok(), "Failed to parse boolean operators: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to parse boolean operators: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -376,7 +396,11 @@ mod tests {
     fn test_parse_regex_literal() {
         let input = r#"WHEN node.hostname MATCHES /^dist-\d+$/ THEN APPLY "dist-template.jinja""#;
         let result = PolicyParser::parse_rule(input);
-        assert!(result.is_ok(), "Failed to parse regex literal: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Failed to parse regex literal: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -387,7 +411,7 @@ mod tests {
         "#;
         let result = PolicyParser::parse_file(input);
         assert!(result.is_ok(), "Failed to parse policy file: {:?}", result);
-        
+
         let rules = result.unwrap();
         assert_eq!(rules.len(), 2);
     }

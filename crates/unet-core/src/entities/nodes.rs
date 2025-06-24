@@ -49,6 +49,8 @@ pub enum Relation {
     NodeStatus,
     #[sea_orm(has_many = "super::polling_tasks::Entity")]
     PollingTasks,
+    #[sea_orm(has_many = "super::template_assignments::Entity")]
+    TemplateAssignments,
 }
 
 impl Related<super::locations::Entity> for Entity {
@@ -66,6 +68,12 @@ impl Related<super::node_status::Entity> for Entity {
 impl Related<super::polling_tasks::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::PollingTasks.def()
+    }
+}
+
+impl Related<super::template_assignments::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::TemplateAssignments.def()
     }
 }
 

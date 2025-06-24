@@ -4,6 +4,7 @@ pub mod links;
 pub mod locations;
 pub mod nodes;
 pub mod policy;
+pub mod template;
 
 use anyhow::Result;
 use serde_json;

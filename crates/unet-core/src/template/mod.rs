@@ -1,0 +1,2566 @@
+//! Template engine for configuration generation
+
+use anyhow::{Context, Result, anyhow};
+use minijinja::Environment;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::RwLock;
+use tokio::time::timeout;
+use tracing::{debug, info, warn};
+use uuid::Uuid;
+
+pub mod environment;
+pub mod header;
+pub mod loader;
+pub mod quality;
+pub mod scope;
+pub mod slice;
+pub mod test_helpers;
+pub mod testing;
+pub mod validation;
+
+pub use environment::TemplateEnvironment;
+pub use header::{HeaderParser, MatchPattern, TemplateHeader, TemplateScope};
+pub use loader::TemplateLoader;
+pub use scope::{
+    CompositionResult, CompositionSummary, ConflictDetector, ScopeContext, ScopeResolver,
+    ScopedTemplate, TemplateComposer, TemplateConflict,
+};
+pub use slice::{
+    AristaParser, CiscoParser, ConfigNode, ConfigParser, ConfigSlice, ConfigTree, ConfigType,
+    ErrorSeverity, GenericParser, JuniperParser, SliceExtractor, SliceMetadata, ValidationError,
+    ValidationResult as SliceValidationResult,
+};
+pub use validation::{TemplateComplexity, TemplateValidator, ValidationResult};
+
+// Testing framework exports
+pub use testing::{
+    IntegrationTestResult, PerformanceTestResult, RegressionTestResult, TemplateIntegrationTest,
+    TemplatePerformanceTest, TemplateRegressionTest, TemplateTestFramework, TemplateUnitTest,
+    TestFrameworkConfig, TestRegistry, TestSuiteResult, TestSummary, UnitTestResult,
+};
+
+// Testing helper exports
+pub use test_helpers::{
+    IntegrationTestBuilder, PerformanceTestBuilder, QuickTest, TemplateTestScenarios,
+    UnitTestBuilder,
+};
+
+// Quality analysis exports
+pub use quality::{
+    DirectoryQualityReport, DirectoryQualitySummary, QualityAnalysisConfig, TemplateDocumentation,
+    TemplateLintingResults, TemplatePerformanceAnalysis, TemplateQualityAnalyzer,
+    TemplateQualityReport, TemplateSecurityScan, TemplateVariable, UsageExample,
+};
+
+// Output formatting and caching types are defined below in this module
+
+use crate::datastore::DataStore;
+use crate::models::derived::NodeStatus;
+use crate::models::{Link, Location, Node};
+
+/// Template rendering context containing all data needed for template evaluation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplateContext {
+    /// The primary node being configured
+    pub node: Node,
+    /// Current status and derived state for the node
+    pub node_status: Option<NodeStatus>,
+    /// Links connected to this node
+    pub links: Vec<Link>,
+    /// Location hierarchy for this node
+    pub locations: Vec<Location>,
+    /// Additional variables provided by policies or user input
+    pub variables: HashMap<String, Value>,
+    /// Generated timestamp for this rendering
+    pub generated_at: String,
+    /// Template scope information
+    pub scope: Option<TemplateScope>,
+}
+
+impl TemplateContext {
+    /// Create a new template context for a node
+    pub fn new(node: Node) -> Self {
+        Self {
+            node,
+            node_status: None,
+            links: Vec::new(),
+            locations: Vec::new(),
+            variables: HashMap::new(),
+            generated_at: chrono::Utc::now().to_rfc3339(),
+            scope: None,
+        }
+    }
+
+    /// Add node status information to the context
+    pub fn with_status(mut self, status: NodeStatus) -> Self {
+        self.node_status = Some(status);
+        self
+    }
+
+    /// Add links to the context
+    pub fn with_links(mut self, links: Vec<Link>) -> Self {
+        self.links = links;
+        self
+    }
+
+    /// Add location hierarchy to the context
+    pub fn with_locations(mut self, locations: Vec<Location>) -> Self {
+        self.locations = locations;
+        self
+    }
+
+    /// Add template variables to the context
+    pub fn with_variables(mut self, variables: HashMap<String, Value>) -> Self {
+        self.variables = variables;
+        self
+    }
+
+    /// Add template scope information
+    pub fn with_scope(mut self, scope: TemplateScope) -> Self {
+        self.scope = Some(scope);
+        self
+    }
+
+    /// Convert to serde_json::Value for template rendering
+    pub fn to_value(&self) -> Result<Value> {
+        serde_json::to_value(self).with_context(|| "Failed to serialize template context")
+    }
+
+    /// Validate the context for template rendering
+    pub fn validate(&self) -> Result<()> {
+        // Validate node data
+        self.node
+            .validate()
+            .map_err(|e| anyhow!("Invalid node in template context: {}", e))?;
+
+        // Validate links
+        for link in &self.links {
+            link.validate()
+                .map_err(|e| anyhow!("Invalid link in template context: {}", e))?;
+        }
+
+        // Validate locations
+        for location in &self.locations {
+            location
+                .validate()
+                .map_err(|e| anyhow!("Invalid location in template context: {}", e))?;
+        }
+
+        // Validate that all variables are serializable
+        for (key, value) in &self.variables {
+            if key.is_empty() {
+                return Err(anyhow!("Empty variable name in template context"));
+            }
+
+            // Ensure value is valid JSON
+            serde_json::to_string(value)
+                .with_context(|| format!("Invalid variable '{}' in template context", key))?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Builder for creating comprehensive template contexts from datastore
+pub struct ContextBuilder<'a> {
+    datastore: &'a dyn DataStore,
+    node_id: Uuid,
+    include_derived_state: bool,
+    include_links: bool,
+    include_locations: bool,
+    additional_variables: HashMap<String, Value>,
+    scope: Option<TemplateScope>,
+}
+
+impl<'a> ContextBuilder<'a> {
+    /// Create a new context builder for a specific node
+    pub fn new(datastore: &'a dyn DataStore, node_id: Uuid) -> Self {
+        Self {
+            datastore,
+            node_id,
+            include_derived_state: true,
+            include_links: true,
+            include_locations: true,
+            additional_variables: HashMap::new(),
+            scope: None,
+        }
+    }
+
+    /// Control whether to include derived state (SNMP polling data)
+    pub fn with_derived_state(mut self, include: bool) -> Self {
+        self.include_derived_state = include;
+        self
+    }
+
+    /// Control whether to include connected links
+    pub fn with_links(mut self, include: bool) -> Self {
+        self.include_links = include;
+        self
+    }
+
+    /// Control whether to include location hierarchy
+    pub fn with_locations(mut self, include: bool) -> Self {
+        self.include_locations = include;
+        self
+    }
+
+    /// Add additional template variables
+    pub fn with_variables(mut self, variables: HashMap<String, Value>) -> Self {
+        self.additional_variables.extend(variables);
+        self
+    }
+
+    /// Add a single template variable
+    pub fn with_variable(mut self, key: String, value: Value) -> Self {
+        self.additional_variables.insert(key, value);
+        self
+    }
+
+    /// Set template scope information
+    pub fn with_scope(mut self, scope: TemplateScope) -> Self {
+        self.scope = Some(scope);
+        self
+    }
+
+    /// Build the complete template context
+    pub async fn build(self) -> Result<TemplateContext> {
+        debug!(
+            node_id = %self.node_id,
+            include_derived_state = self.include_derived_state,
+            include_links = self.include_links,
+            include_locations = self.include_locations,
+            additional_vars = self.additional_variables.len(),
+            "Building template context"
+        );
+
+        // 1. Fetch the primary node data
+        let node = self
+            .datastore
+            .get_node_required(&self.node_id)
+            .await
+            .with_context(|| format!("Failed to fetch node {}", self.node_id))?;
+
+        debug!(
+            node_name = %node.name,
+            node_vendor = %node.vendor,
+            node_role = %node.role,
+            "Fetched primary node data"
+        );
+
+        // 2. Start building the context
+        let mut context = TemplateContext::new(node.clone());
+
+        // 3. Add derived state if requested
+        if self.include_derived_state {
+            match self.fetch_node_status().await {
+                Ok(Some(status)) => {
+                    debug!(
+                        reachable = status.reachable,
+                        interfaces_count = status.interfaces.len(),
+                        "Added node status to context"
+                    );
+                    context = context.with_status(status);
+                }
+                Ok(None) => {
+                    debug!("No derived state available for node");
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        "Failed to fetch derived state, continuing without it"
+                    );
+                }
+            }
+        }
+
+        // 4. Add connected links if requested
+        if self.include_links {
+            match self.fetch_connected_links().await {
+                Ok(links) => {
+                    debug!(
+                        links_count = links.len(),
+                        "Added connected links to context"
+                    );
+                    context = context.with_links(links);
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        "Failed to fetch connected links, continuing without them"
+                    );
+                }
+            }
+        }
+
+        // 5. Add location hierarchy if requested
+        if self.include_locations {
+            match self.fetch_location_hierarchy(&node).await {
+                Ok(locations) => {
+                    debug!(
+                        locations_count = locations.len(),
+                        "Added location hierarchy to context"
+                    );
+                    context = context.with_locations(locations);
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        "Failed to fetch location hierarchy, continuing without it"
+                    );
+                }
+            }
+        }
+
+        // 6. Merge custom_data from node into variables
+        let mut all_variables = self.additional_variables.clone();
+        if !node.custom_data.is_null() {
+            all_variables.insert("custom".to_string(), node.custom_data.clone());
+
+            // Also make custom_data available at root level for easier access
+            if let Value::Object(custom_obj) = &node.custom_data {
+                for (key, value) in custom_obj {
+                    // Only add if not already present to avoid overriding explicit variables
+                    all_variables
+                        .entry(format!("custom_{}", key))
+                        .or_insert_with(|| value.clone());
+                }
+            }
+        }
+
+        // 7. Add computed helper variables
+        all_variables.insert("node_id".to_string(), Value::String(node.id.to_string()));
+        all_variables.insert("node_name".to_string(), Value::String(node.name.clone()));
+        all_variables.insert("node_fqdn".to_string(), Value::String(node.fqdn.clone()));
+        all_variables.insert(
+            "node_vendor".to_string(),
+            Value::String(node.vendor.to_string()),
+        );
+        all_variables.insert(
+            "node_role".to_string(),
+            Value::String(node.role.to_string()),
+        );
+        all_variables.insert(
+            "node_lifecycle".to_string(),
+            Value::String(node.lifecycle.to_string()),
+        );
+
+        if let Some(ip) = &node.management_ip {
+            all_variables.insert("management_ip".to_string(), Value::String(ip.to_string()));
+        }
+
+        // Add variables to context
+        context = context.with_variables(all_variables);
+
+        // 8. Add scope information if provided
+        if let Some(scope) = self.scope {
+            context = context.with_scope(scope);
+        }
+
+        // 9. Validate the final context
+        context
+            .validate()
+            .with_context(|| "Template context validation failed")?;
+
+        info!(
+            node_id = %self.node_id,
+            node_name = %context.node.name,
+            has_status = context.node_status.is_some(),
+            links_count = context.links.len(),
+            locations_count = context.locations.len(),
+            variables_count = context.variables.len(),
+            "Template context built successfully"
+        );
+
+        Ok(context)
+    }
+
+    /// Fetch node status/derived state
+    async fn fetch_node_status(&self) -> Result<Option<NodeStatus>> {
+        // For now, return None since NodeStatus isn't stored in DataStore yet
+        // This will be implemented when derived state storage is added
+        debug!("Derived state storage not yet implemented, returning None");
+        Ok(None)
+    }
+
+    /// Fetch links connected to this node
+    async fn fetch_connected_links(&self) -> Result<Vec<Link>> {
+        let links = self
+            .datastore
+            .get_links_for_node(&self.node_id)
+            .await
+            .with_context(|| format!("Failed to fetch links for node {}", self.node_id))?;
+
+        debug!(connected_links = links.len(), "Fetched connected links");
+
+        Ok(links)
+    }
+
+    /// Fetch location hierarchy for the node
+    async fn fetch_location_hierarchy(&self, node: &Node) -> Result<Vec<Location>> {
+        let mut locations = Vec::new();
+
+        if let Some(location_id) = node.location_id {
+            // Fetch the node's direct location
+            if let Some(location) = self.datastore.get_location(&location_id).await? {
+                locations.push(location.clone());
+
+                // Walk up the hierarchy to get parent locations
+                let mut current_parent = location.parent_id;
+                while let Some(parent_id) = current_parent {
+                    if let Some(parent_location) = self.datastore.get_location(&parent_id).await? {
+                        locations.push(parent_location.clone());
+                        current_parent = parent_location.parent_id;
+                    } else {
+                        warn!(
+                            parent_id = %parent_id,
+                            "Parent location not found, breaking hierarchy chain"
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Sort locations from root to leaf for easier template usage
+        locations.reverse();
+
+        debug!(
+            location_hierarchy_depth = locations.len(),
+            "Fetched location hierarchy"
+        );
+
+        Ok(locations)
+    }
+}
+
+/// Result of template rendering operation
+#[derive(Debug, Clone)]
+pub struct RenderingResult {
+    /// Successfully rendered output
+    pub output: String,
+    /// Template that was rendered
+    pub template_name: String,
+    /// Context used for rendering
+    pub context: TemplateContext,
+    /// Rendering duration
+    pub duration: Duration,
+    /// Warnings encountered during rendering
+    pub warnings: Vec<String>,
+    /// Validation result of the rendered output
+    pub validation_result: Option<OutputValidationResult>,
+}
+
+impl RenderingResult {
+    /// Create a new rendering result
+    pub fn new(
+        output: String,
+        template_name: String,
+        context: TemplateContext,
+        duration: Duration,
+    ) -> Self {
+        Self {
+            output,
+            template_name,
+            context,
+            duration,
+            warnings: Vec::new(),
+            validation_result: None,
+        }
+    }
+
+    /// Add a warning to the result
+    pub fn with_warning(mut self, warning: String) -> Self {
+        self.warnings.push(warning);
+        self
+    }
+
+    /// Add validation result
+    pub fn with_validation(mut self, validation: OutputValidationResult) -> Self {
+        self.validation_result = Some(validation);
+        self
+    }
+
+    /// Check if the result has any warnings
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
+    }
+
+    /// Check if the output passed validation
+    pub fn is_valid(&self) -> bool {
+        self.validation_result.as_ref().map_or(true, |v| v.is_valid)
+    }
+}
+
+/// Validation result for rendered template output
+#[derive(Debug, Clone)]
+pub struct OutputValidationResult {
+    /// Whether the output is valid
+    pub is_valid: bool,
+    /// Validation errors found
+    pub errors: Vec<String>,
+    /// Validation warnings
+    pub warnings: Vec<String>,
+    /// Syntax validation result
+    pub syntax_valid: bool,
+    /// Semantic validation result (e.g., references to valid interfaces)
+    pub semantic_valid: bool,
+}
+
+impl OutputValidationResult {
+    /// Create a new validation result
+    pub fn new() -> Self {
+        Self {
+            is_valid: true,
+            errors: Vec::new(),
+            warnings: Vec::new(),
+            syntax_valid: true,
+            semantic_valid: true,
+        }
+    }
+
+    /// Add an error to the validation result
+    pub fn add_error(mut self, error: String) -> Self {
+        self.errors.push(error);
+        self.is_valid = false;
+        self
+    }
+
+    /// Add a warning to the validation result
+    pub fn add_warning(mut self, warning: String) -> Self {
+        self.warnings.push(warning);
+        self
+    }
+
+    /// Mark syntax as invalid
+    pub fn mark_syntax_invalid(mut self) -> Self {
+        self.syntax_valid = false;
+        self.is_valid = false;
+        self
+    }
+
+    /// Mark semantics as invalid
+    pub fn mark_semantic_invalid(mut self) -> Self {
+        self.semantic_valid = false;
+        self.is_valid = false;
+        self
+    }
+}
+
+impl Default for OutputValidationResult {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Template rendering orchestrator with comprehensive error handling and validation
+#[derive(Debug, Clone)]
+pub struct TemplateRenderer {
+    engine: TemplateEngine,
+    context_validator: ContextValidator,
+    output_validator: OutputValidator,
+    output_formatter: OutputFormatter,
+    output_cache: OutputCache,
+    max_output_size: usize,
+}
+
+impl TemplateRenderer {
+    /// Create a new template renderer with default configuration
+    pub fn new() -> Result<Self> {
+        Self::with_config(RendererConfig::default())
+    }
+
+    /// Create a new template renderer with custom configuration
+    pub fn with_config(config: RendererConfig) -> Result<Self> {
+        let engine = TemplateEngine::with_timeout(config.render_timeout)?;
+        let context_validator = ContextValidator::new();
+        let output_validator = OutputValidator::new();
+        let output_formatter = OutputFormatter::new();
+        let output_cache = OutputCache::new(config.cache_max_entries, config.cache_ttl_seconds);
+
+        Ok(Self {
+            engine,
+            context_validator,
+            output_validator,
+            output_formatter,
+            output_cache,
+            max_output_size: config.max_output_size,
+        })
+    }
+
+    /// Render a template with comprehensive validation and error handling
+    pub async fn render_template(
+        &self,
+        template_name: &str,
+        context: TemplateContext,
+    ) -> Result<RenderingResult> {
+        self.render_template_with_options(template_name, context, RenderOptions::default())
+            .await
+    }
+
+    /// Render a template with specific rendering options
+    pub async fn render_template_with_options(
+        &self,
+        template_name: &str,
+        context: TemplateContext,
+        options: RenderOptions,
+    ) -> Result<RenderingResult> {
+        let start_time = std::time::Instant::now();
+
+        debug!(
+            template = template_name,
+            node_id = %context.node.id,
+            use_cache = options.use_cache,
+            format_output = options.format_output,
+            "Starting template rendering"
+        );
+
+        // Step 1: Check cache if enabled
+        if options.use_cache {
+            let cache_key = self.output_cache.create_key(template_name, &context);
+            if let Some(cached_output) = self.output_cache.get(&cache_key).await {
+                debug!(template = template_name, "Returning cached template output");
+                let duration = start_time.elapsed();
+                return Ok(RenderingResult::new(
+                    cached_output,
+                    template_name.to_string(),
+                    context,
+                    duration,
+                )
+                .with_warning("Output served from cache".to_string()));
+            }
+        }
+
+        // Step 2: Validate template context
+        self.context_validator.validate(&context).with_context(|| {
+            format!("Template context validation failed for '{}'", template_name)
+        })?;
+
+        // Step 3: Prepare context for rendering
+        let template_value = context
+            .to_value()
+            .with_context(|| "Failed to prepare template context")?;
+
+        // Step 4: Render template with error handling
+        let mut output = self
+            .engine
+            .render(template_name, &template_value)
+            .await
+            .with_context(|| format!("Template rendering failed for '{}'", template_name))?;
+
+        // Step 5: Apply vendor-specific formatting if enabled
+        if options.format_output {
+            let vendor = context.node.vendor.to_string().to_lowercase();
+            output = self
+                .output_formatter
+                .format_output(&output, &vendor, &context)
+                .with_context(|| format!("Output formatting failed for vendor '{}'", vendor))?;
+        }
+
+        // Step 6: Validate output size
+        if output.len() > self.max_output_size {
+            return Err(anyhow!(
+                "Rendered output size ({} bytes) exceeds maximum allowed size ({} bytes)",
+                output.len(),
+                self.max_output_size
+            ));
+        }
+
+        // Step 7: Validate rendered output
+        let validation_result = self.output_validator.validate(&output, &context).await?;
+
+        // Step 8: Cache the result if enabled and valid
+        if options.use_cache && validation_result.is_valid {
+            let cache_key = self.output_cache.create_key(template_name, &context);
+            self.output_cache.put(cache_key, output.clone()).await;
+        }
+
+        let duration = start_time.elapsed();
+
+        let mut result = RenderingResult::new(output, template_name.to_string(), context, duration)
+            .with_validation(validation_result);
+
+        // Add any warnings
+        if !result.is_valid() {
+            result = result.with_warning("Template output failed validation".to_string());
+        }
+
+        if options.format_output {
+            result =
+                result.with_warning("Output was formatted for vendor compatibility".to_string());
+        }
+
+        info!(
+            template = template_name,
+            duration_ms = duration.as_millis(),
+            output_size = result.output.len(),
+            valid = result.is_valid(),
+            cached = options.use_cache,
+            formatted = options.format_output,
+            "Template rendering completed"
+        );
+
+        Ok(result)
+    }
+
+    /// Batch render multiple templates for the same context
+    pub async fn render_batch(
+        &self,
+        template_names: Vec<&str>,
+        context: TemplateContext,
+    ) -> Result<Vec<Result<RenderingResult>>> {
+        let mut results = Vec::new();
+
+        for template_name in template_names {
+            let result = self.render_template(template_name, context.clone()).await;
+            results.push(result);
+        }
+
+        Ok(results)
+    }
+
+    /// Clear the output cache
+    pub async fn clear_cache(&self) {
+        self.output_cache.clear().await;
+    }
+
+    /// Get cache statistics
+    pub async fn cache_stats(&self) -> CacheStats {
+        self.output_cache.stats().await
+    }
+
+    /// Get available vendor formatters
+    pub fn available_vendors(&self) -> Vec<String> {
+        self.output_formatter.available_vendors()
+    }
+}
+
+/// Configuration for template renderer
+#[derive(Debug, Clone)]
+pub struct RendererConfig {
+    /// Maximum time allowed for template rendering
+    pub render_timeout: Duration,
+    /// Maximum size of rendered output in bytes
+    pub max_output_size: usize,
+    /// Enable strict validation
+    pub strict_validation: bool,
+    /// Maximum number of cache entries
+    pub cache_max_entries: usize,
+    /// Cache TTL in seconds
+    pub cache_ttl_seconds: u64,
+}
+
+/// Options for template rendering
+#[derive(Debug, Clone)]
+pub struct RenderOptions {
+    /// Enable output caching
+    pub use_cache: bool,
+    /// Apply vendor-specific formatting
+    pub format_output: bool,
+    /// Custom post-processors to apply
+    pub custom_processors: Vec<PostProcessor>,
+}
+
+impl Default for RendererConfig {
+    fn default() -> Self {
+        Self {
+            render_timeout: Duration::from_secs(10),
+            max_output_size: 1024 * 1024, // 1MB
+            strict_validation: true,
+            cache_max_entries: 100,
+            cache_ttl_seconds: 300, // 5 minutes
+        }
+    }
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        Self {
+            use_cache: true,
+            format_output: true,
+            custom_processors: Vec::new(),
+        }
+    }
+}
+
+/// Validator for template contexts
+#[derive(Debug, Clone)]
+pub struct ContextValidator {
+    // Configuration for validation rules
+}
+
+impl ContextValidator {
+    /// Create a new context validator
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    /// Validate a template context
+    pub fn validate(&self, context: &TemplateContext) -> Result<()> {
+        debug!(node_id = %context.node.id, "Validating template context");
+
+        // Validate the context structure
+        context
+            .validate()
+            .with_context(|| "Template context validation failed")?;
+
+        // Additional business logic validation
+        self.validate_node_references(context)?;
+        self.validate_link_consistency(context)?;
+        self.validate_location_hierarchy(context)?;
+
+        debug!("Template context validation passed");
+        Ok(())
+    }
+
+    /// Validate that node references in links are consistent
+    fn validate_node_references(&self, context: &TemplateContext) -> Result<()> {
+        for link in &context.links {
+            if !link.involves_node(context.node.id) {
+                return Err(anyhow!(
+                    "Link '{}' does not reference the context node '{}'",
+                    link.name,
+                    context.node.name
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate link consistency
+    fn validate_link_consistency(&self, context: &TemplateContext) -> Result<()> {
+        // Check for duplicate links
+        let mut interface_names = std::collections::HashSet::new();
+
+        for link in &context.links {
+            if let Some(interface) = link.get_interface_for_node(context.node.id) {
+                if !interface_names.insert(interface) {
+                    return Err(anyhow!(
+                        "Duplicate interface '{}' found in links for node '{}'",
+                        interface,
+                        context.node.name
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate location hierarchy consistency
+    fn validate_location_hierarchy(&self, context: &TemplateContext) -> Result<()> {
+        if let Some(node_location_id) = context.node.location_id {
+            let node_location = context
+                .locations
+                .iter()
+                .find(|loc| loc.id == node_location_id);
+
+            if node_location.is_none() {
+                return Err(anyhow!(
+                    "Node '{}' references location ID '{}' that is not provided in context",
+                    context.node.name,
+                    node_location_id
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Validator for rendered template output
+#[derive(Debug, Clone)]
+pub struct OutputValidator {
+    // Configuration for output validation
+}
+
+impl OutputValidator {
+    /// Create a new output validator
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    /// Validate rendered template output
+    pub async fn validate(
+        &self,
+        output: &str,
+        context: &TemplateContext,
+    ) -> Result<OutputValidationResult> {
+        debug!("Validating template output");
+
+        let mut result = OutputValidationResult::new();
+
+        // Basic syntax validation
+        result = self.validate_syntax(output, result).await?;
+
+        // Semantic validation against context
+        result = self.validate_semantics(output, context, result).await?;
+
+        // Vendor-specific validation
+        result = self
+            .validate_vendor_specific(output, context, result)
+            .await?;
+
+        debug!(
+            valid = result.is_valid,
+            errors = result.errors.len(),
+            warnings = result.warnings.len(),
+            "Template output validation completed"
+        );
+
+        Ok(result)
+    }
+
+    /// Validate basic syntax of the output
+    async fn validate_syntax(
+        &self,
+        output: &str,
+        mut result: OutputValidationResult,
+    ) -> Result<OutputValidationResult> {
+        // Check for empty output
+        if output.trim().is_empty() {
+            result = result.add_error("Template rendered empty output".to_string());
+            return Ok(result);
+        }
+
+        // Check for common syntax issues
+        if output.contains("{{") || output.contains("}}") {
+            result = result.add_warning("Output contains unrendered template syntax".to_string());
+        }
+
+        // Check for extremely long lines (might indicate issues)
+        for (line_num, line) in output.lines().enumerate() {
+            if line.len() > 1000 {
+                result = result.add_warning(format!(
+                    "Line {} is very long ({} characters)",
+                    line_num + 1,
+                    line.len()
+                ));
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Validate semantics against the template context
+    async fn validate_semantics(
+        &self,
+        output: &str,
+        context: &TemplateContext,
+        mut result: OutputValidationResult,
+    ) -> Result<OutputValidationResult> {
+        // Validate interface references in output
+        result = self.validate_interface_references(output, context, result)?;
+
+        // Validate IP address formats
+        result = self.validate_ip_addresses(output, result)?;
+
+        Ok(result)
+    }
+
+    /// Validate interface references in the output
+    fn validate_interface_references(
+        &self,
+        _output: &str,
+        context: &TemplateContext,
+        result: OutputValidationResult,
+    ) -> Result<OutputValidationResult> {
+        // Get known interfaces from context
+        let _known_interfaces: std::collections::HashSet<String> = context
+            .links
+            .iter()
+            .filter_map(|link| link.get_interface_for_node(context.node.id))
+            .map(|s| s.to_string())
+            .collect();
+
+        // Check if derived state has interface information
+        if let Some(status) = &context.node_status {
+            for _interface in &status.interfaces {
+                // This is where we could validate interface references in output
+                // For now, just add to known interfaces
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Validate IP address formats in output
+    fn validate_ip_addresses(
+        &self,
+        output: &str,
+        mut result: OutputValidationResult,
+    ) -> Result<OutputValidationResult> {
+        use std::net::IpAddr;
+
+        // Simple regex to find potential IP addresses
+        let ip_regex = regex::Regex::new(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+            .map_err(|e| anyhow!("Failed to compile IP regex: {}", e))?;
+
+        for (line_num, line) in output.lines().enumerate() {
+            for capture in ip_regex.find_iter(line) {
+                let potential_ip = capture.as_str();
+                if potential_ip.parse::<IpAddr>().is_err() {
+                    result = result.add_warning(format!(
+                        "Line {}: '{}' looks like an IP address but is invalid",
+                        line_num + 1,
+                        potential_ip
+                    ));
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Vendor-specific validation
+    async fn validate_vendor_specific(
+        &self,
+        _output: &str,
+        context: &TemplateContext,
+        result: OutputValidationResult,
+    ) -> Result<OutputValidationResult> {
+        // Vendor-specific validation could be implemented here
+        // For now, just return the result as-is
+        debug!(vendor = %context.node.vendor, "Vendor-specific validation not yet implemented");
+        Ok(result)
+    }
+}
+
+/// Template engine for rendering network device configurations
+#[derive(Debug, Clone)]
+pub struct TemplateEngine {
+    env: Arc<RwLock<Environment<'static>>>,
+    loader: Arc<TemplateLoader>,
+    validator: Arc<TemplateValidator>,
+    render_timeout: Duration,
+}
+
+impl TemplateEngine {
+    /// Create a new template engine with default configuration
+    pub fn new() -> Result<Self> {
+        Self::with_timeout(Duration::from_secs(5))
+    }
+
+    /// Create a new template engine with custom render timeout
+    pub fn with_timeout(timeout: Duration) -> Result<Self> {
+        let env = Arc::new(RwLock::new(Environment::new()));
+        let loader = Arc::new(TemplateLoader::new()?);
+        let validator = Arc::new(TemplateValidator::new());
+
+        Ok(Self {
+            env,
+            loader,
+            validator,
+            render_timeout: timeout,
+        })
+    }
+
+    /// Render a template with the given context
+    pub async fn render(&self, template_name: &str, context: &serde_json::Value) -> Result<String> {
+        let template_content = self.loader.load_template(template_name).await?;
+
+        // Validate template security and syntax
+        self.validator
+            .validate_comprehensive(&template_content)
+            .and_then(|result| {
+                if !result.overall_valid {
+                    Err(anyhow!("Template validation failed: {:?}", result.errors))
+                } else {
+                    Ok(())
+                }
+            })?;
+
+        let env = self.env.read().await;
+        let template = env
+            .template_from_str(&template_content)
+            .with_context(|| format!("Failed to parse template '{}'", template_name))?;
+
+        // Render with timeout protection
+        let render_future = async {
+            template
+                .render(context)
+                .with_context(|| format!("Failed to render template '{}'", template_name))
+        };
+
+        match timeout(self.render_timeout, render_future).await {
+            Ok(result) => result,
+            Err(_) => {
+                warn!(
+                    "Template '{}' rendering exceeded timeout of {:?}",
+                    template_name, self.render_timeout
+                );
+                Err(anyhow!("Template rendering timeout exceeded"))
+            }
+        }
+    }
+
+    /// Compile a template to check for syntax errors
+    pub fn compile_template(&self, template_name: &str, template_content: &str) -> Result<()> {
+        // Use blocking create to avoid async in sync context
+        let env = Environment::new();
+        env.template_from_str(template_content)
+            .with_context(|| format!("Failed to compile template '{}'", template_name))?;
+        Ok(())
+    }
+
+    /// Validate a template without rendering it
+    pub async fn validate_template(&self, template_name: &str) -> Result<ValidationResult> {
+        let template_content = self.loader.load_template(template_name).await?;
+
+        let result = self.validator.validate_comprehensive(&template_content)?;
+
+        if result.overall_valid {
+            info!("Template '{}' validation successful", template_name);
+        } else {
+            warn!(
+                "Template '{}' validation failed: {:?}",
+                template_name, result.errors
+            );
+        }
+
+        Ok(result)
+    }
+}
+
+impl Default for TemplateEngine {
+    fn default() -> Self {
+        Self::new().expect("Failed to create default TemplateEngine")
+    }
+}
+
+/// Vendor-specific output formatter for network device configurations
+#[derive(Debug, Clone)]
+pub struct OutputFormatter {
+    vendor_formatters: std::collections::HashMap<String, VendorFormatter>,
+}
+
+impl OutputFormatter {
+    /// Create a new output formatter with all vendor formatters
+    pub fn new() -> Self {
+        let mut vendor_formatters = std::collections::HashMap::new();
+
+        // Register vendor-specific formatters
+        vendor_formatters.insert("cisco".to_string(), VendorFormatter::cisco());
+        vendor_formatters.insert("juniper".to_string(), VendorFormatter::juniper());
+        vendor_formatters.insert("arista".to_string(), VendorFormatter::arista());
+        vendor_formatters.insert("generic".to_string(), VendorFormatter::generic());
+
+        Self { vendor_formatters }
+    }
+
+    /// Format output for a specific vendor
+    pub fn format_output(
+        &self,
+        output: &str,
+        vendor: &str,
+        context: &TemplateContext,
+    ) -> Result<String> {
+        debug!(
+            vendor = vendor,
+            output_size = output.len(),
+            "Formatting output for vendor"
+        );
+
+        let formatter = self
+            .vendor_formatters
+            .get(&vendor.to_lowercase())
+            .unwrap_or_else(|| self.vendor_formatters.get("generic").unwrap());
+
+        let formatted = formatter.format(output, context)?;
+
+        debug!(
+            vendor = vendor,
+            original_size = output.len(),
+            formatted_size = formatted.len(),
+            "Output formatting completed"
+        );
+
+        Ok(formatted)
+    }
+
+    /// Get available vendor formatters
+    pub fn available_vendors(&self) -> Vec<String> {
+        self.vendor_formatters.keys().cloned().collect()
+    }
+}
+
+/// Vendor-specific configuration formatter
+#[derive(Debug, Clone)]
+pub struct VendorFormatter {
+    name: String,
+    indent_style: IndentStyle,
+    line_ending: LineEnding,
+    comment_style: CommentStyle,
+    section_separators: bool,
+    post_processors: Vec<PostProcessor>,
+}
+
+impl VendorFormatter {
+    /// Create Cisco-specific formatter
+    pub fn cisco() -> Self {
+        Self {
+            name: "cisco".to_string(),
+            indent_style: IndentStyle::Spaces(1),
+            line_ending: LineEnding::Unix,
+            comment_style: CommentStyle::Exclamation,
+            section_separators: true,
+            post_processors: vec![
+                PostProcessor::RemoveEmptyLines,
+                PostProcessor::AddSectionSeparators,
+                PostProcessor::ValidateInterfaceNames,
+            ],
+        }
+    }
+
+    /// Create Juniper-specific formatter
+    pub fn juniper() -> Self {
+        Self {
+            name: "juniper".to_string(),
+            indent_style: IndentStyle::Spaces(4),
+            line_ending: LineEnding::Unix,
+            comment_style: CommentStyle::Hash,
+            section_separators: false,
+            post_processors: vec![
+                PostProcessor::RemoveEmptyLines,
+                PostProcessor::ValidateHierarchy,
+                PostProcessor::AddBraces,
+            ],
+        }
+    }
+
+    /// Create Arista-specific formatter
+    pub fn arista() -> Self {
+        Self {
+            name: "arista".to_string(),
+            indent_style: IndentStyle::Spaces(3),
+            line_ending: LineEnding::Unix,
+            comment_style: CommentStyle::Exclamation,
+            section_separators: true,
+            post_processors: vec![
+                PostProcessor::RemoveEmptyLines,
+                PostProcessor::AddSectionSeparators,
+                PostProcessor::ValidateInterfaceNames,
+            ],
+        }
+    }
+
+    /// Create generic formatter
+    pub fn generic() -> Self {
+        Self {
+            name: "generic".to_string(),
+            indent_style: IndentStyle::Spaces(2),
+            line_ending: LineEnding::Unix,
+            comment_style: CommentStyle::Hash,
+            section_separators: false,
+            post_processors: vec![PostProcessor::RemoveEmptyLines],
+        }
+    }
+
+    /// Format configuration output according to vendor conventions
+    pub fn format(&self, output: &str, context: &TemplateContext) -> Result<String> {
+        let mut formatted = output.to_string();
+
+        // Apply indentation normalization
+        formatted = self.apply_indentation(&formatted)?;
+
+        // Apply line ending normalization
+        formatted = self.apply_line_endings(&formatted);
+
+        // Apply post-processors in order
+        for processor in &self.post_processors {
+            formatted = processor.process(&formatted, context, &self.name)?;
+        }
+
+        Ok(formatted)
+    }
+
+    /// Apply vendor-specific indentation
+    fn apply_indentation(&self, content: &str) -> Result<String> {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut result = Vec::new();
+
+        for line in lines {
+            if line.trim().is_empty() {
+                result.push(String::new());
+                continue;
+            }
+
+            // Calculate indentation level based on leading whitespace
+            let leading_spaces = line.len() - line.trim_start().len();
+            let indent_level = leading_spaces / 2; // Assume 2-space base indentation
+
+            let content = line.trim();
+            let new_indent = self.indent_style.create_indent(indent_level);
+
+            result.push(format!("{}{}", new_indent, content));
+        }
+
+        Ok(result.join(&self.line_ending.to_string()))
+    }
+
+    /// Apply vendor-specific line endings
+    fn apply_line_endings(&self, content: &str) -> String {
+        // Normalize all line endings to Unix first, then apply vendor preference
+        let normalized = content.replace("\r\n", "\n").replace("\r", "\n");
+
+        match self.line_ending {
+            LineEnding::Unix => normalized,
+            LineEnding::Windows => normalized.replace("\n", "\r\n"),
+            LineEnding::Mac => normalized.replace("\n", "\r"),
+        }
+    }
+}
+
+/// Indentation style for vendor-specific formatting
+#[derive(Debug, Clone)]
+pub enum IndentStyle {
+    Spaces(usize),
+    Tabs,
+}
+
+impl IndentStyle {
+    /// Create indentation string for the given level
+    pub fn create_indent(&self, level: usize) -> String {
+        match self {
+            IndentStyle::Spaces(count) => " ".repeat(level * count),
+            IndentStyle::Tabs => "\t".repeat(level),
+        }
+    }
+}
+
+/// Line ending style for vendor-specific formatting
+#[derive(Debug, Clone)]
+pub enum LineEnding {
+    Unix,    // \n
+    Windows, // \r\n
+    Mac,     // \r
+}
+
+impl ToString for LineEnding {
+    fn to_string(&self) -> String {
+        match self {
+            LineEnding::Unix => "\n".to_string(),
+            LineEnding::Windows => "\r\n".to_string(),
+            LineEnding::Mac => "\r".to_string(),
+        }
+    }
+}
+
+/// Comment style for vendor-specific formatting
+#[derive(Debug, Clone)]
+pub enum CommentStyle {
+    Hash,        // # comment
+    Exclamation, // ! comment
+    Slash,       // // comment
+}
+
+impl CommentStyle {
+    /// Create a comment with this style
+    pub fn create_comment(&self, text: &str) -> String {
+        let prefix = match self {
+            CommentStyle::Hash => "# ",
+            CommentStyle::Exclamation => "! ",
+            CommentStyle::Slash => "// ",
+        };
+        format!("{}{}", prefix, text)
+    }
+}
+
+/// Post-processor for configuration output
+#[derive(Debug, Clone)]
+pub enum PostProcessor {
+    RemoveEmptyLines,
+    AddSectionSeparators,
+    ValidateInterfaceNames,
+    ValidateHierarchy,
+    AddBraces,
+    NormalizeWhitespace,
+    AddTimestamp,
+}
+
+impl PostProcessor {
+    /// Process configuration output
+    pub fn process(
+        &self,
+        content: &str,
+        context: &TemplateContext,
+        vendor: &str,
+    ) -> Result<String> {
+        match self {
+            PostProcessor::RemoveEmptyLines => Ok(content
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join("\n")),
+            PostProcessor::AddSectionSeparators => self.add_section_separators(content, vendor),
+            PostProcessor::ValidateInterfaceNames => {
+                self.validate_interface_names(content, context)
+            }
+            PostProcessor::ValidateHierarchy => self.validate_hierarchy(content),
+            PostProcessor::AddBraces => self.add_braces(content),
+            PostProcessor::NormalizeWhitespace => self.normalize_whitespace(content),
+            PostProcessor::AddTimestamp => self.add_timestamp(content, context),
+        }
+    }
+
+    /// Add section separators for better readability
+    fn add_section_separators(&self, content: &str, vendor: &str) -> Result<String> {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut result = Vec::new();
+        let mut last_section = String::new();
+
+        let comment_style = match vendor {
+            "cisco" | "arista" => CommentStyle::Exclamation,
+            "juniper" => CommentStyle::Hash,
+            _ => CommentStyle::Hash,
+        };
+
+        for line in lines {
+            let trimmed = line.trim();
+
+            // Detect major configuration sections
+            if self.is_major_section(trimmed) {
+                let section_name = self.extract_section_name(trimmed);
+
+                if !last_section.is_empty() && section_name != last_section {
+                    result.push(String::new()); // Empty line before separator
+                    result.push(comment_style.create_comment(&format!("--- {} ---", section_name)));
+                }
+
+                last_section = section_name;
+            }
+
+            result.push(line.to_string());
+        }
+
+        Ok(result.join("\n"))
+    }
+
+    /// Check if a line represents a major configuration section
+    fn is_major_section(&self, line: &str) -> bool {
+        line.starts_with("interface ")
+            || line.starts_with("router ")
+            || line.starts_with("ip route")
+            || line.starts_with("vlan ")
+            || line.starts_with("access-list ")
+            || line.starts_with("class-map ")
+            || line.starts_with("policy-map ")
+    }
+
+    /// Extract section name from configuration line
+    fn extract_section_name(&self, line: &str) -> String {
+        if line.starts_with("interface ") {
+            "Interface Configuration".to_string()
+        } else if line.starts_with("router ") {
+            "Routing Configuration".to_string()
+        } else if line.starts_with("ip route") {
+            "Static Routes".to_string()
+        } else if line.starts_with("vlan ") {
+            "VLAN Configuration".to_string()
+        } else if line.starts_with("access-list ") {
+            "Access Control Lists".to_string()
+        } else if line.starts_with("class-map ") || line.starts_with("policy-map ") {
+            "QoS Configuration".to_string()
+        } else {
+            "Configuration".to_string()
+        }
+    }
+
+    /// Validate interface names in the configuration
+    fn validate_interface_names(&self, content: &str, context: &TemplateContext) -> Result<String> {
+        let result = content.to_string();
+
+        // Get known interfaces from context
+        let known_interfaces: std::collections::HashSet<String> = context
+            .links
+            .iter()
+            .filter_map(|link| link.get_interface_for_node(context.node.id))
+            .map(|s| s.to_string())
+            .collect();
+
+        // Add interfaces from derived state if available
+        if let Some(status) = &context.node_status {
+            for interface in &status.interfaces {
+                // Interface validation could be enhanced here
+                debug!(interface_name = %interface.name, "Known interface from derived state");
+            }
+        }
+
+        // For now, just return the content as-is
+        // Real validation would check interface name patterns against vendor conventions
+        debug!(
+            known_interfaces = known_interfaces.len(),
+            "Interface name validation completed"
+        );
+
+        Ok(result)
+    }
+
+    /// Validate hierarchical configuration structure
+    fn validate_hierarchy(&self, content: &str) -> Result<String> {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut stack = Vec::new();
+        let mut result = Vec::new();
+
+        for line in lines {
+            let trimmed = line.trim();
+            let indent_level = line.len() - line.trim_start().len();
+
+            // Validate hierarchy levels
+            while stack.len() > 0 && stack.last().unwrap_or(&0) >= &indent_level {
+                stack.pop();
+            }
+
+            if !trimmed.is_empty() {
+                stack.push(indent_level);
+            }
+
+            result.push(line.to_string());
+        }
+
+        Ok(result.join("\n"))
+    }
+
+    /// Add braces for hierarchical configuration (Juniper-style)
+    fn add_braces(&self, content: &str) -> Result<String> {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut result = Vec::new();
+        let mut brace_stack = Vec::new();
+
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            let indent_level = line.len() - line.trim_start().len();
+
+            // Close braces for decreased indentation
+            while let Some(&last_indent) = brace_stack.last() {
+                if last_indent >= indent_level {
+                    brace_stack.pop();
+                    let close_indent = " ".repeat(last_indent);
+                    result.push(format!("{}}}", close_indent));
+                } else {
+                    break;
+                }
+            }
+
+            result.push(line.to_string());
+
+            // Add opening brace if this line should have child elements
+            if !trimmed.is_empty() && !trimmed.ends_with(';') {
+                let next_line = lines.get(i + 1);
+                if let Some(next) = next_line {
+                    let next_indent = next.len() - next.trim_start().len();
+                    if next_indent > indent_level {
+                        result.push(format!("{} {{", " ".repeat(indent_level)));
+                        brace_stack.push(indent_level);
+                    }
+                }
+            }
+        }
+
+        // Close any remaining braces
+        while let Some(indent) = brace_stack.pop() {
+            result.push(format!("{}}}", " ".repeat(indent)));
+        }
+
+        Ok(result.join("\n"))
+    }
+
+    /// Normalize whitespace in configuration
+    fn normalize_whitespace(&self, content: &str) -> Result<String> {
+        let lines: Vec<String> = content
+            .lines()
+            .map(|line| {
+                // Remove trailing whitespace and normalize internal whitespace
+                line.trim_end()
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            })
+            .collect();
+
+        Ok(lines.join("\n"))
+    }
+
+    /// Add timestamp header to configuration
+    fn add_timestamp(&self, content: &str, context: &TemplateContext) -> Result<String> {
+        let timestamp = &context.generated_at;
+        let node_name = &context.node.name;
+
+        let header = format!(
+            "! Configuration generated for {} at {}\n! Template rendering completed\n!\n",
+            node_name, timestamp
+        );
+
+        Ok(format!("{}{}", header, content))
+    }
+}
+
+/// Output cache for storing rendered template results
+#[derive(Debug, Clone)]
+pub struct OutputCache {
+    cache: Arc<RwLock<std::collections::HashMap<String, CacheEntry>>>,
+    max_entries: usize,
+    ttl_seconds: u64,
+}
+
+impl OutputCache {
+    /// Create a new output cache
+    pub fn new(max_entries: usize, ttl_seconds: u64) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            max_entries,
+            ttl_seconds,
+        }
+    }
+
+    /// Create cache key from template and context
+    pub fn create_key(&self, template_name: &str, context: &TemplateContext) -> String {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        template_name.hash(&mut hasher);
+        context.node.id.hash(&mut hasher);
+        context.generated_at.hash(&mut hasher);
+
+        // Include relevant context elements in hash
+        context.node.name.hash(&mut hasher);
+        context.node.vendor.hash(&mut hasher);
+        context.links.len().hash(&mut hasher);
+        context.variables.len().hash(&mut hasher);
+
+        format!("{}_{:x}", template_name, hasher.finish())
+    }
+
+    /// Get cached output if available and valid
+    pub async fn get(&self, key: &str) -> Option<String> {
+        let cache = self.cache.read().await;
+
+        if let Some(entry) = cache.get(key) {
+            if entry.is_valid(self.ttl_seconds) {
+                debug!(cache_key = key, "Cache hit for template output");
+                return Some(entry.output.clone());
+            } else {
+                debug!(cache_key = key, "Cache entry expired");
+            }
+        }
+
+        debug!(cache_key = key, "Cache miss for template output");
+        None
+    }
+
+    /// Store output in cache
+    pub async fn put(&self, key: String, output: String) {
+        let mut cache = self.cache.write().await;
+
+        // Evict oldest entries if at capacity
+        if cache.len() >= self.max_entries {
+            let oldest_key = cache
+                .iter()
+                .min_by_key(|(_, entry)| entry.created_at)
+                .map(|(k, _)| k.clone());
+
+            if let Some(old_key) = oldest_key {
+                cache.remove(&old_key);
+                debug!(evicted_key = %old_key, "Evicted oldest cache entry");
+            }
+        }
+
+        let entry = CacheEntry {
+            output,
+            created_at: std::time::SystemTime::now(),
+        };
+
+        cache.insert(key.clone(), entry);
+        debug!(cache_key = %key, cache_size = cache.len(), "Cached template output");
+    }
+
+    /// Clear all cached entries
+    pub async fn clear(&self) {
+        let mut cache = self.cache.write().await;
+        let count = cache.len();
+        cache.clear();
+        debug!(cleared_entries = count, "Cleared template output cache");
+    }
+
+    /// Get cache statistics
+    pub async fn stats(&self) -> CacheStats {
+        let cache = self.cache.read().await;
+        CacheStats {
+            total_entries: cache.len(),
+            max_entries: self.max_entries,
+            ttl_seconds: self.ttl_seconds,
+        }
+    }
+}
+
+/// Cache entry for storing rendered output
+#[derive(Debug, Clone)]
+struct CacheEntry {
+    output: String,
+    created_at: std::time::SystemTime,
+}
+
+impl CacheEntry {
+    /// Check if cache entry is still valid
+    fn is_valid(&self, ttl_seconds: u64) -> bool {
+        if let Ok(elapsed) = self.created_at.elapsed() {
+            elapsed.as_secs() < ttl_seconds
+        } else {
+            false
+        }
+    }
+}
+
+/// Cache statistics
+#[derive(Debug, Clone)]
+pub struct CacheStats {
+    pub total_entries: usize,
+    pub max_entries: usize,
+    pub ttl_seconds: u64,
+}
+
+// Note: Template rendering orchestrator types are already exported as public structs above
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::derived::{
+        InterfaceAdminStatus, InterfaceOperStatus, InterfaceStats, InterfaceStatus, NodeStatus,
+        SystemInfo,
+    };
+    use crate::models::{
+        DeviceRole, Link, LinkBuilder, Location, LocationBuilder, Node, NodeBuilder, Vendor,
+    };
+    use std::time::Duration;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn test_engine_creation() {
+        let engine = TemplateEngine::new();
+        assert!(engine.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_engine_with_timeout() {
+        let engine = TemplateEngine::with_timeout(Duration::from_millis(100));
+        assert!(engine.is_ok());
+        assert_eq!(
+            engine.as_ref().unwrap().render_timeout,
+            Duration::from_millis(100)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_security_validation_in_render() {
+        let _engine = TemplateEngine::new().unwrap();
+
+        // This should fail during template rendering due to security validation
+        // Note: We can't actually test the render method without a proper TemplateLoader
+        // so this is a placeholder for integration testing
+    }
+
+    #[tokio::test]
+    async fn test_template_context_creation() {
+        let node = create_test_node();
+        let context = TemplateContext::new(node.clone());
+
+        assert_eq!(context.node.id, node.id);
+        assert_eq!(context.node.name, node.name);
+        assert!(context.node_status.is_none());
+        assert!(context.links.is_empty());
+        assert!(context.locations.is_empty());
+        assert!(context.variables.is_empty());
+        assert!(context.scope.is_none());
+        assert!(!context.generated_at.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_template_context_builder_pattern() {
+        let node = create_test_node();
+        let status = create_test_node_status(node.id);
+        let links = vec![create_test_link(node.id)];
+        let locations = vec![create_test_location()];
+        let mut variables = HashMap::new();
+        variables.insert("test_var".to_string(), serde_json::json!("test_value"));
+
+        let context = TemplateContext::new(node.clone())
+            .with_status(status.clone())
+            .with_links(links.clone())
+            .with_locations(locations.clone())
+            .with_variables(variables.clone());
+
+        assert_eq!(context.node.id, node.id);
+        assert!(context.node_status.is_some());
+        assert_eq!(context.node_status.unwrap().node_id, status.node_id);
+        assert_eq!(context.links.len(), 1);
+        assert_eq!(context.locations.len(), 1);
+        assert_eq!(context.variables.len(), 1);
+        assert_eq!(
+            context.variables.get("test_var"),
+            Some(&serde_json::json!("test_value"))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_template_context_validation_success() {
+        let node = create_test_node();
+        let links = vec![create_test_link(node.id)];
+        let context = TemplateContext::new(node).with_links(links);
+
+        let result = context.validate();
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_template_context_validation_invalid_link() {
+        let node = create_test_node();
+        let other_node_id = Uuid::new_v4();
+        let links = vec![create_test_link(other_node_id)]; // Link doesn't involve this node
+
+        let context = TemplateContext::new(node).with_links(links);
+
+        let result = context.validate();
+        assert!(result.is_ok()); // Context validation is separate from context validator
+    }
+
+    #[tokio::test]
+    async fn test_template_context_to_value() {
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+
+        let value = context.to_value();
+        assert!(value.is_ok());
+
+        let json_value = value.unwrap();
+        assert!(json_value.is_object());
+        assert!(json_value.get("node").is_some());
+        assert!(json_value.get("generated_at").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_rendering_result_creation() {
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+        let duration = Duration::from_millis(100);
+
+        let result = RenderingResult::new(
+            "test output".to_string(),
+            "test_template".to_string(),
+            context,
+            duration,
+        );
+
+        assert_eq!(result.output, "test output");
+        assert_eq!(result.template_name, "test_template");
+        assert_eq!(result.duration, duration);
+        assert!(!result.has_warnings());
+        assert!(result.is_valid()); // No validation result means valid
+    }
+
+    #[tokio::test]
+    async fn test_rendering_result_with_warnings() {
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+        let duration = Duration::from_millis(100);
+
+        let result = RenderingResult::new(
+            "test output".to_string(),
+            "test_template".to_string(),
+            context,
+            duration,
+        )
+        .with_warning("Test warning".to_string());
+
+        assert!(result.has_warnings());
+        assert_eq!(result.warnings.len(), 1);
+        assert_eq!(result.warnings[0], "Test warning");
+    }
+
+    #[tokio::test]
+    async fn test_output_validation_result() {
+        let mut result = OutputValidationResult::new();
+        assert!(result.is_valid);
+        assert!(result.syntax_valid);
+        assert!(result.semantic_valid);
+
+        result = result.add_error("Test error".to_string());
+        assert!(!result.is_valid);
+        assert_eq!(result.errors.len(), 1);
+
+        result = result.add_warning("Test warning".to_string());
+        assert_eq!(result.warnings.len(), 1);
+
+        result = result.mark_syntax_invalid();
+        assert!(!result.syntax_valid);
+
+        result = result.mark_semantic_invalid();
+        assert!(!result.semantic_valid);
+    }
+
+    #[tokio::test]
+    async fn test_renderer_config_default() {
+        let config = RendererConfig::default();
+        assert_eq!(config.render_timeout, Duration::from_secs(10));
+        assert_eq!(config.max_output_size, 1024 * 1024);
+        assert!(config.strict_validation);
+    }
+
+    #[tokio::test]
+    async fn test_template_renderer_creation() {
+        let renderer = TemplateRenderer::new();
+        assert!(renderer.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_template_renderer_with_config() {
+        let config = RendererConfig {
+            render_timeout: Duration::from_secs(5),
+            max_output_size: 512 * 1024,
+            strict_validation: false,
+            cache_max_entries: 50,
+            cache_ttl_seconds: 600,
+        };
+
+        let renderer = TemplateRenderer::with_config(config);
+        assert!(renderer.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_context_validator_creation() {
+        let validator = ContextValidator::new();
+        // Just test that it can be created
+        assert_eq!(
+            std::mem::size_of_val(&validator),
+            std::mem::size_of::<ContextValidator>()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_context_validator_success() {
+        let node = create_test_node();
+        let links = vec![create_test_link(node.id)];
+        let context = TemplateContext::new(node).with_links(links);
+
+        let validator = ContextValidator::new();
+        let result = validator.validate(&context);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_context_validator_invalid_node_reference() {
+        let node = create_test_node();
+        let other_node_id = Uuid::new_v4();
+        let links = vec![create_test_link(other_node_id)]; // Link doesn't reference context node
+
+        let context = TemplateContext::new(node).with_links(links);
+
+        let validator = ContextValidator::new();
+        let result = validator.validate(&context);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("does not reference the context node")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_context_validator_duplicate_interfaces() {
+        let node = create_test_node();
+        let mut link1 = create_test_link(node.id);
+        let mut link2 = create_test_link(node.id);
+
+        // Set same interface for both links
+        link1.node_a_interface = "eth0".to_string();
+        link2.node_a_interface = "eth0".to_string();
+
+        let links = vec![link1, link2];
+        let context = TemplateContext::new(node).with_links(links);
+
+        let validator = ContextValidator::new();
+        let result = validator.validate(&context);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Duplicate interface")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_output_validator_creation() {
+        let validator = OutputValidator::new();
+        assert_eq!(
+            std::mem::size_of_val(&validator),
+            std::mem::size_of::<OutputValidator>()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_output_validator_empty_output() {
+        let validator = OutputValidator::new();
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+
+        let result = validator.validate("", &context).await;
+        assert!(result.is_ok());
+
+        let validation_result = result.unwrap();
+        assert!(!validation_result.is_valid);
+        assert_eq!(validation_result.errors.len(), 1);
+        assert!(validation_result.errors[0].contains("empty output"));
+    }
+
+    #[tokio::test]
+    async fn test_output_validator_unrendered_syntax() {
+        let validator = OutputValidator::new();
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+
+        let output = "interface {{ interface_name }}\n  description test";
+        let result = validator.validate(output, &context).await;
+        assert!(result.is_ok());
+
+        let validation_result = result.unwrap();
+        assert!(validation_result.is_valid); // Warnings don't make it invalid
+        assert_eq!(validation_result.warnings.len(), 1);
+        assert!(validation_result.warnings[0].contains("unrendered template syntax"));
+    }
+
+    #[tokio::test]
+    async fn test_output_validator_long_lines() {
+        let validator = OutputValidator::new();
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+
+        let long_line = "a".repeat(1001);
+        let result = validator.validate(&long_line, &context).await;
+        assert!(result.is_ok());
+
+        let validation_result = result.unwrap();
+        assert!(validation_result.is_valid);
+        assert_eq!(validation_result.warnings.len(), 1);
+        assert!(validation_result.warnings[0].contains("very long"));
+    }
+
+    #[tokio::test]
+    async fn test_output_validator_invalid_ip() {
+        let validator = OutputValidator::new();
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+
+        let output = "ip address 999.999.999.999 255.255.255.0";
+        let result = validator.validate(output, &context).await;
+        assert!(result.is_ok());
+
+        let validation_result = result.unwrap();
+        assert!(validation_result.is_valid);
+        assert_eq!(validation_result.warnings.len(), 1);
+        assert!(validation_result.warnings[0].contains("looks like an IP address but is invalid"));
+    }
+
+    #[tokio::test]
+    async fn test_output_validator_valid_ip() {
+        let validator = OutputValidator::new();
+        let node = create_test_node();
+        let context = TemplateContext::new(node);
+
+        let output = "ip address 192.168.1.1 255.255.255.0";
+        let result = validator.validate(output, &context).await;
+        assert!(result.is_ok());
+
+        let validation_result = result.unwrap();
+        assert!(validation_result.is_valid);
+        assert_eq!(validation_result.warnings.len(), 0);
+    }
+
+    // Helper functions for creating test data
+    fn create_test_node() -> Node {
+        NodeBuilder::new()
+            .name("test-router")
+            .domain("example.com")
+            .vendor(Vendor::Cisco)
+            .model("ISR4331")
+            .role(DeviceRole::Router)
+            .build()
+            .unwrap()
+    }
+
+    fn create_test_node_status(node_id: Uuid) -> NodeStatus {
+        let mut status = NodeStatus::new(node_id);
+        status.reachable = true;
+        status.system_info = Some(SystemInfo {
+            description: Some("Test Router".to_string()),
+            object_id: Some("1.3.6.1.4.1.9.1.1.1".to_string()),
+            uptime_ticks: Some(12345678),
+            contact: Some("admin@example.com".to_string()),
+            name: Some("test-router".to_string()),
+            location: Some("Test Lab".to_string()),
+            services: Some(72),
+        });
+        status.interfaces = vec![InterfaceStatus {
+            index: 1,
+            name: "GigabitEthernet0/0/0".to_string(),
+            interface_type: 6,
+            mtu: Some(1500),
+            speed: Some(1000000000),
+            physical_address: Some("00:11:22:33:44:55".to_string()),
+            admin_status: InterfaceAdminStatus::Up,
+            oper_status: InterfaceOperStatus::Up,
+            last_change: Some(123456),
+            input_stats: InterfaceStats::default(),
+            output_stats: InterfaceStats::default(),
+        }];
+        status
+    }
+
+    fn create_test_link(node_id: Uuid) -> Link {
+        let other_node_id = Uuid::new_v4();
+        LinkBuilder::new()
+            .name("test-link")
+            .node_a_id(node_id)
+            .node_a_interface("GigabitEthernet0/0/0")
+            .node_z_id(other_node_id)
+            .node_z_interface("GigabitEthernet0/0/1")
+            .build()
+            .unwrap()
+    }
+
+    fn create_test_location() -> Location {
+        LocationBuilder::new()
+            .name("Test Lab")
+            .location_type("lab")
+            .build()
+            .unwrap()
+    }
+
+    // Mock DataStore for testing ContextBuilder
+    struct MockDataStore {
+        nodes: HashMap<Uuid, Node>,
+        links: HashMap<Uuid, Link>,
+        locations: HashMap<Uuid, Location>,
+    }
+
+    impl MockDataStore {
+        fn new() -> Self {
+            Self {
+                nodes: HashMap::new(),
+                links: HashMap::new(),
+                locations: HashMap::new(),
+            }
+        }
+
+        fn with_node(mut self, node: Node) -> Self {
+            self.nodes.insert(node.id, node);
+            self
+        }
+
+        fn with_link(mut self, link: Link) -> Self {
+            self.links.insert(link.id, link);
+            self
+        }
+
+        fn with_location(mut self, location: Location) -> Self {
+            self.locations.insert(location.id, location);
+            self
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl DataStore for MockDataStore {
+        fn name(&self) -> &'static str {
+            "mock"
+        }
+
+        async fn health_check(&self) -> crate::datastore::DataStoreResult<()> {
+            Ok(())
+        }
+
+        async fn begin_transaction(
+            &self,
+        ) -> crate::datastore::DataStoreResult<Box<dyn crate::datastore::Transaction>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn create_node(&self, _node: &Node) -> crate::datastore::DataStoreResult<Node> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_node(&self, id: &Uuid) -> crate::datastore::DataStoreResult<Option<Node>> {
+            Ok(self.nodes.get(id).cloned())
+        }
+
+        async fn list_nodes(
+            &self,
+            _options: &crate::datastore::QueryOptions,
+        ) -> crate::datastore::DataStoreResult<crate::datastore::PagedResult<Node>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn update_node(&self, _node: &Node) -> crate::datastore::DataStoreResult<Node> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn delete_node(&self, _id: &Uuid) -> crate::datastore::DataStoreResult<()> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_nodes_by_location(
+            &self,
+            _location_id: &Uuid,
+        ) -> crate::datastore::DataStoreResult<Vec<Node>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn search_nodes_by_name(
+            &self,
+            _name: &str,
+        ) -> crate::datastore::DataStoreResult<Vec<Node>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn create_link(&self, _link: &Link) -> crate::datastore::DataStoreResult<Link> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_link(&self, id: &Uuid) -> crate::datastore::DataStoreResult<Option<Link>> {
+            Ok(self.links.get(id).cloned())
+        }
+
+        async fn list_links(
+            &self,
+            _options: &crate::datastore::QueryOptions,
+        ) -> crate::datastore::DataStoreResult<crate::datastore::PagedResult<Link>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn update_link(&self, _link: &Link) -> crate::datastore::DataStoreResult<Link> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn delete_link(&self, _id: &Uuid) -> crate::datastore::DataStoreResult<()> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_links_for_node(
+            &self,
+            node_id: &Uuid,
+        ) -> crate::datastore::DataStoreResult<Vec<Link>> {
+            let links: Vec<Link> = self
+                .links
+                .values()
+                .filter(|link| {
+                    link.node_a_id == *node_id || link.node_z_id.as_ref() == Some(node_id)
+                })
+                .cloned()
+                .collect();
+            Ok(links)
+        }
+
+        async fn get_links_between_nodes(
+            &self,
+            _first_node_id: &Uuid,
+            _second_node_id: &Uuid,
+        ) -> crate::datastore::DataStoreResult<Vec<Link>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn create_location(
+            &self,
+            _location: &Location,
+        ) -> crate::datastore::DataStoreResult<Location> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_location(
+            &self,
+            id: &Uuid,
+        ) -> crate::datastore::DataStoreResult<Option<Location>> {
+            Ok(self.locations.get(id).cloned())
+        }
+
+        async fn list_locations(
+            &self,
+            _options: &crate::datastore::QueryOptions,
+        ) -> crate::datastore::DataStoreResult<crate::datastore::PagedResult<Location>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn update_location(
+            &self,
+            _location: &Location,
+        ) -> crate::datastore::DataStoreResult<Location> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn delete_location(&self, _id: &Uuid) -> crate::datastore::DataStoreResult<()> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_child_locations(
+            &self,
+            _parent_id: &Uuid,
+        ) -> crate::datastore::DataStoreResult<Vec<Location>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_location_tree(&self) -> crate::datastore::DataStoreResult<Vec<Location>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn validate_location_hierarchy(
+            &self,
+            _child_id: &Uuid,
+            _new_parent_id: &Uuid,
+        ) -> crate::datastore::DataStoreResult<()> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn batch_nodes(
+            &self,
+            _operations: &[crate::datastore::BatchOperation<Node>],
+        ) -> crate::datastore::DataStoreResult<crate::datastore::BatchResult> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn batch_links(
+            &self,
+            _operations: &[crate::datastore::BatchOperation<Link>],
+        ) -> crate::datastore::DataStoreResult<crate::datastore::BatchResult> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn batch_locations(
+            &self,
+            _operations: &[crate::datastore::BatchOperation<Location>],
+        ) -> crate::datastore::DataStoreResult<crate::datastore::BatchResult> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_entity_counts(
+            &self,
+        ) -> crate::datastore::DataStoreResult<HashMap<String, usize>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+
+        async fn get_statistics(
+            &self,
+        ) -> crate::datastore::DataStoreResult<HashMap<String, serde_json::Value>> {
+            unimplemented!("Not needed for context builder tests")
+        }
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_basic_usage() {
+        let mut node = create_test_node();
+        node.custom_data = serde_json::json!({
+            "snmp_community": "public",
+            "backup_server": "192.168.1.100"
+        });
+
+        let datastore = MockDataStore::new().with_node(node.clone());
+
+        let context = ContextBuilder::new(&datastore, node.id)
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(context.node.id, node.id);
+        assert_eq!(context.node.name, node.name);
+        assert!(context.node_status.is_none()); // No derived state yet
+        assert!(context.links.is_empty()); // No links added
+        assert!(context.locations.is_empty()); // No locations added
+
+        // Check that custom_data is included in variables
+        assert!(context.variables.contains_key("custom"));
+        assert!(context.variables.contains_key("custom_snmp_community"));
+        assert!(context.variables.contains_key("custom_backup_server"));
+
+        // Check computed helper variables
+        assert_eq!(
+            context.variables.get("node_id"),
+            Some(&serde_json::Value::String(node.id.to_string()))
+        );
+        assert_eq!(
+            context.variables.get("node_name"),
+            Some(&serde_json::Value::String(node.name.clone()))
+        );
+        assert_eq!(
+            context.variables.get("node_vendor"),
+            Some(&serde_json::Value::String(node.vendor.to_string()))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_with_links() {
+        let node = create_test_node();
+        let link = create_test_link(node.id);
+
+        let datastore = MockDataStore::new()
+            .with_node(node.clone())
+            .with_link(link.clone());
+
+        let context = ContextBuilder::new(&datastore, node.id)
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(context.links.len(), 1);
+        assert_eq!(context.links[0].id, link.id);
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_with_locations() {
+        let location = create_test_location();
+        let mut node = create_test_node();
+        node.location_id = Some(location.id);
+
+        let datastore = MockDataStore::new()
+            .with_node(node.clone())
+            .with_location(location.clone());
+
+        let context = ContextBuilder::new(&datastore, node.id)
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(context.locations.len(), 1);
+        assert_eq!(context.locations[0].id, location.id);
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_with_additional_variables() {
+        let node = create_test_node();
+        let datastore = MockDataStore::new().with_node(node.clone());
+
+        let mut additional_vars = HashMap::new();
+        additional_vars.insert(
+            "template_version".to_string(),
+            serde_json::Value::String("1.0".to_string()),
+        );
+        additional_vars.insert(
+            "environment".to_string(),
+            serde_json::Value::String("production".to_string()),
+        );
+
+        let context = ContextBuilder::new(&datastore, node.id)
+            .with_variables(additional_vars.clone())
+            .build()
+            .await
+            .unwrap();
+
+        assert_eq!(
+            context.variables.get("template_version"),
+            Some(&serde_json::Value::String("1.0".to_string()))
+        );
+        assert_eq!(
+            context.variables.get("environment"),
+            Some(&serde_json::Value::String("production".to_string()))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_selective_inclusion() {
+        let node = create_test_node();
+        let link = create_test_link(node.id);
+        let location = create_test_location();
+
+        let datastore = MockDataStore::new()
+            .with_node(node.clone())
+            .with_link(link)
+            .with_location(location);
+
+        // Build context without links and locations
+        let context = ContextBuilder::new(&datastore, node.id)
+            .with_links(false)
+            .with_locations(false)
+            .with_derived_state(false)
+            .build()
+            .await
+            .unwrap();
+
+        assert!(context.links.is_empty());
+        assert!(context.locations.is_empty());
+        assert!(context.node_status.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_nonexistent_node() {
+        let datastore = MockDataStore::new();
+        let random_id = Uuid::new_v4();
+
+        let result = ContextBuilder::new(&datastore, random_id).build().await;
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Failed to fetch node")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_with_scope() {
+        let node = create_test_node();
+        let datastore = MockDataStore::new().with_node(node.clone());
+
+        let scope = TemplateScope {
+            device_types: Some(vec!["router".to_string()]),
+            vendors: Some(vec!["cisco".to_string()]),
+            contexts: Some(vec!["interface".to_string()]),
+        };
+
+        let context = ContextBuilder::new(&datastore, node.id)
+            .with_scope(scope.clone())
+            .build()
+            .await
+            .unwrap();
+
+        assert!(context.scope.is_some());
+        assert_eq!(context.scope.unwrap().vendors, scope.vendors);
+    }
+
+    #[tokio::test]
+    async fn test_context_builder_custom_data_integration() {
+        let mut node = create_test_node();
+        node.custom_data = serde_json::json!({
+            "vlan_ranges": {
+                "data": [100, 200],
+                "voice": [300, 400]
+            },
+            "mgmt_vlan": 99,
+            "site_code": "NYC01"
+        });
+
+        let datastore = MockDataStore::new().with_node(node.clone());
+
+        let context = ContextBuilder::new(&datastore, node.id)
+            .build()
+            .await
+            .unwrap();
+
+        // Check that custom_data is available as "custom"
+        let custom_data = context.variables.get("custom").unwrap();
+        assert_eq!(
+            custom_data.get("mgmt_vlan"),
+            Some(&serde_json::Value::Number(serde_json::Number::from(99)))
+        );
+
+        // Check that top-level custom fields are available with custom_ prefix
+        assert_eq!(
+            context.variables.get("custom_mgmt_vlan"),
+            Some(&serde_json::Value::Number(serde_json::Number::from(99)))
+        );
+        assert_eq!(
+            context.variables.get("custom_site_code"),
+            Some(&serde_json::Value::String("NYC01".to_string()))
+        );
+    }
+}

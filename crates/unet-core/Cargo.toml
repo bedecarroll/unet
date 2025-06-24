@@ -35,8 +35,8 @@ toml = { workspace = true }
 sea-orm = { workspace = true }
 sea-orm-migration = { workspace = true }
 
-# Template engine (will be added in milestone 4)
-# minijinja = { workspace = true }
+# Template engine
+minijinja = { workspace = true }
 
 # SNMP client
 snmp2 = { workspace = true }
