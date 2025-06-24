@@ -59,9 +59,9 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
     info!("Initializing policy service");
     let policy_service = PolicyService::new(config.git.clone());
 
-    let app_state = AppState { 
-        datastore: datastore.clone(), 
-        policy_service: policy_service.clone() 
+    let app_state = AppState {
+        datastore: datastore.clone(),
+        policy_service: policy_service.clone(),
     };
 
     // Start background tasks
@@ -115,10 +115,76 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
         .route("/api/v1/links/:id", put(handlers::links::update_link))
         .route("/api/v1/links/:id", delete(handlers::links::delete_link))
         // Policy endpoints
-        .route("/api/v1/policies/evaluate", post(handlers::policies::evaluate_policies))
-        .route("/api/v1/policies/results", get(handlers::policies::get_policy_results))
-        .route("/api/v1/policies/validate", post(handlers::policies::validate_policies))
-        .route("/api/v1/policies/status", get(handlers::policies::get_policy_status))
+        .route(
+            "/api/v1/policies/evaluate",
+            post(handlers::policies::evaluate_policies),
+        )
+        .route(
+            "/api/v1/policies/results",
+            get(handlers::policies::get_policy_results),
+        )
+        .route(
+            "/api/v1/policies/validate",
+            post(handlers::policies::validate_policies),
+        )
+        .route(
+            "/api/v1/policies/status",
+            get(handlers::policies::get_policy_status),
+        )
+        // Template endpoints
+        .route(
+            "/api/v1/templates",
+            get(handlers::templates::list_templates),
+        )
+        .route(
+            "/api/v1/templates",
+            post(handlers::templates::create_template),
+        )
+        .route(
+            "/api/v1/templates/:id",
+            get(handlers::templates::get_template),
+        )
+        .route(
+            "/api/v1/templates/:id",
+            put(handlers::templates::update_template),
+        )
+        .route(
+            "/api/v1/templates/:id",
+            delete(handlers::templates::delete_template),
+        )
+        .route(
+            "/api/v1/templates/render",
+            post(handlers::templates::render_template),
+        )
+        .route(
+            "/api/v1/templates/:id/validate",
+            post(handlers::templates::validate_template),
+        )
+        .route(
+            "/api/v1/templates/:id/usage",
+            get(handlers::templates::get_template_usage),
+        )
+        // Template assignment endpoints
+        .route(
+            "/api/v1/template-assignments",
+            post(handlers::templates::create_template_assignment),
+        )
+        .route(
+            "/api/v1/template-assignments/:id",
+            put(handlers::templates::update_template_assignment),
+        )
+        .route(
+            "/api/v1/template-assignments/:id",
+            delete(handlers::templates::delete_template_assignment),
+        )
+        .route(
+            "/api/v1/nodes/:id/template-assignments",
+            get(handlers::templates::get_template_assignments_for_node),
+        )
+        .route(
+            "/api/v1/templates/:id/assignments",
+            get(handlers::templates::get_template_assignments_for_template),
+        )
         // Health check
         .route("/health", get(handlers::health::health_check))
         // Add application state

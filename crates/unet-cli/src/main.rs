@@ -77,6 +77,9 @@ enum Commands {
     /// Policy management commands
     #[command(subcommand)]
     Policy(commands::policy::PolicyCommands),
+    /// Template management commands
+    #[command(subcommand)]
+    Template(commands::template::TemplateCommands),
     /// Import data from fixtures or files
     Import(commands::import::ImportArgs),
     /// Export data to files
@@ -163,6 +166,9 @@ async fn main() -> Result<()> {
         }
         Commands::Policy(policy_cmd) => {
             commands::policy::execute(policy_cmd, datastore.as_ref(), cli.output).await
+        }
+        Commands::Template(template_cmd) => {
+            commands::template::execute(template_cmd, datastore.as_ref(), cli.output).await
         }
         Commands::Import(import_args) => {
             commands::import::execute(import_args, datastore.as_ref(), cli.output).await

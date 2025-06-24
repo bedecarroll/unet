@@ -9,13 +9,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::config::GitConfig;
 use crate::datastore::{DataStore, DataStoreResult};
 use crate::models::Node;
 use crate::policy::{
     EvaluationContext, PolicyEvaluator, PolicyExecutionResult, PolicyLoader, PolicyOrchestrator,
     PolicyResult, PolicyRule,
 };
-use crate::config::GitConfig;
 
 /// Policy evaluation trait for integrating with DataStore
 #[async_trait]
@@ -112,7 +112,10 @@ impl PolicyEvaluationEngine for DefaultPolicyEvaluationEngine {
         let mut all_results = HashMap::new();
 
         for node in nodes {
-            match self.evaluate_node_policies(datastore, &node, policies).await {
+            match self
+                .evaluate_node_policies(datastore, &node, policies)
+                .await
+            {
                 Ok(results) => {
                     all_results.insert(node.id, results);
                 }
@@ -125,7 +128,10 @@ impl PolicyEvaluationEngine for DefaultPolicyEvaluationEngine {
                     // Store error result
                     all_results.insert(
                         node.id,
-                        vec![PolicyExecutionResult::new_error("evaluation", e.to_string())],
+                        vec![PolicyExecutionResult::new_error(
+                            "evaluation",
+                            e.to_string(),
+                        )],
                     );
                 }
             }
@@ -136,11 +142,10 @@ impl PolicyEvaluationEngine for DefaultPolicyEvaluationEngine {
 
     fn create_evaluation_context(&self, node: &Node) -> PolicyResult<EvaluationContext> {
         // Convert node to JSON for policy evaluation
-        let mut node_data = serde_json::to_value(node).map_err(|e| {
-            crate::policy::PolicyError::Evaluation {
+        let mut node_data =
+            serde_json::to_value(node).map_err(|e| crate::policy::PolicyError::Evaluation {
                 message: format!("Failed to serialize node data: {}", e),
-            }
-        })?;
+            })?;
 
         // Ensure node data is an object
         if let Value::Object(ref mut obj) = node_data {
@@ -213,8 +218,7 @@ impl PolicyService {
             branch: "main".to_string(),
             sync_interval: 300,
         };
-        let loader = PolicyLoader::new(git_config)
-            .with_local_dir(policies_directory);
+        let loader = PolicyLoader::new(git_config).with_local_dir(policies_directory);
         let engine = Arc::new(DefaultPolicyEvaluationEngine::new());
         let orchestrator = PolicyOrchestrator::new(Default::default());
 
@@ -226,10 +230,7 @@ impl PolicyService {
     }
 
     /// Creates a new policy service with custom evaluation engine
-    pub fn with_engine(
-        git_config: GitConfig,
-        engine: Arc<dyn PolicyEvaluationEngine>,
-    ) -> Self {
+    pub fn with_engine(git_config: GitConfig, engine: Arc<dyn PolicyEvaluationEngine>) -> Self {
         let loader = PolicyLoader::new(git_config);
         let orchestrator = PolicyOrchestrator::new(Default::default());
 
@@ -244,7 +245,11 @@ impl PolicyService {
     pub async fn load_policies(&mut self) -> PolicyResult<Vec<PolicyRule>> {
         let result = self.loader.load_policies().await?;
         // Flatten all rules from all loaded files
-        Ok(result.loaded.into_iter().flat_map(|file| file.rules).collect())
+        Ok(result
+            .loaded
+            .into_iter()
+            .flat_map(|file| file.rules)
+            .collect())
     }
 
     /// Evaluates policies against a single node
@@ -265,7 +270,9 @@ impl PolicyService {
         datastore: &dyn DataStore,
     ) -> PolicyResult<HashMap<Uuid, Vec<PolicyExecutionResult>>> {
         let policies = self.load_policies().await?;
-        self.engine.evaluate_all_policies(datastore, &policies).await
+        self.engine
+            .evaluate_all_policies(datastore, &policies)
+            .await
     }
 
     /// Evaluates policies with orchestration (priority, batching, etc.)
@@ -333,11 +340,11 @@ mod tests {
         let node = create_test_node();
 
         let context = engine.create_evaluation_context(&node).unwrap();
-        
-        // Verify the context contains node data  
+
+        // Verify the context contains node data
         let context_value = &context.node_data;
         assert!(context_value.get("node").is_some());
-        
+
         if let Some(node_data) = context_value.get("node") {
             assert_eq!(node_data.get("name").unwrap(), "test-node");
             assert_eq!(node_data.get("vendor").unwrap(), "cisco");
@@ -350,7 +357,7 @@ mod tests {
     fn test_policy_service_creation() {
         // This test creates a policy service with local directory
         let _service = PolicyService::with_local_dir("test_policies");
-        
+
         // Should succeed - PolicyService is created successfully
         // (We can't test much without loading actual policies)
     }

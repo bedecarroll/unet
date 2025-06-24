@@ -1,8 +1,8 @@
 //! Policy management HTTP handlers
 
 use axum::{
-    extract::{Query, State},
     Json,
+    extract::{Query, State},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -13,9 +13,7 @@ use crate::{
     error::{ServerError, ServerResult},
     server::AppState,
 };
-use unet_core::{
-    policy::{PolicyExecutionResult, PolicyRule},
-};
+use unet_core::policy::{PolicyExecutionResult, PolicyRule};
 
 /// Request to evaluate policies against a node
 #[derive(Debug, Deserialize)]
@@ -87,14 +85,16 @@ pub async fn evaluate_policies(
     State(state): State<AppState>,
     Json(request): Json<PolicyEvaluationRequest>,
 ) -> ServerResult<Json<PolicyEvaluationResponse>> {
-    info!("Evaluating policies for {} nodes", 
-        request.node_ids.as_ref().map(|ids| ids.len()).unwrap_or(0));
+    info!(
+        "Evaluating policies for {} nodes",
+        request.node_ids.as_ref().map(|ids| ids.len()).unwrap_or(0)
+    );
 
     let start_time = std::time::Instant::now();
-    
+
     // Get policy service from app state
     let mut policy_service = state.policy_service.clone();
-    
+
     // Determine which nodes to evaluate
     let nodes = if let Some(node_ids) = &request.node_ids {
         let mut nodes = Vec::new();
@@ -107,9 +107,10 @@ pub async fn evaluate_policies(
                 }
                 Err(e) => {
                     error!("Failed to get node {}: {}", node_id, e);
-                    return Err(ServerError::Internal(
-                        format!("Failed to get node {}: {}", node_id, e)
-                    ));
+                    return Err(ServerError::Internal(format!(
+                        "Failed to get node {}: {}",
+                        node_id, e
+                    )));
                 }
             }
         }
@@ -120,9 +121,10 @@ pub async fn evaluate_policies(
             Ok(nodes) => nodes,
             Err(e) => {
                 error!("Failed to get nodes for policy evaluation: {}", e);
-                return Err(ServerError::Internal(
-                    format!("Failed to get nodes for policy evaluation: {}", e)
-                ));
+                return Err(ServerError::Internal(format!(
+                    "Failed to get nodes for policy evaluation: {}",
+                    e
+                )));
             }
         }
     };
@@ -151,9 +153,10 @@ pub async fn evaluate_policies(
             Ok(policies) => policies,
             Err(e) => {
                 error!("Failed to load policies: {}", e);
-                return Err(ServerError::Internal(
-                    format!("Failed to load policies: {}", e)
-                ));
+                return Err(ServerError::Internal(format!(
+                    "Failed to load policies: {}",
+                    e
+                )));
             }
         }
     };
@@ -191,7 +194,7 @@ pub async fn evaluate_policies(
                 // Update summary statistics
                 for result in &results {
                     summary.total_rules += 1;
-                    
+
                     if result.is_error() {
                         summary.error_rules += 1;
                     } else if result.is_satisfied() {
@@ -199,7 +202,7 @@ pub async fn evaluate_policies(
                     } else {
                         summary.unsatisfied_rules += 1;
                     }
-                    
+
                     if result.is_compliance_failure() {
                         summary.compliance_failures += 1;
                     }
@@ -207,7 +210,10 @@ pub async fn evaluate_policies(
 
                 // Store results if requested
                 if request.store_results.unwrap_or(true) {
-                    if let Err(e) = policy_service.store_results(&*state.datastore, &node.id, &results).await {
+                    if let Err(e) = policy_service
+                        .store_results(&*state.datastore, &node.id, &results)
+                        .await
+                    {
                         warn!("Failed to store policy results for node {}: {}", node.id, e);
                     }
                 }
@@ -219,7 +225,7 @@ pub async fn evaluate_policies(
                 // Create error result for this node
                 let error_result = PolicyExecutionResult::new_error(
                     "evaluation",
-                    format!("Failed to evaluate policies: {}", e)
+                    format!("Failed to evaluate policies: {}", e),
                 );
                 all_results.insert(node.id, vec![error_result]);
                 summary.error_rules += 1;
@@ -228,9 +234,13 @@ pub async fn evaluate_policies(
     }
 
     let evaluation_time = start_time.elapsed();
-    
-    info!("Policy evaluation completed: {} nodes, {} policies, {:?}", 
-        nodes.len(), policies.len(), evaluation_time);
+
+    info!(
+        "Policy evaluation completed: {} nodes, {} policies, {:?}",
+        nodes.len(),
+        policies.len(),
+        evaluation_time
+    );
 
     Ok(Json(PolicyEvaluationResponse {
         results: all_results,
@@ -255,13 +265,10 @@ pub async fn get_policy_results(
                 let total_count = results.len();
                 let offset = query.offset.unwrap_or(0);
                 let limit = query.limit.unwrap_or(100);
-                
-                let paginated_results: Vec<_> = results
-                    .into_iter()
-                    .skip(offset)
-                    .take(limit)
-                    .collect();
-                
+
+                let paginated_results: Vec<_> =
+                    results.into_iter().skip(offset).take(limit).collect();
+
                 let returned_count = paginated_results.len();
 
                 Ok(Json(PolicyResultsResponse {
@@ -272,9 +279,10 @@ pub async fn get_policy_results(
             }
             Err(e) => {
                 error!("Failed to get policy results for node {}: {}", node_id, e);
-                Err(ServerError::Internal(
-                    format!("Failed to get policy results: {}", e)
-                ))
+                Err(ServerError::Internal(format!(
+                    "Failed to get policy results: {}",
+                    e
+                )))
             }
         }
     } else {
@@ -301,9 +309,9 @@ pub async fn validate_policies(
     for (index, policy) in policies.iter().enumerate() {
         // For now, just check if the policy has basic required fields
         // In a full implementation, we'd parse and validate the policy syntax
-        let is_valid = !policy.condition.to_string().is_empty() 
-            && !policy.action.to_string().is_empty();
-        
+        let is_valid =
+            !policy.condition.to_string().is_empty() && !policy.action.to_string().is_empty();
+
         if is_valid {
             valid_count += 1;
             validation_results.push(serde_json::json!({

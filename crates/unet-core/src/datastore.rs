@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::models::template::{Template, TemplateAssignment, TemplateUsage, TemplateVersion};
 use crate::models::{Link, Location, Node};
 use crate::policy::PolicyExecutionResult;
 
@@ -527,6 +528,222 @@ pub trait DataStore: Send + Sync {
         let options = QueryOptions::default();
         let result = self.list_nodes(&options).await?;
         Ok(result.items)
+    }
+
+    // Template operations
+    /// Creates a new template
+    async fn create_template(&self, template: &Template) -> DataStoreResult<Template> {
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_template not implemented".to_string(),
+        })
+    }
+
+    /// Gets a template by ID
+    async fn get_template(&self, id: &Uuid) -> DataStoreResult<Option<Template>> {
+        let _ = id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template not implemented".to_string(),
+        })
+    }
+
+    /// Gets a template by ID, returning an error if not found
+    async fn get_template_required(&self, id: &Uuid) -> DataStoreResult<Template> {
+        match self.get_template(id).await? {
+            Some(template) => Ok(template),
+            None => Err(DataStoreError::NotFound {
+                entity_type: "Template".to_string(),
+                id: id.to_string(),
+            }),
+        }
+    }
+
+    /// Lists templates with optional filtering, sorting, and pagination
+    async fn list_templates(
+        &self,
+        options: &QueryOptions,
+    ) -> DataStoreResult<PagedResult<Template>> {
+        let _ = options;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "list_templates not implemented".to_string(),
+        })
+    }
+
+    /// Updates an existing template
+    async fn update_template(&self, template: &Template) -> DataStoreResult<Template> {
+        let _ = template;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "update_template not implemented".to_string(),
+        })
+    }
+
+    /// Deletes a template by ID
+    async fn delete_template(&self, id: &Uuid) -> DataStoreResult<()> {
+        let _ = id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "delete_template not implemented".to_string(),
+        })
+    }
+
+    /// Gets templates by vendor and type
+    async fn get_templates_by_vendor_and_type(
+        &self,
+        vendor: &str,
+        template_type: &str,
+    ) -> DataStoreResult<Vec<Template>> {
+        let _ = (vendor, template_type);
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_templates_by_vendor_and_type not implemented".to_string(),
+        })
+    }
+
+    // Template assignment operations
+    /// Creates a new template assignment
+    async fn create_template_assignment(
+        &self,
+        assignment: &TemplateAssignment,
+    ) -> DataStoreResult<TemplateAssignment> {
+        let _ = assignment;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_template_assignment not implemented".to_string(),
+        })
+    }
+
+    /// Gets a template assignment by ID
+    async fn get_template_assignment(
+        &self,
+        id: &Uuid,
+    ) -> DataStoreResult<Option<TemplateAssignment>> {
+        let _ = id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_assignment not implemented".to_string(),
+        })
+    }
+
+    /// Lists template assignments for a node
+    async fn get_template_assignments_for_node(
+        &self,
+        node_id: &Uuid,
+    ) -> DataStoreResult<Vec<TemplateAssignment>> {
+        let _ = node_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_assignments_for_node not implemented".to_string(),
+        })
+    }
+
+    /// Lists template assignments for a template
+    async fn get_template_assignments_for_template(
+        &self,
+        template_id: &Uuid,
+    ) -> DataStoreResult<Vec<TemplateAssignment>> {
+        let _ = template_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_assignments_for_template not implemented".to_string(),
+        })
+    }
+
+    /// Updates a template assignment
+    async fn update_template_assignment(
+        &self,
+        assignment: &TemplateAssignment,
+    ) -> DataStoreResult<TemplateAssignment> {
+        let _ = assignment;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "update_template_assignment not implemented".to_string(),
+        })
+    }
+
+    /// Deletes a template assignment by ID
+    async fn delete_template_assignment(&self, id: &Uuid) -> DataStoreResult<()> {
+        let _ = id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "delete_template_assignment not implemented".to_string(),
+        })
+    }
+
+    // Template version operations
+    /// Creates a new template version
+    async fn create_template_version(
+        &self,
+        version: &TemplateVersion,
+    ) -> DataStoreResult<TemplateVersion> {
+        let _ = version;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_template_version not implemented".to_string(),
+        })
+    }
+
+    /// Gets template versions for a template
+    async fn get_template_versions(
+        &self,
+        template_id: &Uuid,
+    ) -> DataStoreResult<Vec<TemplateVersion>> {
+        let _ = template_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_versions not implemented".to_string(),
+        })
+    }
+
+    /// Gets a specific template version
+    async fn get_template_version(
+        &self,
+        template_id: &Uuid,
+        version: &str,
+    ) -> DataStoreResult<Option<TemplateVersion>> {
+        let _ = (template_id, version);
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_version not implemented".to_string(),
+        })
+    }
+
+    /// Gets the latest template version
+    async fn get_latest_template_version(
+        &self,
+        template_id: &Uuid,
+    ) -> DataStoreResult<Option<TemplateVersion>> {
+        let _ = template_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_latest_template_version not implemented".to_string(),
+        })
+    }
+
+    /// Deletes a template version
+    async fn delete_template_version(&self, id: &Uuid) -> DataStoreResult<()> {
+        let _ = id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "delete_template_version not implemented".to_string(),
+        })
+    }
+
+    // Template usage operations
+    /// Records template usage
+    async fn record_template_usage(&self, usage: &TemplateUsage) -> DataStoreResult<TemplateUsage> {
+        let _ = usage;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "record_template_usage not implemented".to_string(),
+        })
+    }
+
+    /// Gets template usage analytics
+    async fn get_template_usage(
+        &self,
+        template_id: &Uuid,
+        limit: Option<usize>,
+    ) -> DataStoreResult<Vec<TemplateUsage>> {
+        let _ = (template_id, limit);
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_usage not implemented".to_string(),
+        })
+    }
+
+    /// Gets template usage statistics
+    async fn get_template_usage_stats(
+        &self,
+        template_id: &Uuid,
+    ) -> DataStoreResult<HashMap<String, serde_json::Value>> {
+        let _ = template_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_template_usage_stats not implemented".to_string(),
+        })
     }
 }
 
@@ -1309,14 +1526,14 @@ pub mod csv {
 /// SQLite-based DataStore implementation using SeaORM
 pub mod sqlite {
     use super::*;
-    use sea_orm::{
-        ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, 
-        DatabaseTransaction, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, 
-        QuerySelect, Set, TransactionTrait,
-    };
-    use crate::entities::{nodes, links, locations};
+    use crate::entities::{links, locations, nodes};
     use crate::models::{DeviceRole, Lifecycle, Vendor};
     use chrono::Utc;
+    use sea_orm::{
+        ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection,
+        DatabaseTransaction, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
+        Set, TransactionTrait,
+    };
     use std::time::Duration;
 
     /// SQLite-based DataStore implementation
@@ -1326,24 +1543,31 @@ pub mod sqlite {
 
     /// Helper function to convert SeaORM link entity to our Link model
     fn entity_to_link(entity: links::Model) -> DataStoreResult<Link> {
-        let id = entity.id.parse::<Uuid>()
+        let id = entity
+            .id
+            .parse::<Uuid>()
             .map_err(|e| DataStoreError::ValidationError {
                 message: format!("Invalid UUID: {}", e),
             })?;
 
-        let node_a_id = entity.node_a_id.parse::<Uuid>()
-            .map_err(|e| DataStoreError::ValidationError {
-                message: format!("Invalid node A UUID: {}", e),
-            })?;
-
-        let node_z_id = if let Some(node_b_id_str) = entity.node_b_id {
-            Some(node_b_id_str.parse::<Uuid>()
+        let node_a_id =
+            entity
+                .node_a_id
+                .parse::<Uuid>()
                 .map_err(|e| DataStoreError::ValidationError {
-                    message: format!("Invalid node B UUID: {}", e),
+                    message: format!("Invalid node A UUID: {}", e),
+                })?;
+
+        let node_z_id =
+            if let Some(node_b_id_str) = entity.node_b_id {
+                Some(node_b_id_str.parse::<Uuid>().map_err(|e| {
+                    DataStoreError::ValidationError {
+                        message: format!("Invalid node B UUID: {}", e),
+                    }
                 })?)
-        } else {
-            None
-        };
+            } else {
+                None
+            };
 
         let custom_data = if let Some(ref data_str) = entity.custom_data {
             serde_json::from_str(data_str).unwrap_or_default()
@@ -1368,19 +1592,23 @@ pub mod sqlite {
 
     /// Helper function to convert SeaORM location entity to our Location model
     fn entity_to_location(entity: locations::Model) -> DataStoreResult<Location> {
-        let id = entity.id.parse::<Uuid>()
+        let id = entity
+            .id
+            .parse::<Uuid>()
             .map_err(|e| DataStoreError::ValidationError {
                 message: format!("Invalid UUID: {}", e),
             })?;
 
-        let parent_id = if let Some(parent_id_str) = entity.parent_id {
-            Some(parent_id_str.parse::<Uuid>()
-                .map_err(|e| DataStoreError::ValidationError {
-                    message: format!("Invalid parent UUID: {}", e),
+        let parent_id =
+            if let Some(parent_id_str) = entity.parent_id {
+                Some(parent_id_str.parse::<Uuid>().map_err(|e| {
+                    DataStoreError::ValidationError {
+                        message: format!("Invalid parent UUID: {}", e),
+                    }
                 })?)
-        } else {
-            None
-        };
+            } else {
+                None
+            };
 
         let custom_data = if let Some(ref data_str) = entity.custom_data {
             serde_json::from_str(data_str).unwrap_or_default()
@@ -1402,40 +1630,57 @@ pub mod sqlite {
 
     /// Helper function to convert SeaORM node entity to our Node model
     fn entity_to_node(entity: nodes::Model) -> DataStoreResult<Node> {
-        let vendor = entity.vendor.parse::<Vendor>()
-            .map_err(|e| DataStoreError::ValidationError {
-                message: format!("Invalid vendor: {}", e),
-            })?;
+        let vendor =
+            entity
+                .vendor
+                .parse::<Vendor>()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid vendor: {}", e),
+                })?;
 
-        let role = entity.role.parse::<DeviceRole>()
-            .map_err(|e| DataStoreError::ValidationError {
-                message: format!("Invalid role: {}", e),
-            })?;
+        let role =
+            entity
+                .role
+                .parse::<DeviceRole>()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid role: {}", e),
+                })?;
 
-        let lifecycle = entity.lifecycle.parse::<Lifecycle>()
-            .map_err(|e| DataStoreError::ValidationError {
-                message: format!("Invalid lifecycle: {}", e),
-            })?;
+        let lifecycle =
+            entity
+                .lifecycle
+                .parse::<Lifecycle>()
+                .map_err(|e| DataStoreError::ValidationError {
+                    message: format!("Invalid lifecycle: {}", e),
+                })?;
 
-        let id = entity.id.parse::<Uuid>()
+        let id = entity
+            .id
+            .parse::<Uuid>()
             .map_err(|e| DataStoreError::ValidationError {
                 message: format!("Invalid UUID: {}", e),
             })?;
 
         let location_id = if let Some(loc_id_str) = entity.location_id {
-            Some(loc_id_str.parse::<Uuid>()
-                .map_err(|e| DataStoreError::ValidationError {
-                    message: format!("Invalid location UUID: {}", e),
-                })?)
+            Some(
+                loc_id_str
+                    .parse::<Uuid>()
+                    .map_err(|e| DataStoreError::ValidationError {
+                        message: format!("Invalid location UUID: {}", e),
+                    })?,
+            )
         } else {
             None
         };
 
         let management_ip = if let Some(ip_str) = entity.management_ip {
-            Some(ip_str.parse()
-                .map_err(|e| DataStoreError::ValidationError {
-                    message: format!("Invalid IP address: {}", e),
-                })?)
+            Some(
+                ip_str
+                    .parse()
+                    .map_err(|e| DataStoreError::ValidationError {
+                        message: format!("Invalid IP address: {}", e),
+                    })?,
+            )
         } else {
             None
         };
@@ -1575,7 +1820,9 @@ pub mod sqlite {
                 location_id: Set(node.location_id.map(|id| id.to_string())),
                 management_ip: Set(node.management_ip.map(|ip| ip.to_string())),
                 description: Set(None), // Not used in Node model yet
-                custom_data: Set(Some(serde_json::to_string(&node.custom_data).unwrap_or_default())),
+                custom_data: Set(Some(
+                    serde_json::to_string(&node.custom_data).unwrap_or_default(),
+                )),
                 created_at: Set(Utc::now().to_rfc3339()),
                 updated_at: Set(Utc::now().to_rfc3339()),
             };
@@ -1588,10 +1835,12 @@ pub mod sqlite {
                 })?;
 
             // Convert back to Node model
-            self.get_node(&node.id).await?.ok_or_else(|| DataStoreError::NotFound {
-                entity_type: "Node".to_string(),
-                id: node.id.to_string(),
-            })
+            self.get_node(&node.id)
+                .await?
+                .ok_or_else(|| DataStoreError::NotFound {
+                    entity_type: "Node".to_string(),
+                    id: node.id.to_string(),
+                })
         }
 
         async fn get_node(&self, id: &Uuid) -> DataStoreResult<Option<Node>> {
@@ -1618,37 +1867,47 @@ pub mod sqlite {
                         FilterValue::String(s) => {
                             query = query.filter(nodes::Column::Name.contains(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Name filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Name filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "vendor" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(nodes::Column::Vendor.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Vendor filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Vendor filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "role" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(nodes::Column::Role.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Role filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Role filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "lifecycle" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(nodes::Column::Lifecycle.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Lifecycle filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Lifecycle filter must be a string".to_string(),
+                            });
+                        }
                     },
-                    _ => return Err(DataStoreError::ValidationError {
-                        message: format!("Unsupported filter field: {}", filter.field),
-                    }),
+                    _ => {
+                        return Err(DataStoreError::ValidationError {
+                            message: format!("Unsupported filter field: {}", filter.field),
+                        });
+                    }
                 }
             }
 
@@ -1663,36 +1922,47 @@ pub mod sqlite {
                     }
                     "created_at" => {
                         query = match sort.direction {
-                            SortDirection::Ascending => query.order_by_asc(nodes::Column::CreatedAt),
-                            SortDirection::Descending => query.order_by_desc(nodes::Column::CreatedAt),
+                            SortDirection::Ascending => {
+                                query.order_by_asc(nodes::Column::CreatedAt)
+                            }
+                            SortDirection::Descending => {
+                                query.order_by_desc(nodes::Column::CreatedAt)
+                            }
                         };
                     }
-                    _ => return Err(DataStoreError::ValidationError {
-                        message: format!("Unsupported sort field: {}", sort.field),
-                    }),
+                    _ => {
+                        return Err(DataStoreError::ValidationError {
+                            message: format!("Unsupported sort field: {}", sort.field),
+                        });
+                    }
                 }
             }
 
             // Get total count
-            let total_count = query.clone()
-                .count(&self.db)
-                .await
-                .map_err(|e| DataStoreError::InternalError {
-                    message: format!("Failed to count nodes: {}", e),
-                })?;
+            let total_count =
+                query
+                    .clone()
+                    .count(&self.db)
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: format!("Failed to count nodes: {}", e),
+                    })?;
 
             // Apply pagination
             if let Some(pagination) = &options.pagination {
-                query = query.offset(pagination.offset as u64).limit(pagination.limit as u64);
+                query = query
+                    .offset(pagination.offset as u64)
+                    .limit(pagination.limit as u64);
             }
 
             // Execute query
-            let entities = query
-                .all(&self.db)
-                .await
-                .map_err(|e| DataStoreError::InternalError {
-                    message: format!("Failed to query nodes: {}", e),
-                })?;
+            let entities =
+                query
+                    .all(&self.db)
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: format!("Failed to query nodes: {}", e),
+                    })?;
 
             // Convert entities to Node models
             let mut nodes = Vec::new();
@@ -1700,7 +1970,11 @@ pub mod sqlite {
                 nodes.push(entity_to_node(entity)?);
             }
 
-            Ok(PagedResult::new(nodes, total_count as usize, options.pagination.as_ref()))
+            Ok(PagedResult::new(
+                nodes,
+                total_count as usize,
+                options.pagination.as_ref(),
+            ))
         }
 
         async fn update_node(&self, node: &Node) -> DataStoreResult<Node> {
@@ -1718,7 +1992,9 @@ pub mod sqlite {
                 location_id: Set(node.location_id.map(|id| id.to_string())),
                 management_ip: Set(node.management_ip.map(|ip| ip.to_string())),
                 description: Set(None), // Not used in Node model yet
-                custom_data: Set(Some(serde_json::to_string(&node.custom_data).unwrap_or_default())),
+                custom_data: Set(Some(
+                    serde_json::to_string(&node.custom_data).unwrap_or_default(),
+                )),
                 created_at: Set(Utc::now().to_rfc3339()), // This should ideally preserve original
                 updated_at: Set(Utc::now().to_rfc3339()),
             };
@@ -1730,10 +2006,12 @@ pub mod sqlite {
                     message: format!("Failed to update node: {}", e),
                 })?;
 
-            self.get_node(&node.id).await?.ok_or_else(|| DataStoreError::NotFound {
-                entity_type: "Node".to_string(),
-                id: node.id.to_string(),
-            })
+            self.get_node(&node.id)
+                .await?
+                .ok_or_else(|| DataStoreError::NotFound {
+                    entity_type: "Node".to_string(),
+                    id: node.id.to_string(),
+                })
         }
 
         async fn delete_node(&self, id: &Uuid) -> DataStoreResult<()> {
@@ -1800,9 +2078,11 @@ pub mod sqlite {
                 utilization: Set(None), // Not in Link model yet
                 is_internet_circuit: Set(if link.is_internet_circuit { 1 } else { 0 }),
                 circuit_id: Set(None), // Not in Link model yet
-                provider: Set(None), // Not in Link model yet
+                provider: Set(None),   // Not in Link model yet
                 description: Set(link.description.clone()),
-                custom_data: Set(Some(serde_json::to_string(&link.custom_data).unwrap_or_default())),
+                custom_data: Set(Some(
+                    serde_json::to_string(&link.custom_data).unwrap_or_default(),
+                )),
                 created_at: Set(Utc::now().to_rfc3339()),
                 updated_at: Set(Utc::now().to_rfc3339()),
             };
@@ -1814,10 +2094,12 @@ pub mod sqlite {
                     message: format!("Failed to create link: {}", e),
                 })?;
 
-            self.get_link(&link.id).await?.ok_or_else(|| DataStoreError::NotFound {
-                entity_type: "Link".to_string(),
-                id: link.id.to_string(),
-            })
+            self.get_link(&link.id)
+                .await?
+                .ok_or_else(|| DataStoreError::NotFound {
+                    entity_type: "Link".to_string(),
+                    id: link.id.to_string(),
+                })
         }
 
         async fn get_link(&self, id: &Uuid) -> DataStoreResult<Option<Link>> {
@@ -1844,29 +2126,37 @@ pub mod sqlite {
                         FilterValue::String(s) => {
                             query = query.filter(links::Column::Name.contains(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Name filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Name filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "node_a_id" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(links::Column::NodeAId.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Node A ID filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Node A ID filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "node_b_id" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(links::Column::NodeBId.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Node B ID filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Node B ID filter must be a string".to_string(),
+                            });
+                        }
                     },
-                    _ => return Err(DataStoreError::ValidationError {
-                        message: format!("Unsupported filter field: {}", filter.field),
-                    }),
+                    _ => {
+                        return Err(DataStoreError::ValidationError {
+                            message: format!("Unsupported filter field: {}", filter.field),
+                        });
+                    }
                 }
             }
 
@@ -1881,36 +2171,47 @@ pub mod sqlite {
                     }
                     "created_at" => {
                         query = match sort.direction {
-                            SortDirection::Ascending => query.order_by_asc(links::Column::CreatedAt),
-                            SortDirection::Descending => query.order_by_desc(links::Column::CreatedAt),
+                            SortDirection::Ascending => {
+                                query.order_by_asc(links::Column::CreatedAt)
+                            }
+                            SortDirection::Descending => {
+                                query.order_by_desc(links::Column::CreatedAt)
+                            }
                         };
                     }
-                    _ => return Err(DataStoreError::ValidationError {
-                        message: format!("Unsupported sort field: {}", sort.field),
-                    }),
+                    _ => {
+                        return Err(DataStoreError::ValidationError {
+                            message: format!("Unsupported sort field: {}", sort.field),
+                        });
+                    }
                 }
             }
 
             // Get total count
-            let total_count = query.clone()
-                .count(&self.db)
-                .await
-                .map_err(|e| DataStoreError::InternalError {
-                    message: format!("Failed to count links: {}", e),
-                })?;
+            let total_count =
+                query
+                    .clone()
+                    .count(&self.db)
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: format!("Failed to count links: {}", e),
+                    })?;
 
             // Apply pagination
             if let Some(pagination) = &options.pagination {
-                query = query.offset(pagination.offset as u64).limit(pagination.limit as u64);
+                query = query
+                    .offset(pagination.offset as u64)
+                    .limit(pagination.limit as u64);
             }
 
             // Execute query
-            let entities = query
-                .all(&self.db)
-                .await
-                .map_err(|e| DataStoreError::InternalError {
-                    message: format!("Failed to query links: {}", e),
-                })?;
+            let entities =
+                query
+                    .all(&self.db)
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: format!("Failed to query links: {}", e),
+                    })?;
 
             // Convert entities to Link models
             let mut links = Vec::new();
@@ -1918,7 +2219,11 @@ pub mod sqlite {
                 links.push(entity_to_link(entity)?);
             }
 
-            Ok(PagedResult::new(links, total_count as usize, options.pagination.as_ref()))
+            Ok(PagedResult::new(
+                links,
+                total_count as usize,
+                options.pagination.as_ref(),
+            ))
         }
 
         async fn update_link(&self, link: &Link) -> DataStoreResult<Link> {
@@ -1933,9 +2238,11 @@ pub mod sqlite {
                 utilization: Set(None), // Not in Link model yet
                 is_internet_circuit: Set(if link.is_internet_circuit { 1 } else { 0 }),
                 circuit_id: Set(None), // Not in Link model yet
-                provider: Set(None), // Not in Link model yet
+                provider: Set(None),   // Not in Link model yet
                 description: Set(link.description.clone()),
-                custom_data: Set(Some(serde_json::to_string(&link.custom_data).unwrap_or_default())),
+                custom_data: Set(Some(
+                    serde_json::to_string(&link.custom_data).unwrap_or_default(),
+                )),
                 created_at: Set(Utc::now().to_rfc3339()), // This should ideally preserve original
                 updated_at: Set(Utc::now().to_rfc3339()),
             };
@@ -1947,10 +2254,12 @@ pub mod sqlite {
                     message: format!("Failed to update link: {}", e),
                 })?;
 
-            self.get_link(&link.id).await?.ok_or_else(|| DataStoreError::NotFound {
-                entity_type: "Link".to_string(),
-                id: link.id.to_string(),
-            })
+            self.get_link(&link.id)
+                .await?
+                .ok_or_else(|| DataStoreError::NotFound {
+                    entity_type: "Link".to_string(),
+                    id: link.id.to_string(),
+                })
         }
 
         async fn delete_link(&self, id: &Uuid) -> DataStoreResult<()> {
@@ -1974,8 +2283,9 @@ pub mod sqlite {
         async fn get_links_for_node(&self, node_id: &Uuid) -> DataStoreResult<Vec<Link>> {
             let entities = links::Entity::find()
                 .filter(
-                    links::Column::NodeAId.eq(node_id.to_string())
-                        .or(links::Column::NodeBId.eq(node_id.to_string()))
+                    links::Column::NodeAId
+                        .eq(node_id.to_string())
+                        .or(links::Column::NodeBId.eq(node_id.to_string())),
                 )
                 .all(&self.db)
                 .await
@@ -1998,13 +2308,12 @@ pub mod sqlite {
         ) -> DataStoreResult<Vec<Link>> {
             let entities = links::Entity::find()
                 .filter(
-                    (
-                        links::Column::NodeAId.eq(first_node_id.to_string())
-                            .and(links::Column::NodeBId.eq(second_node_id.to_string()))
-                    ).or(
-                        links::Column::NodeAId.eq(second_node_id.to_string())
-                            .and(links::Column::NodeBId.eq(first_node_id.to_string()))
-                    )
+                    (links::Column::NodeAId
+                        .eq(first_node_id.to_string())
+                        .and(links::Column::NodeBId.eq(second_node_id.to_string())))
+                    .or(links::Column::NodeAId
+                        .eq(second_node_id.to_string())
+                        .and(links::Column::NodeBId.eq(first_node_id.to_string()))),
                 )
                 .all(&self.db)
                 .await
@@ -2030,7 +2339,9 @@ pub mod sqlite {
                 description: Set(location.description.clone()),
                 address: Set(location.address.clone()),
                 coordinates: Set(None), // Not in Location model yet
-                custom_data: Set(Some(serde_json::to_string(&location.custom_data).unwrap_or_default())),
+                custom_data: Set(Some(
+                    serde_json::to_string(&location.custom_data).unwrap_or_default(),
+                )),
                 created_at: Set(Utc::now().to_rfc3339()),
                 updated_at: Set(Utc::now().to_rfc3339()),
             };
@@ -2042,10 +2353,12 @@ pub mod sqlite {
                     message: format!("Failed to create location: {}", e),
                 })?;
 
-            self.get_location(&location.id).await?.ok_or_else(|| DataStoreError::NotFound {
-                entity_type: "Location".to_string(),
-                id: location.id.to_string(),
-            })
+            self.get_location(&location.id)
+                .await?
+                .ok_or_else(|| DataStoreError::NotFound {
+                    entity_type: "Location".to_string(),
+                    id: location.id.to_string(),
+                })
         }
 
         async fn get_location(&self, id: &Uuid) -> DataStoreResult<Option<Location>> {
@@ -2075,29 +2388,37 @@ pub mod sqlite {
                         FilterValue::String(s) => {
                             query = query.filter(locations::Column::Name.contains(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Name filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Name filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "location_type" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(locations::Column::LocationType.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Location type filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Location type filter must be a string".to_string(),
+                            });
+                        }
                     },
                     "parent_id" => match &filter.value {
                         FilterValue::String(s) => {
                             query = query.filter(locations::Column::ParentId.eq(s));
                         }
-                        _ => return Err(DataStoreError::ValidationError {
-                            message: "Parent ID filter must be a string".to_string(),
-                        }),
+                        _ => {
+                            return Err(DataStoreError::ValidationError {
+                                message: "Parent ID filter must be a string".to_string(),
+                            });
+                        }
                     },
-                    _ => return Err(DataStoreError::ValidationError {
-                        message: format!("Unsupported filter field: {}", filter.field),
-                    }),
+                    _ => {
+                        return Err(DataStoreError::ValidationError {
+                            message: format!("Unsupported filter field: {}", filter.field),
+                        });
+                    }
                 }
             }
 
@@ -2107,47 +2428,62 @@ pub mod sqlite {
                     "name" => {
                         query = match sort.direction {
                             SortDirection::Ascending => query.order_by_asc(locations::Column::Name),
-                            SortDirection::Descending => query.order_by_desc(locations::Column::Name),
+                            SortDirection::Descending => {
+                                query.order_by_desc(locations::Column::Name)
+                            }
                         };
                     }
                     "path" => {
                         query = match sort.direction {
                             SortDirection::Ascending => query.order_by_asc(locations::Column::Path),
-                            SortDirection::Descending => query.order_by_desc(locations::Column::Path),
+                            SortDirection::Descending => {
+                                query.order_by_desc(locations::Column::Path)
+                            }
                         };
                     }
                     "created_at" => {
                         query = match sort.direction {
-                            SortDirection::Ascending => query.order_by_asc(locations::Column::CreatedAt),
-                            SortDirection::Descending => query.order_by_desc(locations::Column::CreatedAt),
+                            SortDirection::Ascending => {
+                                query.order_by_asc(locations::Column::CreatedAt)
+                            }
+                            SortDirection::Descending => {
+                                query.order_by_desc(locations::Column::CreatedAt)
+                            }
                         };
                     }
-                    _ => return Err(DataStoreError::ValidationError {
-                        message: format!("Unsupported sort field: {}", sort.field),
-                    }),
+                    _ => {
+                        return Err(DataStoreError::ValidationError {
+                            message: format!("Unsupported sort field: {}", sort.field),
+                        });
+                    }
                 }
             }
 
             // Get total count
-            let total_count = query.clone()
-                .count(&self.db)
-                .await
-                .map_err(|e| DataStoreError::InternalError {
-                    message: format!("Failed to count locations: {}", e),
-                })?;
+            let total_count =
+                query
+                    .clone()
+                    .count(&self.db)
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: format!("Failed to count locations: {}", e),
+                    })?;
 
             // Apply pagination
             if let Some(pagination) = &options.pagination {
-                query = query.offset(pagination.offset as u64).limit(pagination.limit as u64);
+                query = query
+                    .offset(pagination.offset as u64)
+                    .limit(pagination.limit as u64);
             }
 
             // Execute query
-            let entities = query
-                .all(&self.db)
-                .await
-                .map_err(|e| DataStoreError::InternalError {
-                    message: format!("Failed to query locations: {}", e),
-                })?;
+            let entities =
+                query
+                    .all(&self.db)
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: format!("Failed to query locations: {}", e),
+                    })?;
 
             // Convert entities to Location models
             let mut locations = Vec::new();
@@ -2155,7 +2491,11 @@ pub mod sqlite {
                 locations.push(entity_to_location(entity)?);
             }
 
-            Ok(PagedResult::new(locations, total_count as usize, options.pagination.as_ref()))
+            Ok(PagedResult::new(
+                locations,
+                total_count as usize,
+                options.pagination.as_ref(),
+            ))
         }
 
         async fn update_location(&self, location: &Location) -> DataStoreResult<Location> {
@@ -2168,7 +2508,9 @@ pub mod sqlite {
                 description: Set(location.description.clone()),
                 address: Set(location.address.clone()),
                 coordinates: Set(None), // Not in Location model yet
-                custom_data: Set(Some(serde_json::to_string(&location.custom_data).unwrap_or_default())),
+                custom_data: Set(Some(
+                    serde_json::to_string(&location.custom_data).unwrap_or_default(),
+                )),
                 created_at: Set(Utc::now().to_rfc3339()), // This should ideally preserve original
                 updated_at: Set(Utc::now().to_rfc3339()),
             };
@@ -2180,10 +2522,12 @@ pub mod sqlite {
                     message: format!("Failed to update location: {}", e),
                 })?;
 
-            self.get_location(&location.id).await?.ok_or_else(|| DataStoreError::NotFound {
-                entity_type: "Location".to_string(),
-                id: location.id.to_string(),
-            })
+            self.get_location(&location.id)
+                .await?
+                .ok_or_else(|| DataStoreError::NotFound {
+                    entity_type: "Location".to_string(),
+                    id: location.id.to_string(),
+                })
         }
 
         async fn delete_location(&self, id: &Uuid) -> DataStoreResult<()> {

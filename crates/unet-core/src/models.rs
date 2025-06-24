@@ -1,6 +1,7 @@
 //! Data models for μNet Core
 
 pub mod derived;
+pub mod template;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

@@ -73,6 +73,12 @@ pub mod prelude {
         InterfaceStatus, NodeStatus, PerformanceMetrics, SystemInfo,
     };
 
+    // Template models
+    pub use crate::models::template::{
+        Template, TemplateAssignment, TemplateRenderRequest, TemplateRenderResult, TemplateUsage,
+        TemplateVersion,
+    };
+
     // DataStore trait and common types
     pub use crate::datastore::{
         BatchOperation,
@@ -110,5 +116,21 @@ pub mod prelude {
     // Policy integration types
     pub use crate::policy_integration::{
         DefaultPolicyEvaluationEngine, PolicyEvaluationEngine, PolicyService,
+    };
+
+    // Template testing framework
+    pub use crate::template::{
+        IntegrationTestResult, PerformanceTestResult, RegressionTestResult,
+        TemplateIntegrationTest, TemplatePerformanceTest, TemplateRegressionTest,
+        TemplateTestFramework, TemplateUnitTest, TestFrameworkConfig, TestRegistry,
+        TestSuiteResult, TestSummary, UnitTestResult,
+    };
+
+    // Template quality analysis
+    pub use crate::template::{
+        DirectoryQualityReport, DirectoryQualitySummary, QualityAnalysisConfig,
+        TemplateDocumentation, TemplateLintingResults, TemplatePerformanceAnalysis,
+        TemplateQualityAnalyzer, TemplateQualityReport, TemplateSecurityScan, TemplateVariable,
+        UsageExample,
     };
 }
