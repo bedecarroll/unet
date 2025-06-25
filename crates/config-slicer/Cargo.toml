@@ -27,6 +27,7 @@ thiserror = { workspace = true }
 
 # CLI parsing
 clap = { workspace = true }
+clap_complete = { workspace = true }
 
 # Configuration diffing
 similar = { workspace = true }
@@ -40,6 +41,24 @@ tracing-subscriber = { workspace = true }
 
 # File system utilities
 walkdir = { workspace = true }
+
+# Time and date handling
+chrono = { workspace = true }
+
+# Parallel processing
+rayon = { workspace = true }
+
+# Progress bars
+indicatif = { workspace = true }
+
+# Glob pattern matching for batch operations
+glob = { workspace = true }
+
+# UUID generation for workflow tracking
+uuid = { workspace = true }
+
+# Async runtime support
+tokio = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = { workspace = true }

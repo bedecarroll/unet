@@ -19,6 +19,9 @@ path = "src/main.rs"
 # Core library
 unet-core = { path = "../unet-core" }
 
+# Config slicer library
+config-slicer = { path = "../config-slicer" }
+
 # Database migrations
 migration = { path = "../../migrations" }
 sea-orm = { workspace = true }
