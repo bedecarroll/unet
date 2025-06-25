@@ -51,6 +51,7 @@ regex = { workspace = true }
 
 # Configuration diffing
 similar = { workspace = true }
+config-slicer = { path = "../config-slicer" }
 
 # Logging and tracing
 tracing = { workspace = true }
@@ -58,6 +59,10 @@ tracing-subscriber = { workspace = true }
 
 # File system utilities
 walkdir = { workspace = true }
+
+# HTTP client and async utilities for live config
+futures = { workspace = true }
+reqwest = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

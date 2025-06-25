@@ -80,6 +80,9 @@ enum Commands {
     /// Template management commands
     #[command(subcommand)]
     Template(commands::template::TemplateCommands),
+    /// Configuration management commands
+    #[command(subcommand)]
+    Config(commands::config::ConfigCommands),
     /// Import data from fixtures or files
     Import(commands::import::ImportArgs),
     /// Export data to files
@@ -169,6 +172,9 @@ async fn main() -> Result<()> {
         }
         Commands::Template(template_cmd) => {
             commands::template::execute(template_cmd, datastore.as_ref(), cli.output).await
+        }
+        Commands::Config(config_cmd) => {
+            commands::config::execute(config_cmd, datastore.as_ref(), cli.output).await
         }
         Commands::Import(import_args) => {
             commands::import::execute(import_args, datastore.as_ref(), cli.output).await

@@ -25,6 +25,7 @@ categories = ["command-line-utilities", "network-programming", "config"]
 tokio = { version = "1.0", features = ["full"] }
 tokio-test = "0.4"
 async-trait = "0.1"
+futures = "0.3"
 
 # Serialization and data handling
 serde = { version = "1.0", features = ["derive"] }
@@ -49,10 +50,11 @@ sea-orm-migration = "0.12"
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-# reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 
 # CLI parsing
 clap = { version = "4.0", features = ["derive", "color", "suggestions"] }
+clap_complete = "4.0"
 
 # Template engine
 minijinja = { version = "1.0", features = ["json"] }
@@ -79,6 +81,9 @@ futures-util = "0.3"
 strum = "0.26"
 strum_macros = "0.26"
 ipnet = "2.9"
+rayon = "1.8"
+indicatif = "0.17"
+glob = "0.3"
 
 # Task scheduling
 tokio-cron-scheduler = "0.10"

@@ -12,11 +12,13 @@ This file contains milestones that have been completed and moved from TODO.md fo
 
 | # | Phase | Duration | Key Deliverables | Status | Completion Date |
 |---|-------|----------|------------------|--------|-----------------|
-| **0** | Project Setup | 1-2 days | Workspace, CI/CD, basic structure | ✅ **COMPLETE** | - |
-| **1** | Data Foundation | 5-8 days | Core models, DataStore trait, basic CRUD | ✅ **COMPLETE** | - |
-| **2** | SNMP Integration | 3-4 days | Polling, derived state tracking | ✅ **COMPLETE** | - |
-| **2.5** | Foundation Completion | 3-5 days | Complete CI/CD, CLI, API, missing infrastructure | ✅ **COMPLETE** | - |
-| **3** | Policy Engine | 6-9 days | DSL parser, evaluation engine | ✅ **COMPLETE** | - |
+| **0** | Project Setup | 1-2 days | Workspace, CI/CD, basic structure | ✅ **COMPLETE** | 2025-06-21 |
+| **1** | Data Foundation | 5-8 days | Core models, DataStore trait, basic CRUD | ✅ **COMPLETE** | 2025-06-21 |
+| **2** | SNMP Integration | 3-4 days | Polling, derived state tracking | ✅ **COMPLETE** | 2025-06-21 |
+| **2.5** | Foundation Completion | 3-5 days | Complete CI/CD, CLI, API, missing infrastructure | ✅ **COMPLETE** | 2025-06-23 |
+| **3** | Policy Engine | 6-9 days | DSL parser, evaluation engine | ✅ **COMPLETE** | 2025-06-23 |
+| **4** | Template System | 4-6 days | MiniJinja integration, rendering | ✅ **COMPLETE** | 2025-06-24 |
+| **5** | Config Diffing | 3-5 days | Config-slicer, diff workflows | ✅ **COMPLETE** | 2025-06-25 |
 
 ---
 ## ✅ Milestone 0: Project Foundation & Workspace Setup - **COMPLETED**
@@ -1452,6 +1454,307 @@ This file contains milestones that have been completed and moved from TODO.md fo
   - Production-ready error handling
 - **Production Readiness:** ✅ Ready for immediate deployment
 - **Next Phase:** Milestone 4 - Template Engine & Configuration Generation
+
+---
+
+## ✅ Milestone 4: Template Engine & Configuration Generation - **COMPLETED**
+
+> **Duration:** 4-6 days | **Team:** 1-2 Developers | **Risk:** Medium  
+> **Completed:** 2025-06-24 | **Status:** All acceptance criteria met
+> **Critical Path:** Foundation for configuration generation and template management
+
+### 4.1 MiniJinja Integration
+
+- [x] **M4.1.1** Template environment setup ✅ **COMPLETED**
+  - [x] Create MiniJinja environment with proper configuration ✅
+  - [x] Set up template loading from Git repositories ✅
+  - [x] Add template caching and hot-reloading ✅
+  - [x] Create template syntax validation ✅
+- [x] **M4.1.2** Custom filters and functions ✅ **COMPLETED**
+  - [x] Implement network-specific Jinja filters ✅
+  - [x] Add IP address manipulation filters (ip_network, ip_netmask, ip_wildcard) ✅
+  - [x] Create network calculation utilities (subnet_hosts, ip_increment, vlan_range, port_range) ✅
+  - [x] Add string formatting helpers for configs (indent, cisco_interface, juniper_interface, case conversion, mac_format) ✅
+- [x] **M4.1.3** Template security and sandboxing ✅ **COMPLETED**
+  - [x] Restrict template access to safe operations only ✅
+  - [x] Prevent file system access from templates ✅
+  - [x] Add template execution timeouts ✅
+  - [x] Create template security validation ✅
+
+### 4.2 Template-Match Header System
+
+- [x] **M4.2.1** Header specification and parsing ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Define template-match header syntax ✅
+    - [x] Create header parser with regex support ✅
+    - [x] Add hierarchical path matching ✅
+    - [x] Implement glob pattern support ✅
+  - **Status:** Complete template header parsing system implemented
+  - **Validation:** `cargo test template::header` passes (9 tests)
+  - **Notes:** Full pattern matching support (exact, regex, hierarchical, glob) with comprehensive validation
+- [x] **M4.2.2** Template scope management ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create template scope resolution ✅
+    - [x] Add template conflict detection ✅
+    - [x] Implement template ordering and priority ✅
+    - [x] Create template composition system ✅
+  - **Status:** Complete template scope management system implemented
+  - **Validation:** `cargo test template::scope` passes (15 tests)
+  - **Notes:** Full scope resolution, conflict detection, priority-based ordering, and template composition with comprehensive testing
+- [x] **M4.2.3** Configuration slice extraction ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Implement config section extraction ✅
+    - [x] Add vendor-specific config parsers ✅
+    - [x] Create hierarchical config understanding ✅
+    - [x] Add config syntax validation ✅
+  - **Status:** Complete configuration slice extraction system implemented
+  - **Validation:** `cargo test template::slice` passes (6 tests)
+  - **Notes:** Full vendor-specific parsers (Cisco, Juniper, Arista, Generic) with hierarchical config parsing, slice extraction, and syntax validation
+
+### 4.3 Rendering Pipeline
+
+- [x] **M4.3.1** Template rendering engine ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create template rendering orchestrator ✅
+    - [x] Add context preparation and validation ✅
+    - [x] Implement template error handling ✅
+    - [x] Create rendering result validation ✅
+  - **Status:** All deliverables implemented and tested
+  - **Validation:** 24 comprehensive unit tests passing, full integration with existing template system
+  - **Notes:** Comprehensive template rendering orchestrator with TemplateRenderer, TemplateContext, ContextValidator, OutputValidator, and detailed error handling. Includes timeout protection, output size validation, and extensible vendor-specific validation framework.
+- [x] **M4.3.2** Context preparation ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Build template context from node data ✅
+    - [x] Add derived state to template context ✅
+    - [x] Include custom_data in template context ✅
+    - [x] Create context validation and sanitization ✅
+  - **Status:** Complete ContextBuilder implementation with comprehensive data gathering
+  - **Validation:** 8 unit tests passing, including MockDataStore implementation
+  - **Notes:** Full context preparation system with node data, derived state, links, locations, custom_data integration, and variable injection. Template contexts can be built from any DataStore implementation with selective data inclusion controls.
+- [x] **M4.3.3** Output generation and formatting ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Generate vendor-specific configuration output ✅
+    - [x] Add configuration formatting and validation ✅ 
+    - [x] Create output post-processing ✅
+    - [x] Implement output caching and optimization ✅
+  - **Status:** Complete vendor-specific output formatting with comprehensive post-processing and caching
+  - **Validation:** All deliverables implemented - OutputFormatter with Cisco/Juniper/Arista/Generic formatters, comprehensive post-processors (section separators, whitespace normalization, interface validation, hierarchy validation, braces, timestamps), OutputCache with TTL and eviction, integrated into TemplateRenderer with RenderOptions
+  - **Notes:** Full implementation includes vendor-specific indentation, line endings, comment styles, post-processing pipeline, LRU cache with size limits and TTL, integration with template rendering pipeline with options for caching and formatting control
+
+### 4.4 Integration with Data Layer
+
+- [x] **M4.4.1** Template storage and management ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Add template metadata to database ✅
+    - [x] Create template assignment tracking ✅
+    - [x] Implement template version control ✅
+    - [x] Add template usage analytics ✅
+  - **Status:** Complete template storage system implemented
+  - **Validation:** Database migration created and tested, all models compile
+  - **Notes:** Full template metadata storage with SeaORM entities, business models, and DataStore trait operations. Includes template assignments, version control, and usage analytics with proper relationships and validation.
+- [x] **M4.4.2** API endpoints for templates ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create template CRUD endpoints ✅
+    - [x] Add template rendering endpoints ✅
+    - [x] Implement template validation endpoints ✅
+    - [x] Create template assignment management ✅
+  - **Status:** Complete template API endpoints implemented with full CRUD operations, template rendering, validation, and assignment management
+  - **Validation:** All handlers compile successfully and integrate with existing template system
+  - **Notes:** Full HTTP API implementation includes template CRUD operations, template rendering with context building, comprehensive template validation with syntax and security checks, and complete template assignment management with node/template relationships. All endpoints follow established patterns and include proper error handling, logging, and response formatting.
+- [x] **M4.4.3** CLI commands for templates ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Add `unet template render` command ✅
+    - [x] Create `unet template validate` command ✅
+    - [x] Implement template assignment commands ✅
+    - [x] Add template debugging utilities ✅
+  - **Status:** All template CLI commands implemented and functional
+  - **Validation:** `cargo build --package unet-cli` succeeds
+  - **Notes:** Complete template CLI interface with render, validate, assign, assignments, unassign, and debug commands. Integrates with existing template engine and provides comprehensive template management capabilities.
+
+### 4.5 Testing and Quality Assurance
+
+- [x] **M4.5.1** Template testing framework ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create template unit testing system ✅
+    - [x] Add template integration tests ✅
+    - [x] Implement template output validation ✅
+    - [x] Create template regression testing ✅
+  - **Status:** Complete template testing framework implemented
+  - **Validation:** All framework tests pass, comprehensive testing utilities created
+  - **Notes:** Full testing framework with unit tests, integration tests, regression tests, performance tests, test helpers, builders, scenarios, and quick-test utilities implemented
+- [x] **M4.5.2** Template quality tools ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Add template linting and validation ✅
+    - [x] Create template performance analysis ✅
+    - [x] Implement template security scanning ✅
+    - [x] Add template documentation generation ✅
+  - **Status:** Complete template quality analysis system implemented
+  - **Validation:** All quality tools functional with comprehensive analysis capabilities
+  - **Notes:** Full template quality analyzer with linting, performance analysis, security scanning, and documentation generation. Includes template best practices checking, naming conventions validation, performance anti-patterns detection, dangerous patterns scanning, sensitive data exposure risks, input validation issues, optimization suggestions, variable extraction, usage examples generation, and markdown documentation output.
+
+---
+
+## ✅ Milestone 5: Configuration Diffing & config-slicer - **COMPLETED**
+
+> **Duration:** 3-5 days | **Team:** 1-2 Developers | **Risk:** Medium  
+> **Completed:** 2025-06-25 | **Status:** All acceptance criteria met
+> **Critical Path:** Configuration analysis and comparison capabilities
+
+### 5.1 Config-Slicer Library Implementation
+
+- [x] **M5.1.1** Core parsing and slicing engine ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create hierarchical configuration parser ✅
+    - [x] Implement vendor-agnostic config understanding ✅
+    - [x] Add support for nested configuration blocks ✅
+    - [x] Create configuration tree traversal algorithms ✅
+  - **Status:** Complete hierarchical configuration parsing engine implemented
+  - **Validation:** All tests pass, comprehensive parsing and traversal capabilities working
+  - **Notes:** Full hierarchical parser with vendor-agnostic configuration understanding, context detection for interfaces/VLANs/routing protocols, nested block support, indentation detection, depth-first and breadth-first traversal algorithms, node finding with predicates, validation framework, and comprehensive test coverage. Supports Cisco, Juniper, Arista patterns and can be extended for other vendors.
+- [x] **M5.1.2** Vendor-specific parsers ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Implement Juniper JunOS config parser ✅
+    - [x] Add Cisco IOS/IOS-XE config parser ✅
+    - [x] Create Arista EOS config parser ✅
+    - [x] Add generic line-based config parser ✅
+    - [x] Create parser plugin architecture ✅
+  - **Status:** Complete vendor-specific parsing system implemented
+  - **Validation:** All tests pass (22 tests), comprehensive vendor support for Cisco, Juniper, Arista, and Generic
+  - **Notes:** Full vendor-specific parser implementation with plugin architecture, auto-detection capabilities, preprocessing/postprocessing for each vendor, extensive pattern matching, validation framework, and comprehensive test coverage. Supports Cisco interface normalization, Juniper brace-to-indent conversion, Arista-specific patterns, and generic INI-style configurations.
+- [x] **M5.1.3** Slice extraction algorithms ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Implement glob pattern matching for config paths ✅
+    - [x] Add regex-based section extraction ✅
+    - [x] Create hierarchical slice extraction ✅
+    - [x] Implement context-aware slicing ✅
+  - **Status:** Complete slice extraction system implemented
+  - **Validation:** All tests pass (43 tests), comprehensive slice extraction algorithms working
+  - **Notes:** Full implementation includes ConfigSlicer with pluggable algorithms (GlobExtractor, RegexExtractor, HierarchicalExtractor, ContextExtractor), comprehensive pattern matching (glob with wildcards, regex with captures, hierarchical paths with optional segments, context-aware filtering), SliceContext with filtering capabilities, PatternBuilder for easy pattern creation, and comprehensive test coverage with 43 passing tests
+- [x] **M5.1.4** Library API design ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create clean, type-safe API for config slicing ✅
+    - [x] Add error handling for malformed configs ✅
+    - [x] Implement streaming support for large configs ✅
+    - [x] Create configuration validation utilities ✅
+  - **Status:** All deliverables completed - comprehensive library API with clean interface, enhanced error handling, streaming support, and validation utilities
+  - **Validation:** `cargo check --package config-slicer` succeeds with warnings only
+  - **Notes:** Complete config-slicer library API with ConfigSlicerApi main interface, comprehensive error types with detailed context, StreamingProcessor for large files, and ConfigValidator with validation rules. Includes type-safe patterns, memory management, and vendor-specific support.
+
+### 5.2 Diff Engine Implementation
+
+- [x] **M5.2.1** Diff algorithm selection and implementation ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Integrate `similar` crate for text diffing ✅
+    - [x] Add structured diff for hierarchical configs ✅
+    - [x] Implement semantic diff understanding ✅
+    - [x] Create conflict resolution algorithms ✅
+  - **Status:** Complete diff engine implementation with text-based, hierarchical, and semantic diff algorithms
+  - **Validation:** All tests pass (9 diff-related tests), comprehensive functionality implemented
+  - **Notes:** Full diff engine with TextDiffer, HierarchicalDiffer, SemanticDiffer, ConflictResolver, and DiffEngine orchestrator. Includes comprehensive type system, conflict detection and resolution, and extensive test coverage.
+- [x] **M5.2.2** Diff visualization and formatting ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create colored terminal diff output ✅
+    - [x] Add side-by-side diff formatting ✅
+    - [x] Implement unified diff format ✅
+    - [x] Create HTML diff report generation ✅
+  - **Status:** Complete diff visualization system implemented with multiple output formats
+  - **Validation:** All tests pass (5 tests), comprehensive formatting capabilities working
+  - **Notes:** Full implementation includes ColoredTerminalFormatter with ANSI colors and line number support, SideBySideFormatter for comparing old vs new configurations, UnifiedFormatter for Git-style diff output, HtmlFormatter for rich web reports with CSS styling, DiffDisplay orchestrator with multiple output format support, DisplayOptions for customization, and comprehensive test coverage with 5 passing tests
+- [x] **M5.2.3** Diff analysis and reporting ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Add diff statistics and metrics ✅
+    - [x] Create impact analysis for changes ✅ 
+    - [x] Implement change categorization ✅
+    - [x] Add diff summarization capabilities ✅
+  - **Status:** Complete diff analysis system implemented with comprehensive statistics, impact analysis, categorization, and summarization
+  - **Validation:** All tests pass (7 analysis module tests), comprehensive functionality implemented
+  - **Notes:** Full implementation includes DiffAnalyzer with detailed statistics calculation, enhanced impact analysis with interface/routing/security change detection, multi-dimensional change categorization (by function, section, vendor, impact), comprehensive analysis summary with assessment, recommendations, validation steps, and deployment time estimation. Includes 7 passing tests covering all major functionality.
+
+### 5.3 CLI Tool Implementation
+
+- [x] **M5.3.1** Standalone config-slicer CLI ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create `config-slicer` binary with Clap ✅
+    - [x] Add command-line interface for slicing operations ✅
+    - [x] Implement file input/output handling ✅
+    - [x] Create shell completion and help ✅
+  - **Status:** Complete standalone CLI tool with comprehensive command interface
+  - **Validation:** `cargo build --package config-slicer --bin config-slicer` succeeds
+  - **Notes:** Full CLI implementation with slice, diff, validate, info, and completions commands. Supports multiple output formats (text, JSON, YAML), vendor hints, pattern types, and comprehensive help system.
+- [x] **M5.3.2** Integration with unet CLI ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Add `unet config diff` command ✅
+    - [x] Create `unet config slice` command ✅
+    - [x] Add `unet config validate` command ✅
+    - [x] Add `unet config info` command ✅
+    - [x] Implement comprehensive argument parsing and help ✅
+    - [x] Add diff output formatting options (colored, side-by-side, HTML, stats) ✅
+    - [x] Add slice pattern types (glob, regex, hierarchical) ✅
+    - [x] Add vendor hint support for all commands ✅
+    - [x] Integrate with existing CLI infrastructure ✅
+  - **Status:** Complete config-slicer integration with unet CLI accomplished
+  - **Validation:** `cargo build --package unet-cli` succeeds, all commands functional with comprehensive help
+  - **Notes:** Full integration includes diff, slice, validate, and info commands with all formatting options, pattern types, vendor hints, and output formats. CLI follows established patterns and includes proper error handling.
+- [x] **M5.3.3** Batch processing capabilities ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Add support for multiple file processing ✅
+    - [x] Create batch diff operations ✅
+    - [x] Implement parallel processing ✅
+    - [x] Add progress reporting for long operations ✅
+  - **Status:** Complete batch processing system implemented with comprehensive CLI commands, parallel processing using rayon, progress reporting with indicatif, and error handling
+  - **Validation:** `cargo build --package config-slicer --bin config-slicer` succeeds, all batch commands functional with comprehensive help
+  - **Notes:** Full implementation includes batch slice, diff, and validate commands with glob pattern support, directory traversal, parallel worker configuration, progress bars, error handling with continue-on-error option, and comprehensive output formats. Supports multiple file processing with automatic file discovery, file pairing for diffs, and summary report generation.
+
+### 5.4 Integration with Template System
+
+- [x] **M5.4.1** Template-driven slicing ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Extract slice patterns from template headers ✅
+    - [x] Validate slice extraction against templates ✅
+    - [x] Create template-config consistency checking ✅
+    - [x] Add automatic slice pattern generation ✅
+  - **Status:** Complete template-driven slicing system implemented with full integration between template engine and config-slicer library
+  - **Validation:** `cargo check --workspace` succeeds, all tests pass (12 driven_slicing module tests)
+  - **Notes:** Full implementation includes TemplateDrivenSlicer for extracting patterns from template headers, slice validation against template expectations, consistency checking between templates and configurations, automatic pattern generation from configuration analysis, and comprehensive CLI integration with extract-patterns, validate-slicing, check-consistency, and generate-patterns commands
+- [x] **M5.4.2** Live config integration ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create live config fetching mechanisms ✅
+    - [x] Add device connection management ✅
+    - [x] Implement secure config retrieval ✅
+    - [x] Create config caching and management ✅
+  - **Status:** Complete live configuration management system implemented with multi-protocol support, connection pooling, secure credentials, and intelligent caching
+  - **Validation:** `cargo check --package unet-core` succeeds with no errors
+  - **Notes:** Full implementation includes LiveConfigManager with SSH/SNMP/REST API/NETCONF protocol support, ConnectionManager with per-device connection pooling and semaphore-based limits, comprehensive DeviceCredentials enum with secure authentication methods, ConfigCache with TTL-based expiration and LRU eviction, vendor-specific configuration format detection, connection permit system for resource cleanup, and comprehensive error handling. All compilation errors resolved, system ready for live device configuration retrieval.
+- [x] **M5.4.3** Diff workflow orchestration ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Create end-to-end diff workflow ✅
+    - [x] Add diff result caching ✅
+    - [x] Implement diff history tracking ✅
+    - [x] Create diff approval workflows ✅
+  - **Status:** Complete workflow orchestration system implemented with full end-to-end diff workflows, caching with TTL and LRU eviction, comprehensive history tracking, and multi-level approval workflows
+  - **Validation:** All tests pass (5 workflow module tests), CLI commands functional, comprehensive functionality implemented
+  - **Notes:** Full implementation includes DiffWorkflowOrchestrator with complete workflow execution lifecycle, cached diff results with TTL-based expiration and size limits, workflow history tracking with detailed audit trails, approval workflows with priority levels and multi-user authorization, workflow status management (Computing/Completed/Failed/PendingApproval/Approved/Rejected/Archived), cache management with cleanup and statistics, comprehensive error handling with workflow-specific error types, CLI integration with workflow commands (execute/list/show/approve/reject/archive/history/cache), full async support with tokio runtime integration, and comprehensive test coverage with 5 passing tests
+
+### 5.5 Testing and Performance
+
+- [x] **M5.5.1** Comprehensive testing suite ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Unit tests for all parsing logic ✅
+    - [x] Integration tests with real config files ✅
+    - [x] Performance tests with large configurations ✅
+    - [x] Regression tests for parsing accuracy ✅
+  - **Status:** All comprehensive testing implemented with 96 passing tests (85 unit + 11 integration)
+  - **Validation:** `cargo test --package config-slicer --tests` passes
+  - **Notes:** Created extensive test suite with real configuration fixtures, performance benchmarks, and comprehensive integration tests covering all major functionality
+- [x] **M5.5.2** Performance optimization ✅ **COMPLETED**
+  - **Deliverables:**
+    - [x] Profile and optimize parsing performance ✅
+    - [x] Implement streaming for large files ✅
+    - [x] Add memory usage optimization ✅
+    - [x] Create benchmarking infrastructure ✅
+  - **Status:** Complete performance optimization implemented
+  - **Validation:** Comprehensive benchmark suite created with memory profiling, streaming processor functional, optimized parser with regex caching implemented
+  - **Notes:** Full performance optimization includes comprehensive benchmarking with criterion, memory profiling benchmarks, streaming processor for large files with configurable chunking and memory limits, optimized hierarchical parser with regex caching and string interning, performance monitoring utilities, and extensive test coverage
 
 ---
 
