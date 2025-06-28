@@ -1,0 +1,14 @@
+# Binary installations are handled by debian/rules
+# This file documents additional files to include
+
+# Example configuration files
+config.toml etc/unet/config.toml.example
+config-postgres.toml etc/unet/config-postgres.toml.example  
+config-load-balancer.toml etc/unet/config-load-balancer.toml.example
+
+# Documentation
+README.md usr/share/doc/unet/
+
+# Example policies and templates (if they exist)
+policies/* usr/share/unet/policies/
+templates/* usr/share/unet/templates/

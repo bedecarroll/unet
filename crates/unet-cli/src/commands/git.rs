@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::TimeZone;
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
 use unet_core::datastore::DataStore;
@@ -363,9 +364,21 @@ async fn execute_init(args: InitArgs, output_format: crate::OutputFormat) -> Res
         .repository
         .unwrap_or_else(|| std::env::current_dir().unwrap());
 
-    let git_client = GitClient::new();
-    // TODO: Implement init functionality - not available in GitClient
-    println!("Note: Git init functionality not yet implemented");
+    // Use git2 directly for repository initialization
+    let repo = if args.bare {
+        git2::Repository::init_bare(&repo_path)?
+    } else {
+        git2::Repository::init(&repo_path)?
+    };
+
+    // Set initial branch if specified
+    if args.branch != "main" {
+        let mut head = repo.head()?;
+        head.set_target(
+            git2::Oid::zero(),
+            &format!("Set initial branch to {}", args.branch),
+        )?;
+    }
 
     let result = serde_json::json!({
         "status": "success",
@@ -394,7 +407,7 @@ async fn execute_clone(args: CloneArgs, output_format: crate::OutputFormat) -> R
 
     println!("Cloning {} into {}...", args.url, target_dir.display());
 
-    let repo = git_client.clone_to_path(&args.url, &target_dir).await?;
+    let _repo = git_client.clone_to_path(&args.url, &target_dir).await?;
 
     let result = serde_json::json!({
         "status": "success",
@@ -409,18 +422,43 @@ async fn execute_clone(args: CloneArgs, output_format: crate::OutputFormat) -> R
 }
 
 async fn execute_config(args: ConfigArgs, output_format: crate::OutputFormat) -> Result<()> {
-    let git_client = GitClient::new();
+    // Open Git configuration
+    let mut config = if args.global {
+        git2::Config::open_default()?
+    } else if args.local {
+        let repo = git2::Repository::open(&std::env::current_dir()?)?;
+        repo.config()?
+    } else {
+        git2::Config::open_default()?
+    };
 
     let result = if args.list {
-        // List all configuration
+        // List common configuration items
+        let mut config_map = std::collections::HashMap::new();
+
+        // Try to get common config values
+        let common_keys = [
+            "user.name",
+            "user.email",
+            "core.editor",
+            "init.defaultBranch",
+            "push.default",
+        ];
+        for key in &common_keys {
+            if let Ok(value) = config.get_string(key) {
+                config_map.insert(key.to_string(), value);
+            }
+        }
+
         serde_json::json!({
             "status": "success",
-            "message": "Configuration listing not yet implemented",
-            "config": {}
+            "message": "Git configuration (common values)",
+            "config": config_map
         })
     } else if let Some(key) = args.key {
         if let Some(value) = args.value {
             // Set configuration
+            config.set_str(&key, &value)?;
             serde_json::json!({
                 "status": "success",
                 "message": format!("Set {} = {}", key, value),
@@ -429,6 +467,7 @@ async fn execute_config(args: ConfigArgs, output_format: crate::OutputFormat) ->
             })
         } else if args.unset {
             // Unset configuration
+            config.remove(&key)?;
             serde_json::json!({
                 "status": "success",
                 "message": format!("Unset {}", key),
@@ -436,11 +475,18 @@ async fn execute_config(args: ConfigArgs, output_format: crate::OutputFormat) ->
             })
         } else {
             // Get configuration
-            serde_json::json!({
-                "status": "success",
-                "message": format!("Configuration get not yet implemented"),
-                "key": key
-            })
+            match config.get_string(&key) {
+                Ok(value) => serde_json::json!({
+                    "status": "success",
+                    "key": key,
+                    "value": value
+                }),
+                Err(_) => serde_json::json!({
+                    "status": "error",
+                    "message": format!("Configuration key '{}' not found", key),
+                    "key": key
+                }),
+            }
         }
     } else {
         return Err(anyhow::anyhow!("Must specify --list or provide a key"));
@@ -484,9 +530,13 @@ async fn execute_branch(args: BranchArgs, output_format: crate::OutputFormat) ->
                 "branch": branch_name
             })
         } else if args.delete {
+            // Use git2 directly for branch deletion since it's not available in GitRepository
+            let git_repo = git2::Repository::open(&std::env::current_dir()?)?;
+            let mut branch = git_repo.find_branch(&branch_name, git2::BranchType::Local)?;
+            branch.delete()?;
             serde_json::json!({
                 "status": "success",
-                "message": format!("Branch deletion not yet implemented"),
+                "message": format!("Deleted branch '{}'", branch_name),
                 "branch": branch_name
             })
         } else if args.switch {
@@ -514,34 +564,62 @@ async fn execute_history(args: HistoryArgs, output_format: crate::OutputFormat) 
         .repository
         .unwrap_or_else(|| std::env::current_dir().unwrap());
 
-    let git_client = GitClient::new();
-    let repo = git_client.open_repository(&repo_path).await?;
+    // Use git2 directly to get commit history
+    let git_repo = git2::Repository::open(&repo_path)?;
+    let mut revwalk = git_repo.revwalk()?;
+    revwalk.push_head()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
 
-    // Get commit history (using status for now as get_commit_history may not exist)
-    let status = repo.status()?;
-    let commits = vec![status.latest_commit]; // Limited implementation for now
+    let mut commits = Vec::new();
+    let mut count = 0;
+
+    for commit_oid in revwalk {
+        if count >= args.limit {
+            break;
+        }
+
+        let oid = commit_oid?;
+        let commit = git_repo.find_commit(oid)?;
+
+        // Apply filters
+        if let Some(ref author_filter) = args.author {
+            if let Some(author) = commit.author().name() {
+                if !author.contains(author_filter) {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        // Convert commit to our format
+        let commit_info = if args.oneline {
+            serde_json::json!({
+                "hash": &oid.to_string()[..8],
+                "message": commit.message().unwrap_or("").lines().next().unwrap_or("")
+            })
+        } else {
+            serde_json::json!({
+                "hash": oid.to_string(),
+                "message": commit.message().unwrap_or(""),
+                "author_name": commit.author().name().unwrap_or(""),
+                "author_email": commit.author().email().unwrap_or(""),
+                "timestamp": chrono::Utc.timestamp_opt(commit.time().seconds(), 0)
+                    .single()
+                    .unwrap_or_else(chrono::Utc::now)
+            })
+        };
+
+        commits.push(commit_info);
+        count += 1;
+    }
 
     let history = serde_json::json!({
         "status": "success",
         "repository": repo_path.display().to_string(),
         "limit": args.limit,
         "commit_count": commits.len(),
-        "commits": commits.iter().map(|commit| {
-            if args.oneline {
-                serde_json::json!({
-                    "hash": &commit.hash[..8],
-                    "message": commit.message.lines().next().unwrap_or("")
-                })
-            } else {
-                serde_json::json!({
-                    "hash": commit.hash,
-                    "message": commit.message,
-                    "author_name": commit.author_name,
-                    "author_email": commit.author_email,
-                    "timestamp": commit.timestamp
-                })
-            }
-        }).collect::<Vec<_>>()
+        "commits": commits
     });
 
     crate::commands::print_output(&history, output_format)?;
@@ -559,17 +637,32 @@ async fn execute_push(args: PushArgs, output_format: crate::OutputFormat) -> Res
             .unwrap_or_else(|_| "main".to_string())
     });
 
-    // TODO: Implement actual push once remote operations are available
-    let result = serde_json::json!({
-        "status": "success",
-        "message": format!("Push operation not yet implemented"),
-        "remote": args.remote,
-        "branch": current_branch,
-        "force": args.force,
-        "set_upstream": args.set_upstream
-    });
+    // Use the actual push functionality from GitRepository
+    match repo.push(Some(&args.remote), Some(&current_branch)) {
+        Ok(()) => {
+            let result = serde_json::json!({
+                "status": "success",
+                "message": format!("Successfully pushed {} to {}", current_branch, args.remote),
+                "remote": args.remote,
+                "branch": current_branch,
+                "force": args.force,
+                "set_upstream": args.set_upstream
+            });
+            crate::commands::print_output(&result, output_format)?;
+        }
+        Err(e) => {
+            let result = serde_json::json!({
+                "status": "error",
+                "message": format!("Push failed: {}", e),
+                "remote": args.remote,
+                "branch": current_branch,
+                "error": e.to_string()
+            });
+            crate::commands::print_output(&result, output_format)?;
+            return Err(anyhow::anyhow!("Push failed: {}", e));
+        }
+    }
 
-    crate::commands::print_output(&result, output_format)?;
     Ok(())
 }
 
@@ -604,20 +697,83 @@ async fn execute_diff(args: DiffArgs, output_format: crate::OutputFormat) -> Res
         .repository
         .unwrap_or_else(|| std::env::current_dir().unwrap());
 
-    let git_client = GitClient::new();
-    let repo = git_client.open_repository(&repo_path).await?;
+    // Use git2 directly for diff operations
+    let git_repo = git2::Repository::open(&repo_path)?;
 
-    let status = repo.status()?;
+    let mut diff_options = git2::DiffOptions::new();
+    if let Some(ref file_path) = args.file {
+        diff_options.pathspec(file_path);
+    }
+
+    let mut diff_stats = Vec::new();
+    let mut total_insertions = 0;
+    let mut total_deletions = 0;
+
+    let diff = if args.staged {
+        // Show staged changes (index vs HEAD)
+        let head_tree = git_repo.head()?.peel_to_tree()?;
+        let mut index = git_repo.index()?;
+        let index_tree = git_repo.find_tree(index.write_tree()?)?;
+        git_repo.diff_tree_to_tree(Some(&head_tree), Some(&index_tree), Some(&mut diff_options))?
+    } else if args.working {
+        // Show working directory changes (working dir vs index)
+        git_repo.diff_index_to_workdir(None, Some(&mut diff_options))?
+    } else {
+        // Show all changes (working dir vs HEAD)
+        let head_tree = if let Ok(head) = git_repo.head() {
+            Some(head.peel_to_tree()?)
+        } else {
+            None
+        };
+        git_repo.diff_tree_to_workdir_with_index(head_tree.as_ref(), Some(&mut diff_options))?
+    };
+
+    diff.foreach(
+        &mut |delta, _progress| {
+            let old_file = delta.old_file();
+            let new_file = delta.new_file();
+            let status = match delta.status() {
+                git2::Delta::Added => "added",
+                git2::Delta::Deleted => "deleted", 
+                git2::Delta::Modified => "modified",
+                git2::Delta::Renamed => "renamed",
+                git2::Delta::Copied => "copied",
+                _ => "unknown",
+            };
+
+            diff_stats.push(serde_json::json!({
+                "file": new_file.path().unwrap_or_else(|| old_file.path().unwrap_or(std::path::Path::new(""))).display().to_string(),
+                "status": status,
+                "old_path": old_file.path().map(|p| p.display().to_string()),
+                "new_path": new_file.path().map(|p| p.display().to_string()),
+            }));
+            true
+        },
+        None,
+        None,
+        Some(&mut |_delta, _hunk, line| {
+            match line.origin() {
+                '+' => total_insertions += 1,
+                '-' => total_deletions += 1,
+                _ => {}
+            }
+            true
+        }),
+    )?;
 
     let diff_info = serde_json::json!({
         "status": "success",
         "repository": repo_path.display().to_string(),
         "staged": args.staged,
         "working": args.working,
-        "file_changes": {
-            "changed": status.changed_files
+        "compare": args.compare,
+        "file_filter": args.file,
+        "stats": {
+            "files_changed": diff_stats.len(),
+            "insertions": total_insertions,
+            "deletions": total_deletions
         },
-        "message": "Detailed diff output not yet implemented"
+        "files": diff_stats
     });
 
     crate::commands::print_output(&diff_info, output_format)?;

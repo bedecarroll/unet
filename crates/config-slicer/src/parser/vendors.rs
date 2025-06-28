@@ -16,7 +16,7 @@ use tracing::{debug, info};
 pub enum Vendor {
     /// Cisco IOS/IOS-XE/NX-OS
     Cisco,
-    /// Juniper JunOS
+    /// Juniper `JunOS`
     Juniper,
     /// Arista EOS
     Arista,
@@ -166,13 +166,14 @@ impl VendorParser {
     }
 
     /// Get vendor type
-    pub fn vendor(&self) -> &Vendor {
+    #[must_use]
+    pub const fn vendor(&self) -> &Vendor {
         &self.vendor
     }
 
     /// Validate vendor-specific configuration syntax
     pub fn validate_vendor_syntax(&self, tree: &ConfigNode) -> Result<VendorValidationReport> {
-        let mut report = VendorValidationReport::new(self.vendor.clone());
+        let mut report = VendorValidationReport::new(self.vendor);
 
         // Perform vendor-specific validation
         self.validate_vendor_tree(tree, &mut report)?;
@@ -246,7 +247,8 @@ pub struct VendorValidationReport {
 
 impl VendorValidationReport {
     /// Create a new vendor validation report
-    pub fn new(vendor: Vendor) -> Self {
+    #[must_use]
+    pub const fn new(vendor: Vendor) -> Self {
         Self {
             vendor,
             errors: Vec::new(),
@@ -256,6 +258,7 @@ impl VendorValidationReport {
     }
 
     /// Check if validation passed without errors
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.errors.is_empty()
     }
@@ -308,8 +311,7 @@ impl VendorParser {
                 let header = brace_regex
                     .captures(line)
                     .and_then(|cap| cap.get(1))
-                    .map(|m| m.as_str().trim())
-                    .unwrap_or(line.trim());
+                    .map_or(line.trim(), |m| m.as_str().trim());
                 converted_lines.push(header.to_string());
                 brace_stack.push(converted_lines.len() - 1);
             } else if line.trim() == "}" {
@@ -373,13 +375,13 @@ impl VendorParser {
     }
 
     /// Juniper-specific post-processing
-    fn postprocess_juniper_tree(&self, _tree: &mut ConfigNode) -> Result<()> {
+    const fn postprocess_juniper_tree(&self, _tree: &mut ConfigNode) -> Result<()> {
         // Add Juniper-specific processing
         Ok(())
     }
 
     /// Arista-specific post-processing
-    fn postprocess_arista_tree(&self, _tree: &mut ConfigNode) -> Result<()> {
+    const fn postprocess_arista_tree(&self, _tree: &mut ConfigNode) -> Result<()> {
         // Add Arista-specific processing
         Ok(())
     }
@@ -617,7 +619,7 @@ mod tests {
     #[test]
     fn test_cisco_config_parsing() -> Result<()> {
         let parser = VendorParser::new(Vendor::Cisco)?;
-        let config = r#"
+        let config = r"
 hostname test-router
 !
 interface GigabitEthernet0/1
@@ -625,7 +627,7 @@ interface GigabitEthernet0/1
  no shutdown
 !
 ip route 0.0.0.0 0.0.0.0 192.168.1.1
-"#;
+";
 
         let tree = parser.parse(config)?;
         assert_eq!(tree.node_type, NodeType::Root);
@@ -665,10 +667,10 @@ interfaces {
     #[test]
     fn test_cisco_interface_normalization() -> Result<()> {
         let parser = VendorParser::new(Vendor::Cisco)?;
-        let config = r#"
+        let config = r"
 interface Gi0/1
  description Test
-"#;
+";
 
         let tree = parser.parse(config)?;
         let interface_nodes = TreeTraversal::find_by_command_pattern(&tree, r"interface\s+")?;
@@ -684,12 +686,12 @@ interface Gi0/1
     #[test]
     fn test_vendor_validation() -> Result<()> {
         let parser = VendorParser::new(Vendor::Cisco)?;
-        let config = r#"
+        let config = r"
 hostname valid-router
 invalid-command-here
 interface GigabitEthernet0/1
  description Valid
-"#;
+";
 
         let tree = parser.parse(config)?;
         let report = parser.validate_vendor_syntax(&tree)?;

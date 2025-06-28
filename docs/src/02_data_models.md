@@ -42,7 +42,7 @@
 └────────────┘  (view)   └─────────────┘
 ```
 
-*`LinkSide`** is a SQL VIEW giving a flat row per node‑interface side. Useful for JOIN‑heavy queries; optional for v0.*
+*`LinkSide`**is a SQL VIEW giving a flat row per node‑interface side. Useful for JOIN‑heavy queries; optional for v0.*
 
 ---
 
@@ -76,7 +76,7 @@ pub enum LinkRole {
 }
 ```
 
-*`Unknown`** default when CSV import leaves field empty.*
+*`Unknown`**default when CSV import leaves field empty.*
 
 ---
 
@@ -316,4 +316,3 @@ We keep migrations *idempotent*; use semver tags to mark breaking changes.
 🔹 Update **05\_cli\_tool.md** once CRUD commands compiled.
 
 Back to [01\_architecture.md](01_architecture.md) • Forward to **03\_policy\_engine.md**
-

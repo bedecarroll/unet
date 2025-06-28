@@ -25,6 +25,7 @@ tokio = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
 
 # Error handling
 anyhow = { workspace = true }
@@ -50,7 +51,30 @@ tracing-subscriber = { workspace = true }
 
 # Additional dependencies
 uuid = { workspace = true }
-chrono = { workspace = true }
+
+# Authentication and authorization
+jsonwebtoken = { workspace = true }
+bcrypt = { workspace = true }
+axum-extra = { workspace = true }
+headers = { workspace = true }
+
+# TLS support
+axum-server = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+
+# Input validation and security
+validator = { workspace = true }
+sanitize_html = { workspace = true }
+dashmap = { workspace = true }
+reqwest = { workspace = true }
+regex = { workspace = true }
+
+# Network and IP handling
+ipnet = { workspace = true }
+
+# Metrics and monitoring
+axum-prometheus = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

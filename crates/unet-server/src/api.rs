@@ -1,5 +1,10 @@
 //! API data transfer objects and response types
 
+use axum::{
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use serde::{Deserialize, Serialize};
 use unet_core::prelude::*;
 use uuid::Uuid;
@@ -62,13 +67,36 @@ impl ApiError {
     }
 
     /// Create a not found error
-    pub fn not_found(resource: String) -> Self {
+    pub fn not_found(resource: &str) -> Self {
         Self::new(format!("{} not found", resource), "NOT_FOUND".to_string())
+    }
+
+    /// Create a bad request error
+    pub fn bad_request<S: Into<String>>(message: S) -> Self {
+        Self::new(message.into(), "BAD_REQUEST".to_string())
     }
 
     /// Create an internal server error
     pub fn internal(message: String) -> Self {
         Self::new(message, "INTERNAL_ERROR".to_string())
+    }
+
+    /// Create an internal server error (alternative name for compatibility)
+    pub fn internal_server_error<S: Into<String>>(message: S) -> Self {
+        Self::new(message.into(), "INTERNAL_ERROR".to_string())
+    }
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let status = match self.code.as_str() {
+            "NOT_FOUND" => StatusCode::NOT_FOUND,
+            "BAD_REQUEST" => StatusCode::BAD_REQUEST,
+            "VALIDATION_ERROR" => StatusCode::BAD_REQUEST,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        (status, Json(self)).into_response()
     }
 }
 

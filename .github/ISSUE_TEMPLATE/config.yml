@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/your-org/unet/tree/main/docs
+    about: Check our comprehensive documentation for guides and examples
+  - name: 💬 Discussions
+    url: https://github.com/your-org/unet/discussions
+    about: Ask questions and discuss μNet with the community
+  - name: 🔒 Security Issues
+    url: mailto:security@your-org.com
+    about: Report security vulnerabilities privately via email

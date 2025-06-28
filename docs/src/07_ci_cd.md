@@ -311,5 +311,4 @@ Register via `actions-runner` service; ensure firewall outbound `github.com`.
 3. Draft `docker.yml`; push to `main`; verify images on GHCR.
 4. Document release checklist in `docs/RELEASING.md`.
 
-*Proceed to *[*08\_deployment.md*](08_deployment.md)
-
+*Proceed to*[*08\_deployment.md*](08_deployment.md)

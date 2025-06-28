@@ -41,8 +41,8 @@ impl RegexCache {
         })
     }
 
-    fn get() -> &'static RegexCache {
-        REGEX_CACHE.get_or_init(|| RegexCache::new().expect("Failed to initialize regex cache"))
+    fn get() -> &'static Self {
+        REGEX_CACHE.get_or_init(|| Self::new().expect("Failed to initialize regex cache"))
     }
 }
 
@@ -219,8 +219,7 @@ impl OptimizedHierarchicalParser {
                         .indent
                         .captures(line)
                         .and_then(|cap| cap.get(1))
-                        .map(|m| m.as_str())
-                        .unwrap_or("");
+                        .map_or("", |m| m.as_str());
 
                     if leading_whitespace.contains('\t') {
                         tab_count += 1;
@@ -237,8 +236,7 @@ impl OptimizedHierarchicalParser {
                     let most_common_size = space_sizes
                         .into_iter()
                         .max_by_key(|&(_, count)| count)
-                        .map(|(size, _)| size)
-                        .unwrap_or(2);
+                        .map_or(2, |(size, _)| size);
                     Ok(IndentDetection::Spaces(most_common_size))
                 } else {
                     Ok(IndentDetection::Spaces(2))
@@ -259,8 +257,7 @@ impl OptimizedHierarchicalParser {
             .indent
             .captures(line)
             .and_then(|cap| cap.get(1))
-            .map(|m| m.as_str())
-            .unwrap_or("");
+            .map_or("", |m| m.as_str());
 
         match indent_style {
             IndentDetection::Tabs => leading_whitespace.chars().filter(|&c| c == '\t').count(),
@@ -386,6 +383,7 @@ impl OptimizedHierarchicalParser {
     }
 
     /// Get cache statistics for monitoring
+    #[must_use]
     pub fn get_cache_stats(&self) -> CacheStats {
         CacheStats {
             string_cache_size: self.string_cache.len(),
@@ -426,7 +424,7 @@ mod tests {
     #[test]
     fn test_optimized_parsing_performance() -> Result<()> {
         let mut parser = OptimizedHierarchicalParser::new()?;
-        let config = r#"
+        let config = r"
 hostname test-router
 !
 interface GigabitEthernet0/1
@@ -434,7 +432,7 @@ interface GigabitEthernet0/1
  no shutdown
 !
 ip route 0.0.0.0 0.0.0.0 192.168.1.1
-"#;
+";
 
         let tree = parser.parse(config)?;
         assert_eq!(tree.node_type, NodeType::Root);

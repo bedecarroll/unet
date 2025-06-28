@@ -73,6 +73,7 @@ field_reference := identifier ("." identifier)*
 ```
 
 Examples:
+
 - `node.vendor`
 - `custom_data.location.rack`
 - `derived.interfaces.eth0.status`
@@ -96,11 +97,13 @@ string_literal := "\"" char* "\""
 ```
 
 Examples:
+
 - `"cisco"`
 - `"datacenter-1"`
 - `"192.168.1.1"`
 
 **Escape Sequences:**
+
 - `\"` - Double quote
 - `\\` - Backslash
 - `\n` - Newline
@@ -118,6 +121,7 @@ decimal := digit+ "." digit+
 ```
 
 Examples:
+
 - `24`
 - `100.5`
 - `-1`

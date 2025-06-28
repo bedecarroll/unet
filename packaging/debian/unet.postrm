@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    purge)
+        # Remove user and group on purge
+        if getent passwd unet >/dev/null; then
+            deluser unet || true
+        fi
+        if getent group unet >/dev/null; then
+            delgroup unet || true
+        fi
+        
+        # Remove configuration and data directories on purge
+        rm -rf /var/lib/unet
+        rm -rf /var/log/unet
+        rm -rf /etc/unet
+        
+        # Remove log rotation config
+        rm -f /etc/logrotate.d/unet
+        ;;
+    remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        # Don't remove data on normal package removal
+        ;;
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

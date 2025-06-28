@@ -42,42 +42,49 @@ impl Default for StreamingConfig {
 
 impl StreamingConfig {
     /// Create a new streaming configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set the buffer size for reading operations
-    pub fn with_buffer_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn with_buffer_size(mut self, size: usize) -> Self {
         self.buffer_size = size;
         self
     }
 
     /// Set the chunk size for processing
-    pub fn with_chunk_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn with_chunk_size(mut self, size: usize) -> Self {
         self.chunk_size = size;
         self
     }
 
     /// Set the maximum file size to process
-    pub fn with_max_file_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_file_size(mut self, size: usize) -> Self {
         self.max_file_size = size;
         self
     }
 
     /// Set the memory limit for operations
-    pub fn with_memory_limit(mut self, limit: usize) -> Self {
+    #[must_use]
+    pub const fn with_memory_limit(mut self, limit: usize) -> Self {
         self.memory_limit = limit;
         self
     }
 
     /// Enable or disable aggressive memory cleanup
-    pub fn with_aggressive_cleanup(mut self, enabled: bool) -> Self {
+    #[must_use]
+    pub const fn with_aggressive_cleanup(mut self, enabled: bool) -> Self {
         self.aggressive_cleanup = enabled;
         self
     }
 
     /// Set the operation timeout
-    pub fn with_timeout(mut self, seconds: u64) -> Self {
+    #[must_use]
+    pub const fn with_timeout(mut self, seconds: u64) -> Self {
         self.operation_timeout = seconds;
         self
     }
@@ -92,6 +99,7 @@ pub struct StreamingProcessor {
 
 impl StreamingProcessor {
     /// Create a new streaming processor with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: StreamingConfig::default(),
@@ -101,6 +109,7 @@ impl StreamingProcessor {
     }
 
     /// Create a streaming processor with custom configuration
+    #[must_use]
     pub fn with_config(config: StreamingConfig) -> Self {
         Self {
             config,
@@ -124,8 +133,8 @@ impl StreamingProcessor {
         vendor: Option<Vendor>,
     ) -> Result<ConfigNode> {
         // Check file size first
-        let file_size = reader.seek(SeekFrom::End(0)).map_err(|e| Error::Io(e))?;
-        reader.seek(SeekFrom::Start(0)).map_err(|e| Error::Io(e))?;
+        let file_size = reader.seek(SeekFrom::End(0)).map_err(Error::Io)?;
+        reader.seek(SeekFrom::Start(0)).map_err(Error::Io)?;
 
         if file_size as usize > self.config.max_file_size {
             return Err(Error::size_limit_error(
@@ -309,8 +318,7 @@ impl LineProcessor {
             // If still over limit, this is an error
             if self.current_memory_usage > limit {
                 return Err(Error::Memory(format!(
-                    "Unable to reduce memory usage below limit: {} bytes",
-                    limit
+                    "Unable to reduce memory usage below limit: {limit} bytes"
                 )));
             }
         }
@@ -329,7 +337,7 @@ impl LineProcessor {
         // For now, create a basic configuration node
         Ok(ConfigNode {
             command: "root".to_string(),
-            raw_line: "".to_string(),
+            raw_line: String::new(),
             line_number: 0,
             indent_level: 0,
             children: Vec::new(),
@@ -424,11 +432,13 @@ pub struct ConfigChunk {
 
 impl ConfigChunk {
     /// Get the size of this chunk in bytes
+    #[must_use]
     pub fn size_bytes(&self) -> usize {
         self.content.len()
     }
 
     /// Check if this chunk is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.content.trim().is_empty()
     }
@@ -448,7 +458,8 @@ pub struct MemoryMonitor {
 
 impl MemoryMonitor {
     /// Create a new memory monitor with the specified limit
-    pub fn new(limit: usize) -> Self {
+    #[must_use]
+    pub const fn new(limit: usize) -> Self {
         Self {
             peak_usage: 0,
             current_usage: 0,
@@ -472,21 +483,24 @@ impl MemoryMonitor {
     }
 
     /// Record memory deallocation
-    pub fn deallocate(&mut self, size: usize) {
+    pub const fn deallocate(&mut self, size: usize) {
         self.current_usage = self.current_usage.saturating_sub(size);
     }
 
     /// Get current memory usage
-    pub fn current_usage(&self) -> usize {
+    #[must_use]
+    pub const fn current_usage(&self) -> usize {
         self.current_usage
     }
 
     /// Get peak memory usage
-    pub fn peak_usage(&self) -> usize {
+    #[must_use]
+    pub const fn peak_usage(&self) -> usize {
         self.peak_usage
     }
 
     /// Check if we're close to the memory limit
+    #[must_use]
     pub fn is_near_limit(&self, threshold: f64) -> bool {
         let usage_ratio = self.current_usage as f64 / self.limit as f64;
         usage_ratio >= threshold
@@ -496,7 +510,6 @@ impl MemoryMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
 
     #[test]
     fn test_streaming_config_creation() {

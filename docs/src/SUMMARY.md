@@ -9,12 +9,29 @@
 - [Policy Engine](03_policy_engine.md)
 - [Template Engine](04_template_engine.md)
 
+# User Guide
+
+- [Getting Started](user_getting_started.md)
+- [Configuration Management Tutorial](user_config_tutorial.md)
+- [Policy Creation Guide](user_policy_guide.md)
+- [Template Usage Tutorial](user_template_tutorial.md)
+- [Example Configurations](user_examples.md)
+- [Video Tutorial Scripts](user_video_tutorials.md)
+- [Community Contribution Guidelines](user_community_guidelines.md)
+- [Community Support Channels](community_support.md)
+
 # Development Guide
 
 - [CLI Tool](05_cli_tool.md)
 - [Server Backend](06_server_backend.md)
 - [CI/CD Pipeline](07_ci_cd.md)
 - [Deployment](08_deployment.md)
+- [Production Deployment Guide](production_deployment_guide.md)
+- [Troubleshooting Guide](troubleshooting_guide.md)
+- [API Reference](api_reference.md)
+- [Security and Compliance Guide](security_compliance_guide.md)
+- [Issue Triage Procedures](issue_triage_procedures.md)
+- [Maintenance and Update Procedures](maintenance_procedures.md)
 
 # Policy Development
 
@@ -52,3 +69,6 @@
 - [Milestone 3.5 Completion - 2025-06-23](reports/2025-06-23_16-42-47.md)
 - [Milestone 4 Completion - 2025-06-24](reports/2025-06-24_23-11-24.md)
 - [Milestone 5 Completion - 2025-06-25](reports/2025-06-25_23-20-46.md)
+- [Milestone 6 Completion - 2025-06-27](reports/2025-06-27_22-05-38.md)
+- [Milestone 7.2.3 Completion - 2025-06-29](reports/2025-06-29_03-35-16.md)
+- [Milestone 7 Complete Production System - 2025-06-30](reports/2025-06-30_12-21-38.md)

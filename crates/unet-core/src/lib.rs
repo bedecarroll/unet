@@ -38,20 +38,37 @@
 #![warn(clippy::nursery)]
 
 // Public modules
+pub mod alerting;
+pub mod auth;
 pub mod change_tracking;
+pub mod cluster;
 pub mod config;
+pub mod config_encryption;
+pub mod database;
 pub mod datastore;
+pub mod distributed_locking;
 pub mod entities;
 pub mod error;
+pub mod escalation;
 pub mod git;
 pub mod live_config;
+pub mod load_balancer;
 pub mod logging;
+pub mod metrics;
 pub mod models;
+pub mod notifications;
+pub mod performance;
 pub mod policy;
 pub mod policy_integration;
+pub mod resource_management;
+pub mod secrets;
+pub mod secrets_integration;
+pub mod shared_state;
 pub mod snmp;
+pub mod stateless;
 pub mod template;
 pub mod template_integration;
+pub mod validation;
 
 // Re-exports for convenience
 pub use error::{Error, Result};
@@ -144,5 +161,81 @@ pub mod prelude {
         TemplateDocumentation, TemplateLintingResults, TemplatePerformanceAnalysis,
         TemplateQualityAnalyzer, TemplateQualityReport, TemplateSecurityScan, TemplateVariable,
         UsageExample,
+    };
+
+    // Alerting types
+    pub use crate::alerting::{
+        Alert, AlertCondition, AlertRule, AlertSeverity, AlertStatus, AlertType, AlertingConfig,
+        AlertingManager, EscalationPolicy, EscalationStep, NotificationChannel, RateLimitConfig,
+    };
+
+    // Notification types
+    pub use crate::notifications::{
+        DeliveryResult, EmailProvider, MessagePriority, NotificationError, NotificationManager,
+        NotificationMessage, NotificationProvider, NotificationResult, PagerDutyProvider,
+        SlackProvider, WebhookProvider,
+    };
+
+    // Escalation types
+    pub use crate::escalation::{
+        AlertEscalation, EscalationConfig, EscalationEngine, EscalationError, EscalationEvent,
+        EscalationEventType, EscalationResult, EscalationStats, EscalationStatus,
+    };
+
+    // Performance optimization types
+    pub use crate::performance::{
+        AsyncProcessingOptimizer, BenchmarkConfig, BenchmarkResult, Cache, CacheStats,
+        ConnectionPool, ConnectionPoolStats, OperationTimer, PerformanceBenchmark,
+        PerformanceManager, PerformanceProfiler, PerformanceReport, PooledConnection,
+    };
+
+    // Load balancer compatibility types
+    pub use crate::load_balancer::{
+        ComponentHealth, CustomHealthCheck, HealthCheckConfig, HealthCheckResult,
+        HealthCriticality, HealthEndpoint, HealthStatus, LoadBalancerConfig,
+        LoadBalancerHealthManager, LoadBalancerInfo, LoadBalancerType, RuntimeInfo,
+        ServiceMetadata,
+    };
+
+    // Shared state types
+    pub use crate::shared_state::{
+        InMemoryStateProvider, RedisStateProvider, SharedStateConfig, SharedStateManager,
+        SharedStateProvider,
+    };
+
+    // Stateless operation types
+    pub use crate::stateless::{
+        BackgroundTaskConfig, DistributedLockGuard, DistributedLockingConfig, JwtSessionConfig,
+        LeaderElectionConfig, LockRetryConfig, RedisPoolConfig, SessionManagementConfig,
+        SlidingWindowConfig, StatelessConfig, StatelessHealthStatus, StatelessManager,
+        StatelessRateLimitingConfig, StatelessSharedState,
+    };
+
+    // Distributed locking types
+    pub use crate::distributed_locking::{
+        DeadlockDetector, DeadlockInfo, DistributedLock, DistributedLockConfig,
+        DistributedLockManager, DistributedLockProvider, DistributedMutex, LeaderElection,
+        LockInfo, LockMonitorReport, LockStats, LockType, PostgresLockProvider, RedisLockProvider,
+    };
+
+    // Cluster coordination types
+    pub use crate::cluster::{
+        ClusterConfig, ClusterManager, ClusterMembership, ClusterNode, ClusterStats,
+        CustomHealthCheck as ClusterCustomHealthCheck,
+        HealthCheckResult as ClusterHealthCheckResult, HealthStatus as ClusterHealthStatus,
+        NodeCapacity, NodeConfig, NodeHealth, NodeMetrics, ResponseTimeMetrics,
+        ServiceDiscoveryConfig,
+    };
+
+    // Resource management types
+    pub use crate::resource_management::{
+        AlertManager, AlertSeverity as ResourceAlertSeverity, CacheConfig, CacheManager,
+        CapacityPlanner, CapacityPlanningConfig, CapacityRecommendation, CircuitBreaker,
+        CircuitBreakerConfig, CircuitBreakerState, CpuLimitsConfig, CpuMonitor, DegradationManager,
+        FallbackConfig, FallbackManager, GracefulDegradationConfig, LimitsManager, MemoryConfig,
+        MemoryLimitsConfig, MemoryManager, MemoryMonitor, MemoryPoolConfig, MemoryPoolManager,
+        MonitoringManager, QuotaManager, RequestThrottler, ResourceAlert, ResourceConfig,
+        ResourceLimitsConfig, ResourceManager, ResourceMonitoringConfig, ResourceQuota,
+        ResourceQuotasConfig, ResourceStatus, SystemMetrics, ThrottlingConfig,
     };
 }

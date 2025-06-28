@@ -970,16 +970,21 @@ mod tests {
         Node {
             id: Uuid::new_v4(),
             name: "test-device".to_string(),
+            domain: "example.com".to_string(),
+            fqdn: "test-device.example.com".to_string(),
             vendor: Vendor::Cisco,
-            model: Some("ISR4321".to_string()),
+            model: "ISR4321".to_string(),
             role: DeviceRole::Router,
-            fqdn: Some("192.168.1.1".to_string()),
+            lifecycle: Lifecycle::Live,
+            management_ip: None,
             location_id: None,
-            lifecycle: Lifecycle::Active,
-            description: None,
-            custom_data: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            platform: Some("IOS".to_string()),
+            version: Some("16.9.4".to_string()),
+            serial_number: Some("ABC123".to_string()),
+            asset_tag: None,
+            purchase_date: None,
+            warranty_expires: None,
+            custom_data: serde_json::Value::Null,
         }
     }
 

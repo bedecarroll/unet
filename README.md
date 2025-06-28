@@ -142,4 +142,3 @@ cargo run -p unet-cli -- --server http://localhost:8080 node diff core‑01 -o l
 ```
 
 This renders policy‑assigned templates for *core‑01*, slices the live config, and shows a colorised diff—in **one command**. Welcome to μNet 🚀
-

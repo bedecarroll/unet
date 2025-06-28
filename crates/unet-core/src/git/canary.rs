@@ -3,7 +3,7 @@
 //! This module provides canary deployment functionality, allowing gradual
 //! rollout of configuration changes with validation, testing, and rollback capabilities.
 
-use crate::git::environment::{EnvironmentManager, EnvironmentType, PromotionResult};
+use crate::git::environment::{EnvironmentManager, PromotionResult};
 use crate::git::repository::GitRepository;
 use crate::git::types::{GitError, GitResult};
 use chrono::{DateTime, Utc};

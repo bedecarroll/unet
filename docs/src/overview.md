@@ -11,4 +11,3 @@
 | **9**  | **09\_config\_match\_tool.md** | Stand-alone “config-slicer” crate/CLI spec, library API, publishing steps.                 |
 | **10** | **10\_onboarding.md**          | New-hire checklist, dev-box setup, coding conventions, good-first-issue guide.             |
 | **11** | **glossary.md**                | One-liner definitions of all domain terms and acronyms.                                    |
-

@@ -1,8 +1,14 @@
 use anyhow::{Context, Result};
 use clap::{Args, Subcommand, ValueEnum};
 use config_slicer::{ConfigSlicerApi, DiffDisplay, DiffEngine, DisplayOptions};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use unet_core::config::{
+    Config,
+    migration::{ConfigMigrator, Version},
+    validation::{DeploymentType as CoreDeploymentType, ValidationContext},
+};
 use unet_core::datastore::DataStore;
 
 #[derive(Subcommand)]
@@ -15,6 +21,12 @@ pub enum ConfigCommands {
     Validate(ValidateConfigArgs),
     /// Get information about supported parsers and extractors
     Info(InfoConfigArgs),
+    /// Validate μNet configuration with comprehensive checks
+    ValidateUnet(ValidateUnetArgs),
+    /// Migrate μNet configuration between versions
+    Migrate(MigrateConfigArgs),
+    /// Generate configuration templates
+    Template(TemplateConfigArgs),
 }
 
 #[derive(Args)]
@@ -107,6 +119,91 @@ pub struct InfoConfigArgs {
     detailed: bool,
 }
 
+#[derive(Args)]
+pub struct ValidateUnetArgs {
+    /// μNet configuration file to validate
+    #[arg(short, long)]
+    config: PathBuf,
+
+    /// Environment type (development, staging, production)
+    #[arg(short, long, value_enum, default_value = "development")]
+    environment: Environment,
+
+    /// Deployment type
+    #[arg(short, long, value_enum, default_value = "standalone")]
+    deployment: DeploymentType,
+
+    /// Enable strict validation mode
+    #[arg(long)]
+    strict: bool,
+
+    /// Show detailed validation report
+    #[arg(long)]
+    detailed: bool,
+
+    /// Output validation report to file
+    #[arg(short, long)]
+    output: Option<PathBuf>,
+
+    /// Include performance recommendations
+    #[arg(long)]
+    recommendations: bool,
+}
+
+#[derive(Args)]
+pub struct MigrateConfigArgs {
+    /// Configuration file to migrate
+    #[arg(short, long)]
+    config: PathBuf,
+
+    /// Target schema version (e.g., "1.0.0")
+    #[arg(short, long)]
+    target_version: Option<String>,
+
+    /// Migration rules file (optional)
+    #[arg(long)]
+    rules: Option<PathBuf>,
+
+    /// Create backup before migration
+    #[arg(long, default_value = "true")]
+    backup: bool,
+
+    /// Force migration even if validation fails
+    #[arg(long)]
+    force: bool,
+
+    /// Show migration plan without executing
+    #[arg(long)]
+    dry_run: bool,
+
+    /// Output file for migrated configuration
+    #[arg(short, long)]
+    output: Option<PathBuf>,
+}
+
+#[derive(Args)]
+pub struct TemplateConfigArgs {
+    /// Template name
+    #[arg(short, long, value_enum)]
+    template: ConfigTemplate,
+
+    /// Output file path
+    #[arg(short, long)]
+    output: PathBuf,
+
+    /// Environment variables file for template substitution
+    #[arg(long)]
+    env_file: Option<PathBuf>,
+
+    /// Template variables as key=value pairs
+    #[arg(long)]
+    vars: Vec<String>,
+
+    /// Force overwrite existing file
+    #[arg(long)]
+    force: bool,
+}
+
 #[derive(Debug, Clone, ValueEnum)]
 pub enum PatternType {
     /// Glob pattern (e.g., "interface*")
@@ -139,6 +236,38 @@ pub enum DiffAlgorithm {
     Semantic,
 }
 
+#[derive(Debug, Clone, ValueEnum)]
+pub enum Environment {
+    /// Development environment
+    Development,
+    /// Staging environment
+    Staging,
+    /// Production environment
+    Production,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum DeploymentType {
+    /// Standalone single instance
+    Standalone,
+    /// Multi-node cluster
+    Cluster,
+    /// Kubernetes deployment
+    Kubernetes,
+    /// Docker Compose deployment
+    DockerCompose,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum ConfigTemplate {
+    /// Production template
+    Production,
+    /// Staging template
+    Staging,
+    /// Development template
+    Development,
+}
+
 pub async fn execute(
     cmd: ConfigCommands,
     _datastore: &dyn DataStore,
@@ -149,6 +278,9 @@ pub async fn execute(
         ConfigCommands::Diff(args) => execute_diff(args, output_format).await,
         ConfigCommands::Validate(args) => execute_validate(args, output_format).await,
         ConfigCommands::Info(args) => execute_info(args).await,
+        ConfigCommands::ValidateUnet(args) => execute_validate_unet(args, output_format).await,
+        ConfigCommands::Migrate(args) => execute_migrate(args, output_format).await,
+        ConfigCommands::Template(args) => execute_template(args, output_format).await,
     }
 }
 
@@ -632,4 +764,533 @@ fn format_diff_stats(diff_result: &config_slicer::DiffResult) -> String {
     stats.push_str(&format!("  Modifications: {}\n", modifications));
 
     stats
+}
+
+/// Execute μNet configuration validation
+async fn execute_validate_unet(
+    args: ValidateUnetArgs,
+    output_format: crate::OutputFormat,
+) -> Result<()> {
+    tracing::info!("Validating μNet configuration: {}", args.config.display());
+
+    // Load configuration
+    let config = Config::from_file(&args.config).with_context(|| {
+        format!(
+            "Failed to load configuration from {}",
+            args.config.display()
+        )
+    })?;
+
+    // Create validation context
+    let environment = match args.environment {
+        Environment::Development => "development",
+        Environment::Staging => "staging",
+        Environment::Production => "production",
+    };
+
+    let deployment_type = match args.deployment {
+        DeploymentType::Standalone => CoreDeploymentType::Standalone,
+        DeploymentType::Cluster => CoreDeploymentType::Cluster,
+        DeploymentType::Kubernetes => CoreDeploymentType::Kubernetes,
+        DeploymentType::DockerCompose => CoreDeploymentType::DockerCompose,
+    };
+
+    let mut context = ValidationContext::new(environment, deployment_type);
+    context.strict_mode = args.strict;
+
+    // Perform validation
+    let validation_result = config.validate_with_context(&context);
+
+    // Format output
+    let formatted_output = format_unet_validation_output(
+        &validation_result,
+        output_format,
+        args.detailed,
+        args.recommendations,
+    )?;
+
+    // Write output
+    match args.output {
+        Some(output_path) => {
+            fs::write(&output_path, formatted_output).with_context(|| {
+                format!(
+                    "Failed to write validation report to {}",
+                    output_path.display()
+                )
+            })?;
+            tracing::info!("Validation report written to {}", output_path.display());
+        }
+        None => {
+            print!("{}", formatted_output);
+        }
+    }
+
+    // Exit with error code if validation failed
+    if !validation_result.valid {
+        tracing::warn!("μNet configuration validation failed");
+        std::process::exit(2);
+    }
+
+    Ok(())
+}
+
+/// Execute configuration migration
+async fn execute_migrate(
+    args: MigrateConfigArgs,
+    output_format: crate::OutputFormat,
+) -> Result<()> {
+    tracing::info!("Migrating configuration: {}", args.config.display());
+
+    // Parse target version
+    let target_version = if let Some(version_str) = args.target_version {
+        Some(
+            Version::parse(&version_str)
+                .with_context(|| format!("Invalid target version format: {}", version_str))?,
+        )
+    } else {
+        None
+    };
+
+    // Create migrator
+    let mut migrator = ConfigMigrator::new(Version::new(1, 0, 0));
+
+    // Load custom rules if provided
+    if let Some(rules_file) = args.rules {
+        migrator
+            .load_rules_from_file(&rules_file)
+            .with_context(|| {
+                format!(
+                    "Failed to load migration rules from {}",
+                    rules_file.display()
+                )
+            })?;
+    }
+
+    if args.dry_run {
+        tracing::info!("Performing dry run migration");
+
+        // Load configuration to check what would be migrated
+        let config = Config::from_file(&args.config).with_context(|| {
+            format!(
+                "Failed to load configuration from {}",
+                args.config.display()
+            )
+        })?;
+
+        let needs_migration = migrator.needs_migration(&config)?;
+
+        if needs_migration {
+            println!("Configuration migration would be performed:");
+            println!("  Available rules: {}", migrator.list_rules().len());
+            for rule in migrator.list_rules() {
+                println!(
+                    "    - {} ({}→{})",
+                    rule.name,
+                    rule.from_version.to_string(),
+                    rule.to_version.to_string()
+                );
+            }
+        } else {
+            println!("Configuration is already up to date - no migration needed");
+        }
+
+        return Ok(());
+    }
+
+    // Perform migration
+    let migration_result = migrator
+        .migrate_file(&args.config, target_version)
+        .context("Failed to migrate configuration")?;
+
+    // Handle output file
+    if let Some(output_path) = args.output {
+        if output_path != args.config {
+            fs::copy(&args.config, &output_path).with_context(|| {
+                format!(
+                    "Failed to copy migrated configuration to {}",
+                    output_path.display()
+                )
+            })?;
+            tracing::info!(
+                "Migrated configuration written to {}",
+                output_path.display()
+            );
+        }
+    }
+
+    // Format migration result
+    let formatted_output = format_migration_result(&migration_result, output_format)?;
+
+    if migration_result.success {
+        println!("{}", formatted_output);
+        tracing::info!("Configuration migration completed successfully");
+    } else {
+        eprintln!("{}", formatted_output);
+        tracing::error!("Configuration migration failed");
+        std::process::exit(3);
+    }
+
+    Ok(())
+}
+
+/// Execute template generation
+async fn execute_template(
+    args: TemplateConfigArgs,
+    _output_format: crate::OutputFormat,
+) -> Result<()> {
+    tracing::info!("Generating configuration template: {:?}", args.template);
+
+    // Check if output file exists and not forcing
+    if args.output.exists() && !args.force {
+        return Err(anyhow::anyhow!(
+            "Output file {} already exists. Use --force to overwrite",
+            args.output.display()
+        ));
+    }
+
+    // Determine template source
+    let template_name = match args.template {
+        ConfigTemplate::Production => "production.toml",
+        ConfigTemplate::Staging => "staging.toml",
+        ConfigTemplate::Development => "development.toml",
+    };
+
+    // Get template content (in a real implementation, this would come from embedded templates)
+    let template_content = get_template_content(template_name)?;
+
+    // Process template variables
+    let mut variables = HashMap::new();
+
+    // Load from env file if provided
+    if let Some(env_file) = args.env_file {
+        load_env_variables(&env_file, &mut variables)?;
+    }
+
+    // Parse command line variables
+    for var in args.vars {
+        if let Some((key, value)) = var.split_once('=') {
+            variables.insert(key.to_string(), value.to_string());
+        } else {
+            return Err(anyhow::anyhow!(
+                "Invalid variable format: {}. Use key=value",
+                var
+            ));
+        }
+    }
+
+    // Process template (simple substitution for now)
+    let processed_content = process_template(&template_content, &variables)?;
+
+    // Write output
+    fs::write(&args.output, processed_content)
+        .with_context(|| format!("Failed to write template to {}", args.output.display()))?;
+
+    tracing::info!("Template written to {}", args.output.display());
+    println!(
+        "Configuration template generated: {}",
+        args.output.display()
+    );
+
+    Ok(())
+}
+
+/// Format μNet validation output
+fn format_unet_validation_output(
+    result: &unet_core::config::validation::ValidationResult,
+    output_format: crate::OutputFormat,
+    detailed: bool,
+    include_recommendations: bool,
+) -> Result<String> {
+    use serde_json;
+    use serde_yaml;
+
+    match output_format {
+        crate::OutputFormat::Table => {
+            let mut output = String::new();
+
+            // Summary
+            output.push_str(&format!("μNet Configuration Validation Report\n"));
+            output.push_str(&format!("=====================================\n\n"));
+            output.push_str(&format!(
+                "Status: {}\n",
+                if result.valid {
+                    "✅ VALID"
+                } else {
+                    "❌ INVALID"
+                }
+            ));
+            output.push_str(&format!("Environment: {}\n", result.summary.environment));
+            output.push_str(&format!("Database: {}\n", result.summary.database_type));
+            output.push_str(&format!(
+                "Authentication: {}\n",
+                if result.summary.authentication_enabled {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                }
+            ));
+            output.push_str(&format!(
+                "TLS: {}\n",
+                if result.summary.tls_enabled {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                }
+            ));
+            output.push_str(&format!(
+                "Clustering: {}\n\n",
+                if result.summary.clustering_enabled {
+                    "Enabled"
+                } else {
+                    "Disabled"
+                }
+            ));
+
+            // Errors
+            if !result.errors.is_empty() {
+                output.push_str(&format!("🚨 Errors ({}):\n", result.errors.len()));
+                for error in &result.errors {
+                    output.push_str(&format!(
+                        "   {} [{}]: {}\n",
+                        error.field,
+                        format!("{:?}", error.category),
+                        error.message
+                    ));
+                    if let Some(suggestion) = &error.suggestion {
+                        output.push_str(&format!("      💡 Suggestion: {}\n", suggestion));
+                    }
+                }
+                output.push('\n');
+            }
+
+            // Warnings
+            if !result.warnings.is_empty() {
+                output.push_str(&format!("⚠️  Warnings ({}):\n", result.warnings.len()));
+                for warning in &result.warnings {
+                    output.push_str(&format!(
+                        "   {} [{}]: {}\n",
+                        warning.field,
+                        format!("{:?}", warning.category),
+                        warning.message
+                    ));
+                    if let Some(recommendation) = &warning.recommendation {
+                        output.push_str(&format!("      💡 Recommendation: {}\n", recommendation));
+                    }
+                }
+                output.push('\n');
+            }
+
+            // Recommendations
+            if include_recommendations && !result.recommendations.is_empty() {
+                output.push_str(&format!(
+                    "💡 Recommendations ({}):\n",
+                    result.recommendations.len()
+                ));
+                for rec in &result.recommendations {
+                    let priority_emoji = match rec.priority {
+                        unet_core::config::validation::RecommendationPriority::Critical => "🔴",
+                        unet_core::config::validation::RecommendationPriority::High => "🟡",
+                        unet_core::config::validation::RecommendationPriority::Medium => "🟢",
+                        unet_core::config::validation::RecommendationPriority::Low => "⚪",
+                    };
+                    output.push_str(&format!(
+                        "   {} {} [{}]: {}\n",
+                        priority_emoji,
+                        rec.area,
+                        format!("{:?}", rec.category),
+                        rec.message
+                    ));
+                    if detailed {
+                        output.push_str(&format!("      📝 {}\n", rec.explanation));
+                        for (i, step) in rec.steps.iter().enumerate() {
+                            output.push_str(&format!("         {}. {}\n", i + 1, step));
+                        }
+                    }
+                }
+                output.push('\n');
+            }
+
+            // Resource usage estimate
+            if detailed {
+                output.push_str("📊 Estimated Resource Usage:\n");
+                output.push_str(&format!(
+                    "   Memory: {} MB\n",
+                    result.summary.resource_usage.memory_mb
+                ));
+                output.push_str(&format!(
+                    "   CPU: {:.1} cores\n",
+                    result.summary.resource_usage.cpu_cores
+                ));
+                output.push_str(&format!(
+                    "   Disk: {} MB\n",
+                    result.summary.resource_usage.disk_mb
+                ));
+                output.push_str(&format!(
+                    "   Max Connections: {}\n\n",
+                    result.summary.resource_usage.max_connections
+                ));
+            }
+
+            // Security & Performance features
+            if detailed {
+                output.push_str("🔒 Security Features:\n");
+                for feature in &result.summary.security_features {
+                    output.push_str(&format!("   ✅ {}\n", feature));
+                }
+                output.push('\n');
+
+                output.push_str("⚡ Performance Features:\n");
+                for feature in &result.summary.performance_features {
+                    output.push_str(&format!("   ✅ {}\n", feature));
+                }
+                output.push('\n');
+            }
+
+            Ok(output)
+        }
+        crate::OutputFormat::Json => {
+            let json_output = serde_json::to_string_pretty(result)
+                .context("Failed to serialize validation result to JSON")?;
+            Ok(json_output)
+        }
+        crate::OutputFormat::Yaml => {
+            let yaml_output = serde_yaml::to_string(result)
+                .context("Failed to serialize validation result to YAML")?;
+            Ok(yaml_output)
+        }
+    }
+}
+
+/// Format migration result
+fn format_migration_result(
+    result: &unet_core::config::migration::MigrationResult,
+    output_format: crate::OutputFormat,
+) -> Result<String> {
+    use serde_json;
+    use serde_yaml;
+
+    match output_format {
+        crate::OutputFormat::Table => {
+            let mut output = String::new();
+
+            output.push_str("Configuration Migration Report\n");
+            output.push_str("==============================\n\n");
+            output.push_str(&format!(
+                "Status: {}\n",
+                if result.success {
+                    "✅ SUCCESS"
+                } else {
+                    "❌ FAILED"
+                }
+            ));
+            output.push_str(&format!(
+                "From Version: {}\n",
+                result.from_version.to_string()
+            ));
+            output.push_str(&format!("To Version: {}\n", result.to_version.to_string()));
+
+            if let Some(backup_path) = &result.backup_path {
+                output.push_str(&format!("Backup Created: {}\n", backup_path));
+            }
+
+            output.push_str(&format!(
+                "Applied Rules: {}\n\n",
+                result.applied_rules.len()
+            ));
+
+            if !result.applied_rules.is_empty() {
+                output.push_str("Applied Migration Rules:\n");
+                for rule in &result.applied_rules {
+                    output.push_str(&format!("  ✅ {}\n", rule));
+                }
+                output.push('\n');
+            }
+
+            if !result.warnings.is_empty() {
+                output.push_str("⚠️  Warnings:\n");
+                for warning in &result.warnings {
+                    output.push_str(&format!("  {}\n", warning));
+                }
+                output.push('\n');
+            }
+
+            if !result.errors.is_empty() {
+                output.push_str("🚨 Errors:\n");
+                for error in &result.errors {
+                    output.push_str(&format!("  {}\n", error));
+                }
+                output.push('\n');
+            }
+
+            Ok(output)
+        }
+        crate::OutputFormat::Json => {
+            let json_output = serde_json::to_string_pretty(result)
+                .context("Failed to serialize migration result to JSON")?;
+            Ok(json_output)
+        }
+        crate::OutputFormat::Yaml => {
+            let yaml_output = serde_yaml::to_string(result)
+                .context("Failed to serialize migration result to YAML")?;
+            Ok(yaml_output)
+        }
+    }
+}
+
+/// Get template content by name
+fn get_template_content(template_name: &str) -> Result<String> {
+    // In a real implementation, templates would be embedded in the binary
+    // For now, we'll read from the configs directory
+    let template_path = PathBuf::from("configs/templates").join(template_name);
+
+    if template_path.exists() {
+        fs::read_to_string(&template_path)
+            .with_context(|| format!("Failed to read template {}", template_path.display()))
+    } else {
+        // Fallback: provide a minimal template
+        Ok(match template_name {
+            "development.toml" => {
+                include_str!("../../../../configs/templates/development.toml").to_string()
+            }
+            "staging.toml" => {
+                include_str!("../../../../configs/templates/staging.toml").to_string()
+            }
+            "production.toml" => {
+                include_str!("../../../../configs/templates/production.toml").to_string()
+            }
+            _ => return Err(anyhow::anyhow!("Unknown template: {}", template_name)),
+        })
+    }
+}
+
+/// Load environment variables from file
+fn load_env_variables(env_file: &PathBuf, variables: &mut HashMap<String, String>) -> Result<()> {
+    let content = fs::read_to_string(env_file)
+        .with_context(|| format!("Failed to read environment file {}", env_file.display()))?;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        if let Some((key, value)) = line.split_once('=') {
+            variables.insert(key.trim().to_string(), value.trim().to_string());
+        }
+    }
+
+    Ok(())
+}
+
+/// Process template with variable substitution
+fn process_template(template: &str, variables: &HashMap<String, String>) -> Result<String> {
+    let mut result = template.to_string();
+
+    // Simple variable substitution: ${VAR_NAME}
+    for (key, value) in variables {
+        let placeholder = format!("${{{}}}", key);
+        result = result.replace(&placeholder, value);
+    }
+
+    Ok(result)
 }

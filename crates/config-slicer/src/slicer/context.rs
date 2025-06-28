@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Context-based matching for configuration slicing
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SliceContext {
     /// Required configuration contexts
     pub required_contexts: Vec<ConfigContext>,
@@ -30,7 +30,7 @@ pub struct SliceContext {
 }
 
 /// Additional filtering criteria for context matching
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContextFilter {
     /// Line number range filter
     LineRange { start: usize, end: usize },
@@ -45,7 +45,7 @@ pub enum ContextFilter {
 }
 
 /// Context matcher for matching configuration contexts
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContextMatcher {
     /// Context type to match
     pub context_type: ContextType,
@@ -56,7 +56,7 @@ pub struct ContextMatcher {
 }
 
 /// Types of configuration contexts that can be matched
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContextType {
     /// Any global configuration
     Global,
@@ -80,6 +80,7 @@ pub enum ContextType {
 
 impl SliceContext {
     /// Create a new slice context
+    #[must_use]
     pub fn new() -> Self {
         Self {
             required_contexts: Vec::new(),
@@ -94,49 +95,57 @@ impl SliceContext {
     }
 
     /// Add a required context
+    #[must_use]
     pub fn require_context(mut self, context: ConfigContext) -> Self {
         self.required_contexts.push(context);
         self
     }
 
     /// Add a forbidden context
+    #[must_use]
     pub fn forbid_context(mut self, context: ConfigContext) -> Self {
         self.forbidden_contexts.push(context);
         self
     }
 
     /// Add a required node type
+    #[must_use]
     pub fn require_node_type(mut self, node_type: NodeType) -> Self {
         self.required_node_types.push(node_type);
         self
     }
 
     /// Add a forbidden node type
+    #[must_use]
     pub fn forbid_node_type(mut self, node_type: NodeType) -> Self {
         self.forbidden_node_types.push(node_type);
         self
     }
 
     /// Set indentation level range
-    pub fn indent_range(mut self, min: Option<usize>, max: Option<usize>) -> Self {
+    #[must_use]
+    pub const fn indent_range(mut self, min: Option<usize>, max: Option<usize>) -> Self {
         self.min_indent_level = min;
         self.max_indent_level = max;
         self
     }
 
     /// Add required metadata
+    #[must_use]
     pub fn require_metadata(mut self, key: String, value: String) -> Self {
         self.required_metadata.insert(key, value);
         self
     }
 
     /// Add a context filter
+    #[must_use]
     pub fn add_filter(mut self, filter: ContextFilter) -> Self {
         self.filters.push(filter);
         self
     }
 
     /// Check if a node matches this context
+    #[must_use]
     pub fn matches_node(&self, node: &ConfigNode) -> bool {
         // Check required contexts
         if !self.required_contexts.is_empty() {
@@ -160,10 +169,10 @@ impl SliceContext {
         }
 
         // Check required node types
-        if !self.required_node_types.is_empty() {
-            if !self.required_node_types.contains(&node.node_type) {
-                return false;
-            }
+        if !self.required_node_types.is_empty()
+            && !self.required_node_types.contains(&node.node_type)
+        {
+            return false;
         }
 
         // Check forbidden node types
@@ -226,7 +235,8 @@ impl Default for SliceContext {
 
 impl ContextMatcher {
     /// Create a new context matcher
-    pub fn new(context_type: ContextType) -> Self {
+    #[must_use]
+    pub const fn new(context_type: ContextType) -> Self {
         Self {
             context_type,
             value: None,
@@ -235,7 +245,8 @@ impl ContextMatcher {
     }
 
     /// Create a context matcher with a specific value
-    pub fn with_value(context_type: ContextType, value: String) -> Self {
+    #[must_use]
+    pub const fn with_value(context_type: ContextType, value: String) -> Self {
         Self {
             context_type,
             value: Some(value),
@@ -244,7 +255,8 @@ impl ContextMatcher {
     }
 
     /// Create a context matcher with pattern matching
-    pub fn with_pattern(context_type: ContextType, pattern: String) -> Self {
+    #[must_use]
+    pub const fn with_pattern(context_type: ContextType, pattern: String) -> Self {
         Self {
             context_type,
             value: Some(pattern),
@@ -253,6 +265,7 @@ impl ContextMatcher {
     }
 
     /// Check if a context matches this matcher
+    #[must_use]
     pub fn matches(&self, context: &ConfigContext) -> bool {
         match (&self.context_type, context) {
             (ContextType::Global, ConfigContext::Global) => true,
@@ -314,6 +327,7 @@ pub struct SliceContextBuilder {
 
 impl SliceContextBuilder {
     /// Start building a new slice context
+    #[must_use]
     pub fn new() -> Self {
         Self {
             context: SliceContext::new(),
@@ -321,18 +335,21 @@ impl SliceContextBuilder {
     }
 
     /// Add interface context requirement
+    #[must_use]
     pub fn interfaces_only(mut self) -> Self {
         self.context = self.context.forbid_context(ConfigContext::Global);
         self
     }
 
     /// Add global context requirement
+    #[must_use]
     pub fn global_only(mut self) -> Self {
         self.context = self.context.require_context(ConfigContext::Global);
         self
     }
 
     /// Add commands only (no comments, no empty lines)
+    #[must_use]
     pub fn commands_only(mut self) -> Self {
         self.context = self
             .context
@@ -343,12 +360,14 @@ impl SliceContextBuilder {
     }
 
     /// Add specific indentation level
+    #[must_use]
     pub fn at_indent_level(mut self, level: usize) -> Self {
         self.context = self.context.indent_range(Some(level), Some(level));
         self
     }
 
     /// Add minimum indentation level
+    #[must_use]
     pub fn min_indent_level(mut self, level: usize) -> Self {
         let max_level = self.context.max_indent_level;
         self.context = self.context.indent_range(Some(level), max_level);
@@ -356,6 +375,7 @@ impl SliceContextBuilder {
     }
 
     /// Add maximum indentation level
+    #[must_use]
     pub fn max_indent_level(mut self, level: usize) -> Self {
         let min_level = self.context.min_indent_level;
         self.context = self.context.indent_range(min_level, Some(level));
@@ -363,6 +383,7 @@ impl SliceContextBuilder {
     }
 
     /// Build the slice context
+    #[must_use]
     pub fn build(self) -> SliceContext {
         self.context
     }

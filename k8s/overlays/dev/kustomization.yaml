@@ -1,0 +1,105 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: unet-dev
+
+# Base configuration
+resources:
+- ../../base
+
+# Namespace override
+namespace: unet-dev
+
+# Name prefix for resources
+namePrefix: dev-
+
+# Common labels for dev environment
+commonLabels:
+  environment: development
+  app.kubernetes.io/instance: unet-dev
+
+# Common annotations
+commonAnnotations:
+  environment: development
+  config.kubernetes.io/origin: dev-overlay
+
+# Image overrides
+images:
+- name: ghcr.io/example/unet-server
+  newTag: dev-latest
+
+# Replica overrides
+replicas:
+- name: dev-unet-server
+  count: 1
+- name: dev-postgres
+  count: 1
+- name: dev-redis
+  count: 1
+
+# Config patches for development
+patches:
+- target:
+    kind: Deployment
+    name: unet-server
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/0/value
+      value: "debug"
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: DEPLOYMENT_ENVIRONMENT
+        value: "development"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "50m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "128Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "200m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "512Mi"
+
+- target:
+    kind: Service
+    name: unet-server
+  patch: |-
+    - op: replace
+      path: /spec/type
+      value: "NodePort"
+
+- target:
+    kind: PersistentVolumeClaim
+    name: unet-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: "1Gi"
+
+- target:
+    kind: PersistentVolumeClaim
+    name: unet-logs
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: "500Mi"
+
+- target:
+    kind: PersistentVolumeClaim
+    name: postgres-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: "2Gi"
+
+# ConfigMap patches for development
+patchesStrategicMerge:
+- config-dev.yaml
+
+# Secret patches (dev secrets)
+- secret-dev.yaml

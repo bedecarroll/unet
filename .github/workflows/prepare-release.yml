@@ -1,0 +1,237 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to prepare (e.g., 0.2.0, 1.0.0-beta.1)'
+        required: true
+        type: string
+      auto_publish:
+        description: 'Automatically publish after preparation'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "Invalid version format: $VERSION"
+            echo "Version must follow semantic versioning (e.g., 1.0.0, 1.0.0-beta.1)"
+            exit 1
+          fi
+
+      - name: Check if version already exists
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if git tag -l | grep -q "^v$VERSION$"; then
+            echo "Error: Git tag v$VERSION already exists"
+            exit 1
+          fi
+
+      - name: Run pre-release tests
+        run: |
+          # Format check
+          cargo fmt --all -- --check
+          
+          # Clippy check
+          cargo clippy --workspace --all-targets -- -D warnings
+          
+          # Build check
+          cargo build --workspace --verbose
+          
+          # Run tests
+          cargo test --workspace --verbose
+
+      - name: Update version in Cargo.toml files
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          
+          # Update workspace version
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          
+          # Update individual crate versions
+          for crate in crates/unet-core crates/unet-server crates/unet-cli crates/config-slicer migrations; do
+            if [[ -f "$crate/Cargo.toml" ]]; then
+              sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$crate/Cargo.toml"
+            fi
+          done
+
+      - name: Update CHANGELOG.md
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          DATE=$(date +"%Y-%m-%d")
+          
+          # Create new changelog entry
+          awk -v version="$VERSION" -v date="$DATE" '
+          /^## \[Unreleased\]/ {
+            print $0
+            print ""
+            print "### Added"
+            print "- (Add new features here)"
+            print ""
+            print "### Changed"
+            print "- (Add changes here)"
+            print ""
+            print "### Fixed"
+            print "- (Add bug fixes here)"
+            print ""
+            print "## [" version "] - " date
+            next
+          }
+          /^\[Unreleased\]:/ {
+            print "[Unreleased]: https://github.com/example/unet/compare/v" version "...HEAD"
+            print "[" version "]: https://github.com/example/unet/releases/tag/v" version
+            next
+          }
+          { print }
+          ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+
+      - name: Verify workspace after changes
+        run: |
+          # Check that workspace still builds
+          cargo check --workspace --quiet
+
+      - name: Commit version bump
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          
+          git add Cargo.toml crates/*/Cargo.toml migrations/Cargo.toml CHANGELOG.md
+          git commit -m "chore: prepare release $VERSION
+
+          - Bump version to $VERSION across all workspace crates
+          - Update CHANGELOG.md with release entry
+          - Prepare for release publication
+          
+          🤖 Generated with GitHub Actions"
+
+      - name: Create pull request
+        if: github.event.inputs.auto_publish == 'false'
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          BRANCH="prepare-release-$VERSION"
+          
+          # Create and push branch
+          git checkout -b "$BRANCH"
+          git push origin "$BRANCH"
+          
+          # Create PR description
+          cat > pr_body.md << EOF
+          # Prepare Release $VERSION
+          
+          This PR prepares the release of μNet $VERSION.
+          
+          ## Changes
+          
+          - ✅ Version bumped to $VERSION across all workspace crates
+          - ✅ CHANGELOG.md updated with release entry
+          - ✅ Pre-release tests passed
+          - ✅ Workspace verification completed
+          
+          ## Next Steps
+          
+          1. Review and merge this PR
+          2. Create release tag: \`git tag -a v$VERSION -m "Release $VERSION"\`
+          3. Push tag to trigger release: \`git push origin v$VERSION\`
+          
+          ## Release Checklist
+          
+          - [ ] Review version changes
+          - [ ] Update CHANGELOG.md with specific features/fixes
+          - [ ] Verify all tests pass
+          - [ ] Merge PR
+          - [ ] Create and push release tag
+          - [ ] Monitor release workflow
+          - [ ] Publish release announcements
+          
+          ---
+          
+          🤖 Generated with GitHub Actions
+          EOF
+          
+          # Create PR using GitHub CLI
+          gh pr create \
+            --title "chore: prepare release $VERSION" \
+            --body-file pr_body.md \
+            --label "release" \
+            --assignee "${{ github.actor }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push tag (auto-publish)
+        if: github.event.inputs.auto_publish == 'true'
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          TAG_NAME="v$VERSION"
+          
+          # Push the commit first
+          git push origin main
+          
+          # Create and push tag
+          git tag -a "$TAG_NAME" -m "Release $VERSION
+
+          🤖 Generated with GitHub Actions"
+          git push origin "$TAG_NAME"
+          
+          echo "🚀 Release $VERSION tag created and pushed!"
+          echo "The release workflow will now be triggered automatically."
+
+      - name: Generate release summary
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          AUTO_PUBLISH="${{ github.event.inputs.auto_publish }}"
+          
+          echo "## Release Preparation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**Auto-publish:** $AUTO_PUBLISH" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "$AUTO_PUBLISH" == "true" ]]; then
+            echo "✅ **Release tag created and pushed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The release workflow is now running. Monitor progress at:" >> $GITHUB_STEP_SUMMARY
+            echo "https://github.com/${{ github.repository }}/actions" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Pull request created for review**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Next steps:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Review and merge the pull request" >> $GITHUB_STEP_SUMMARY
+            echo "2. Create release tag: \`git tag -a v$VERSION -m \"Release $VERSION\"\`" >> $GITHUB_STEP_SUMMARY
+            echo "3. Push tag: \`git push origin v$VERSION\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Changes made:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Version bumped across all workspace crates" >> $GITHUB_STEP_SUMMARY
+          echo "- CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
+          echo "- Pre-release tests passed" >> $GITHUB_STEP_SUMMARY

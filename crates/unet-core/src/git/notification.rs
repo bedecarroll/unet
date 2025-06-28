@@ -3,13 +3,12 @@
 //! This module provides a flexible notification system that can dispatch
 //! change events to various handlers (logging, webhooks, database, etc.).
 
-use crate::git::change_tracker::{ChangeNotificationEvent, TrackedFileChange};
+use crate::git::change_tracker::ChangeNotificationEvent;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};

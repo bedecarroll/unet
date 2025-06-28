@@ -1,0 +1,67 @@
+#!/usr/bin/make -f
+
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system.
+export DH_VERBOSE = 1
+
+# Enable all hardening flags
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Ensure Rust uses the system-provided OpenSSL
+export OPENSSL_NO_VENDOR = 1
+
+# Set Rust target directory to avoid conflicts
+export CARGO_TARGET_DIR = $(CURDIR)/target
+
+# Use release build for performance
+export CARGO_BUILD_FLAGS = --release
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	cargo clean || true
+	dh_auto_clean
+
+override_dh_auto_build:
+	# Build the workspace with all binaries
+	cargo build --release --workspace --bins
+	
+override_dh_auto_test:
+	# Run tests for the workspace
+	cargo test --workspace --release
+
+override_dh_auto_install:
+	# Install binaries
+	install -D -m 755 target/release/unet debian/unet/usr/bin/unet
+	install -D -m 755 target/release/unet-server debian/unet-server/usr/bin/unet-server
+	
+	# Install configuration templates
+	install -d debian/unet/etc/unet
+	install -m 644 config.toml debian/unet/etc/unet/config.toml.example
+	install -m 644 config-postgres.toml debian/unet/etc/unet/config-postgres.toml.example
+	install -m 644 config-load-balancer.toml debian/unet/etc/unet/config-load-balancer.toml.example
+	
+	# Install systemd service files
+	install -D -m 644 packaging/debian/unet-server.service debian/unet-server/lib/systemd/system/unet-server.service
+	
+	# Install example policies and templates
+	install -d debian/unet/usr/share/unet/policies
+	install -d debian/unet/usr/share/unet/templates
+	if [ -d policies ]; then cp -r policies/* debian/unet/usr/share/unet/policies/; fi
+	if [ -d templates ]; then cp -r templates/* debian/unet/usr/share/unet/templates/; fi
+	
+	# Install documentation
+	install -d debian/unet/usr/share/doc/unet
+	install -m 644 README.md debian/unet/usr/share/doc/unet/
+	if [ -d docs/book ]; then cp -r docs/book debian/unet/usr/share/doc/unet/html; fi
+
+override_dh_installdocs:
+	dh_installdocs
+	# Additional documentation installation is handled in override_dh_auto_install
+
+override_dh_systemd_enable:
+	dh_systemd_enable --package=unet-server unet-server.service
+
+override_dh_systemd_start:
+	dh_systemd_start --package=unet-server --no-start unet-server.service

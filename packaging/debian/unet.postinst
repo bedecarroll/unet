@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -e
+
+# Create unet user and group if they don't exist
+if ! getent group unet >/dev/null; then
+    addgroup --system unet
+fi
+
+if ! getent passwd unet >/dev/null; then
+    adduser --system --ingroup unet --home /var/lib/unet \
+            --no-create-home --shell /bin/false \
+            --gecos "μNet service user" unet
+fi
+
+# Create necessary directories
+install -d -o unet -g unet -m 755 /var/lib/unet
+install -d -o unet -g unet -m 755 /var/log/unet
+install -d -o root -g unet -m 750 /etc/unet
+
+# Set up default configuration if none exists
+if [ ! -f /etc/unet/config.toml ]; then
+    if [ -f /etc/unet/config.toml.example ]; then
+        cp /etc/unet/config.toml.example /etc/unet/config.toml
+        chown root:unet /etc/unet/config.toml
+        chmod 640 /etc/unet/config.toml
+        echo "Default configuration created at /etc/unet/config.toml"
+        echo "Please review and customize the configuration before starting the service."
+    fi
+fi
+
+# Set up log rotation
+if [ ! -f /etc/logrotate.d/unet ]; then
+    cat > /etc/logrotate.d/unet << 'EOF'
+/var/log/unet/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+    su unet unet
+}
+EOF
+fi
+
+#DEBHELPER#
+
+exit 0

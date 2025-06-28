@@ -1,0 +1,132 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: unet-prod
+
+# Base configuration
+resources:
+- ../../base
+- hpa.yaml
+- pod-disruption-budget.yaml
+
+# Namespace override
+namespace: unet-prod
+
+# Name prefix for resources
+namePrefix: prod-
+
+# Common labels for production environment
+commonLabels:
+  environment: production
+  app.kubernetes.io/instance: unet-prod
+
+# Common annotations
+commonAnnotations:
+  environment: production
+  config.kubernetes.io/origin: prod-overlay
+
+# Image overrides
+images:
+- name: ghcr.io/example/unet-server
+  newTag: v1.0.0
+
+# Replica overrides
+replicas:
+- name: prod-unet-server
+  count: 5
+- name: prod-postgres
+  count: 1
+- name: prod-redis
+  count: 1
+
+# Config patches for production
+patches:
+- target:
+    kind: Deployment
+    name: unet-server
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/0/value
+      value: "info"
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: DEPLOYMENT_ENVIRONMENT
+        value: "production"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "200m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "512Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "1000m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "2Gi"
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://jaeger-collector:14268/api/traces"
+
+- target:
+    kind: Deployment
+    name: postgres
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "200m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "512Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "1000m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "2Gi"
+
+- target:
+    kind: PersistentVolumeClaim
+    name: unet-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: "50Gi"
+    - op: replace
+      path: /spec/storageClassName
+      value: "fast-ssd"
+
+- target:
+    kind: PersistentVolumeClaim
+    name: unet-logs
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: "20Gi"
+
+- target:
+    kind: PersistentVolumeClaim
+    name: postgres-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: "100Gi"
+    - op: replace
+      path: /spec/storageClassName
+      value: "fast-ssd"
+
+# ConfigMap patches for production
+patchesStrategicMerge:
+- config-prod.yaml
+
+# Remove ALB ingress from production (using NGINX)
+patches:
+- target:
+    kind: Ingress
+    name: unet-alb-ingress
+  patch: |-
+    $patch: delete

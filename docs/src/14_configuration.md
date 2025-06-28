@@ -147,6 +147,7 @@ timeout_secs = 30        # Query timeout
 ```
 
 **Environment Variable Override:**
+
 ```bash
 export UNET_DATABASE__URL="postgresql://unet:secret@db.corp.local:5432/unet"
 export UNET_DATABASE__MAX_CONNECTIONS=20
@@ -166,6 +167,7 @@ max_files = 5            # Keep 5 rotated files
 ```
 
 **Log Level Guidelines:**
+
 - **trace**: Extremely verbose, debugging only
 - **debug**: Function entry/exit, variable values
 - **info**: Normal operation events (default)
@@ -223,6 +225,7 @@ tls_key_path = "/etc/unet/tls/key.pem"
 ```
 
 **Certificate Requirements:**
+
 - PEM format certificates
 - Include full certificate chain
 - Private key must be readable by μNet user
@@ -345,12 +348,14 @@ shallow_clone = true             # Performance: only latest commit
 ### 7.2 Git Credentials
 
 **Option 1: Git Credentials File**
+
 ```bash
 # /etc/unet/git-credentials
 https://username:token@github.com
 ```
 
 **Option 2: SSH Key Authentication**
+
 ```toml
 [git]
 policies_repo = "git@github.com:corp/unet-policies.git"
@@ -358,6 +363,7 @@ ssh_key_path = "/etc/unet/ssh/id_rsa"
 ```
 
 **Option 3: Environment Variables**
+
 ```bash
 export GIT_USERNAME="automation"
 export GIT_TOKEN="ghp_xxxxxxxxxxxx"
@@ -410,12 +416,14 @@ chmod 400 /etc/unet/api-token
 ### 8.2 Credential Management
 
 **Best Practices:**
+
 - Use dedicated service accounts for git repositories
 - Rotate API tokens regularly
 - Store sensitive values in environment variables, not config files
 - Use secret management systems (Vault, k8s secrets) in production
 
 **Example with External Secret Management:**
+
 ```toml
 [database]
 url = "postgresql://unet@postgres:5432/unet"  # No password in config
@@ -441,6 +449,7 @@ cors_origins = ["https://trusted-dashboard.corp.local"]  # Restrict CORS
 ### 9.1 Development Environment
 
 **Local Development:**
+
 ```toml
 # ./unet-dev.toml
 [database]
@@ -468,6 +477,7 @@ cargo run --bin unet-server -- --config ./unet-dev.toml
 ### 9.2 Production Deployment
 
 **Production Configuration:**
+
 ```toml
 # /etc/unet/server.toml
 [database]
@@ -494,6 +504,7 @@ credentials_path = "/etc/unet/git-credentials"
 ### 9.3 Kubernetes Deployment
 
 **ConfigMap:**
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -514,6 +525,7 @@ data:
 ```
 
 **Secret:**
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -553,6 +565,7 @@ services:
 ### 10.1 Configuration Validation
 
 **Check configuration loading:**
+
 ```bash
 # Test configuration parsing
 unet-server --config /etc/unet/server.toml --validate-config
@@ -564,6 +577,7 @@ unet-server --config /etc/unet/server.toml --show-config
 ### 10.2 Common Issues
 
 **Database Connection Issues:**
+
 ```bash
 # Check database URL format
 UNET_LOGGING__LEVEL=debug unet-server
@@ -573,6 +587,7 @@ psql "postgresql://unet@postgres:5432/unet" -c "SELECT 1;"
 ```
 
 **Git Repository Issues:**
+
 ```bash
 # Test git credentials
 git clone https://github.com/corp/policies.git /tmp/test-clone
@@ -582,6 +597,7 @@ UNET_LOGGING__LEVEL=debug unet-server  # Look for git sync logs
 ```
 
 **Permission Issues:**
+
 ```bash
 # Check file permissions
 ls -la /etc/unet/
@@ -601,6 +617,7 @@ UNET_LOGGING__LEVEL=debug unet-server 2>&1 | grep -i config
 ```
 
 Expected log output:
+
 ```
 DEBUG Loading configuration from file: /etc/unet/server.toml
 DEBUG Applied environment override: DATABASE__URL

@@ -7,12 +7,14 @@ This example demonstrates a typical small office network serving 35-50 users in 
 ## Network Architecture
 
 ### Physical Layout
+
 - **Building**: Single-story office building (5,000 sq ft)
 - **Server Room**: Dedicated space with environmental controls
 - **Office Areas**: Main floor with workstations and conference rooms  
 - **Reception**: Public area with guest network requirements
 
 ### Network Topology
+
 ```
 Internet (100Mbps Fiber)
     │
@@ -28,6 +30,7 @@ Internet (100Mbps Fiber)
 ## Device Details
 
 ### Core Infrastructure
+
 - **Firewall**: FortiGate 60F with UTM bundle
   - Handles internet security, VPN, and traffic filtering
   - 3Gbps throughput capacity
@@ -39,6 +42,7 @@ Internet (100Mbps Fiber)
   - VLAN routing and management
 
 ### Access Layer
+
 - **Main Floor Switch**: 24-port access switch
   - Serves 35 workstations and 3 conference rooms
   - 18 of 24 ports currently in use
@@ -50,12 +54,14 @@ Internet (100Mbps Fiber)
   - Guest network isolation enabled
 
 ### Wireless Infrastructure
+
 - **WiFi Controller**: Aruba 7005 Mobility Controller
   - Manages up to 16 access points (6 currently deployed)
   - 4 SSIDs: Corporate, Guest, IoT, Management
   - Foundation licensing
 
 ### Server Infrastructure  
+
 - **Primary Server**: Dell PowerEdge R230
   - Windows Server 2022
   - Active Directory, File/Print services
@@ -65,12 +71,14 @@ Internet (100Mbps Fiber)
 ## Network Addressing
 
 ### Management Networks
+
 - **Management VLAN**: 192.168.1.0/24
 - **Server Network**: 192.168.10.0/24  
 - **User Network**: 192.168.20.0/24
 - **Guest Network**: 192.168.100.0/24
 
 ### IP Allocations
+
 - Gateway/Firewall: 192.168.1.1
 - Core Switch: 192.168.1.10
 - Access Switches: 192.168.1.11-12
@@ -80,12 +88,14 @@ Internet (100Mbps Fiber)
 ## Connectivity Details
 
 ### Uplinks
+
 - **Internet**: 100Mbps fiber from Regional ISP
 - **Core-to-Access**: Gigabit uplinks on ports 47-48
 - **Server**: Direct gigabit connection to core
 - **WiFi**: Management connection for controller
 
 ### Redundancy
+
 - **Power**: UPS backup in server room
 - **Internet**: Single circuit (backup planned)
 - **Core**: Single switch (acceptable for this size)
@@ -95,21 +105,25 @@ Internet (100Mbps Fiber)
 This topology demonstrates various custom_data use cases:
 
 ### Asset Management
+
 - Purchase dates and warranty information
 - Serial numbers and model details
 - Cost center assignments
 
 ### Physical Infrastructure  
+
 - Rack positions and power requirements
 - Cable types, lengths, and patch panel assignments
 - Room assignments and access controls
 
 ### Operational Data
+
 - Firmware versions and maintenance contacts
 - Port utilization and VLAN assignments
 - License information and expiry dates
 
 ### Business Context
+
 - Monthly costs and SLA commitments
 - Support contacts and escalation procedures
 - Compliance and security requirements
@@ -117,6 +131,7 @@ This topology demonstrates various custom_data use cases:
 ## Growth Planning
 
 This network can easily accommodate:
+
 - **50% growth**: Additional ports available on existing switches
 - **WiFi expansion**: Controller supports 10 more access points  
 - **Server capacity**: Can add second server to existing rack

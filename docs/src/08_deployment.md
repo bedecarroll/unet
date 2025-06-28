@@ -19,7 +19,7 @@
 3. [Option A – Bare‑Metal (systemd)](#3-option-a--bare-metal-systemd)\
    3.1 [Install Binaries](#31-install-binaries)\
    3.2 [Create Service Account](#32-create-service-account)\
-   3.3 [Initial ](#33-initial-configtoml)[`config.toml`](#33-initial-configtoml)\
+   3.3 [Initial](#33-initial-configtoml)[`config.toml`](#33-initial-configtoml)\
    3.4 [Systemd Unit](#34-systemd-unit)\
    3.5 [Start & Verify](#35-start--verify)\
    3.6 [Upgrades & Rollback](#36-upgrades--rollback)
@@ -353,4 +353,3 @@ Add `-e OTEL_EXPORTER_OTLP_ENDPOINT` to container env to forward traces.
 4. After first boot, create an **admin** node via `unet-cli` and verify policy evaluation.
 
 *Proceed to *[*09\_config\_match\_tool.md*](09_config_match_tool.md)* when ready.*
-

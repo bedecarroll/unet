@@ -21,7 +21,7 @@ pub struct DiffResult {
 }
 
 /// Text-based diff result
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TextDiff {
     /// Individual line changes
     pub changes: Vec<DiffChange>,
@@ -47,7 +47,7 @@ pub struct HierarchicalDiff {
 }
 
 /// Semantic diff understanding configuration meaning
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SemanticDiff {
     /// Functional changes (e.g., IP address changes, VLAN modifications)
     pub functional_changes: Vec<FunctionalChange>,
@@ -58,7 +58,7 @@ pub struct SemanticDiff {
 }
 
 /// Individual diff change for text comparison
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiffChange {
     /// Type of change
     pub change_type: DiffType,
@@ -103,7 +103,7 @@ pub struct DiffSection {
 }
 
 /// Configuration structure changes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StructureChange {
     /// Description of the structural change
     pub description: String,
@@ -116,7 +116,7 @@ pub struct StructureChange {
 }
 
 /// Functional changes with semantic understanding
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FunctionalChange {
     /// Type of functional change
     pub change_type: FunctionalChangeType,
@@ -154,7 +154,7 @@ pub enum FunctionalChangeType {
 }
 
 /// Impact analysis of configuration changes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImpactAnalysis {
     /// Affected systems or components
     pub affected_components: Vec<String>,
@@ -193,7 +193,7 @@ pub enum ChangeSeverity {
 }
 
 /// Group of related changes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChangeGroup {
     /// Group identifier
     pub id: String,
@@ -206,7 +206,7 @@ pub struct ChangeGroup {
 }
 
 /// Types of change groups
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChangeGroupType {
     /// Interface configuration group
     Interface,
@@ -221,7 +221,7 @@ pub enum ChangeGroupType {
 }
 
 /// Diff options to control comparison behavior
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiffOptions {
     /// Number of context lines to show around changes
     pub context_lines: usize,
@@ -240,7 +240,7 @@ pub struct DiffOptions {
 }
 
 /// Summary statistics for a diff
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiffSummary {
     /// Total number of changes
     pub total_changes: usize,
@@ -259,7 +259,7 @@ pub struct DiffSummary {
 }
 
 /// Change complexity assessment
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChangeComplexity {
     /// Simple changes, low complexity
     Simple,

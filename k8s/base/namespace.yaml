@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unet
+  labels:
+    app.kubernetes.io/name: unet
+    app.kubernetes.io/part-of: unet
+  annotations:
+    kubernetes.io/description: "μNet network configuration management system"

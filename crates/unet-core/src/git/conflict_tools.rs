@@ -9,9 +9,9 @@ use crate::git::conflict_resolution::{
 use crate::git::types::{GitError, GitResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
-use tracing::{info, warn};
+use tracing::info;
 
 /// Configuration for external merge tools
 #[derive(Debug, Clone, Serialize, Deserialize)]

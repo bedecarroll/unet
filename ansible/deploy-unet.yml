@@ -1,0 +1,309 @@
+---
+# Ansible playbook for deploying μNet
+- name: Deploy μNet Network Configuration Management System
+  hosts: unet_servers
+  become: yes
+  vars:
+    unet_version: "{{ unet_version | default('latest') }}"
+    unet_user: "{{ unet_user | default('unet') }}"
+    unet_group: "{{ unet_group | default('unet') }}"
+    unet_install_dir: "{{ unet_install_dir | default('/usr/bin') }}"
+    unet_config_dir: "{{ unet_config_dir | default('/etc/unet') }}"
+    unet_data_dir: "{{ unet_data_dir | default('/var/lib/unet') }}"
+    unet_log_dir: "{{ unet_log_dir | default('/var/log/unet') }}"
+    unet_backup_dir: "{{ unet_backup_dir | default('/var/backups/unet') }}"
+    install_postgres: "{{ install_postgres | default(true) }}"
+    install_redis: "{{ install_redis | default(true) }}"
+    postgres_version: "{{ postgres_version | default('15') }}"
+    redis_version: "{{ redis_version | default('7') }}"
+    
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Install system dependencies
+      package:
+        name:
+          - curl
+          - wget
+          - gnupg
+          - lsb-release
+          - ca-certificates
+          - software-properties-common
+        state: present
+    
+    - name: Create μNet system user
+      user:
+        name: "{{ unet_user }}"
+        group: "{{ unet_group }}"
+        system: yes
+        create_home: yes
+        shell: /bin/bash
+        home: "/home/{{ unet_user }}"
+    
+    - name: Create μNet directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ unet_user }}"
+        group: "{{ unet_group }}"
+        mode: '0755'
+      loop:
+        - "{{ unet_config_dir }}"
+        - "{{ unet_data_dir }}"
+        - "{{ unet_log_dir }}"
+        - "{{ unet_backup_dir }}"
+    
+    - name: Install PostgreSQL
+      block:
+        - name: Add PostgreSQL APT repository
+          shell: |
+            curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+            echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+          when: ansible_os_family == "Debian"
+        
+        - name: Update package cache after adding PostgreSQL repo
+          apt:
+            update_cache: yes
+          when: ansible_os_family == "Debian"
+        
+        - name: Install PostgreSQL
+          package:
+            name:
+              - "postgresql-{{ postgres_version }}"
+              - "postgresql-client-{{ postgres_version }}"
+              - "postgresql-contrib-{{ postgres_version }}"
+              - python3-psycopg2
+            state: present
+        
+        - name: Start and enable PostgreSQL
+          systemd:
+            name: postgresql
+            state: started
+            enabled: yes
+        
+        - name: Create μNet PostgreSQL user
+          become_user: postgres
+          postgresql_user:
+            name: "{{ unet_user }}"
+            password: "{{ unet_postgres_password | default('changeme') }}"
+            encrypted: yes
+        
+        - name: Create μNet PostgreSQL database
+          become_user: postgres
+          postgresql_db:
+            name: unet
+            owner: "{{ unet_user }}"
+            encoding: UTF8
+            lc_collate: en_US.UTF-8
+            lc_ctype: en_US.UTF-8
+            template: template0
+      when: install_postgres | bool
+    
+    - name: Install Redis
+      block:
+        - name: Install Redis
+          package:
+            name:
+              - redis-server
+              - redis-tools
+            state: present
+        
+        - name: Configure Redis for μNet
+          template:
+            src: redis.conf.j2
+            dest: /etc/redis/unet.conf
+            owner: redis
+            group: redis
+            mode: '0640'
+          notify: restart redis
+        
+        - name: Start and enable Redis
+          systemd:
+            name: redis-server
+            state: started
+            enabled: yes
+      when: install_redis | bool
+    
+    - name: Download μNet binaries
+      get_url:
+        url: "https://github.com/example/unet/releases/download/{{ unet_version }}/unet-{{ ansible_architecture }}-unknown-linux-gnu.tar.gz"
+        dest: "/tmp/unet-{{ unet_version }}.tar.gz"
+        mode: '0644'
+      when: unet_version != "local"
+    
+    - name: Extract μNet binaries
+      unarchive:
+        src: "/tmp/unet-{{ unet_version }}.tar.gz"
+        dest: "{{ unet_install_dir }}"
+        remote_src: yes
+        owner: root
+        group: root
+        mode: '0755'
+        creates: "{{ unet_install_dir }}/unet-server"
+      when: unet_version != "local"
+    
+    - name: Copy local μNet binaries (for development)
+      copy:
+        src: "{{ item }}"
+        dest: "{{ unet_install_dir }}/"
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - "../target/release/unet-server"
+        - "../target/release/unet"
+      when: unet_version == "local"
+    
+    - name: Install μNet configuration
+      template:
+        src: config.toml.j2
+        dest: "{{ unet_config_dir }}/config.toml"
+        owner: "{{ unet_user }}"
+        group: "{{ unet_group }}"
+        mode: '0640'
+      notify: restart unet-server
+    
+    - name: Install systemd service files
+      template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - unet-server.service
+        - unet.target
+        - unet-backup.service
+        - unet-backup.timer
+        - unet-healthcheck.service
+        - unet-healthcheck.timer
+      notify:
+        - reload systemd
+        - restart unet-server
+    
+    - name: Install PostgreSQL systemd service (if enabled)
+      template:
+        src: unet-postgres.service.j2
+        dest: /etc/systemd/system/unet-postgres.service
+        owner: root
+        group: root
+        mode: '0644'
+      when: install_postgres | bool
+      notify:
+        - reload systemd
+        - restart unet-postgres
+    
+    - name: Install Redis systemd service (if enabled)
+      template:
+        src: unet-redis.service.j2
+        dest: /etc/systemd/system/unet-redis.service
+        owner: root
+        group: root
+        mode: '0644'
+      when: install_redis | bool
+      notify:
+        - reload systemd
+        - restart unet-redis
+    
+    - name: Install backup script
+      template:
+        src: unet-backup.sh.j2
+        dest: /usr/local/bin/unet-backup.sh
+        owner: root
+        group: root
+        mode: '0755'
+    
+    - name: Flush handlers before starting services
+      meta: flush_handlers
+    
+    - name: Start and enable μNet target
+      systemd:
+        name: unet.target
+        state: started
+        enabled: yes
+    
+    - name: Start and enable μNet server
+      systemd:
+        name: unet-server.service
+        state: started
+        enabled: yes
+    
+    - name: Start and enable backup timer
+      systemd:
+        name: unet-backup.timer
+        state: started
+        enabled: yes
+    
+    - name: Start and enable health check timer
+      systemd:
+        name: unet-healthcheck.timer
+        state: started
+        enabled: yes
+    
+    - name: Wait for μNet server to be ready
+      uri:
+        url: "http://localhost:8080/health"
+        method: GET
+        return_content: yes
+      register: health_check
+      until: health_check.status == 200
+      retries: 30
+      delay: 2
+    
+    - name: Display installation summary
+      debug:
+        msg: |
+          μNet has been successfully deployed!
+          
+          Configuration: {{ unet_config_dir }}/config.toml
+          Data directory: {{ unet_data_dir }}
+          Log directory: {{ unet_log_dir }}
+          Backup directory: {{ unet_backup_dir }}
+          
+          Services:
+          - unet-server.service: Main application server
+          - unet-backup.timer: Daily database backups
+          - unet-healthcheck.timer: Health monitoring
+          {% if install_postgres %}
+          - PostgreSQL: Database server
+          {% endif %}
+          {% if install_redis %}
+          - Redis: Cache server
+          {% endif %}
+          
+          API endpoints:
+          - Health: http://{{ ansible_default_ipv4.address }}:8080/health
+          - Metrics: http://{{ ansible_default_ipv4.address }}:8080/metrics
+          - API: http://{{ ansible_default_ipv4.address }}:8080/api
+  
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+    
+    - name: restart unet-server
+      systemd:
+        name: unet-server.service
+        state: restarted
+    
+    - name: restart unet-postgres
+      systemd:
+        name: unet-postgres.service
+        state: restarted
+      when: install_postgres | bool
+    
+    - name: restart unet-redis
+      systemd:
+        name: unet-redis.service
+        state: restarted
+      when: install_redis | bool
+    
+    - name: restart redis
+      systemd:
+        name: redis-server
+        state: restarted
+      when: install_redis | bool

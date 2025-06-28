@@ -1,0 +1,77 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: unet-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Base resources
+resources:
+- namespace.yaml
+- configmap.yaml
+- secret.yaml
+- pvc.yaml
+- migration-job.yaml
+- deployment.yaml
+- service.yaml
+- rbac.yaml
+- ingress.yaml
+- monitoring.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/instance: unet-base
+  app.kubernetes.io/version: v0.1.0
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  config.kubernetes.io/origin: |
+    configuredIn: kustomization.yaml
+    configuredBy:
+      apiVersion: kustomize.config.k8s.io/v1beta1
+      kind: Kustomization
+
+# Namespace for all resources
+namespace: unet
+
+# Images (can be overridden in overlays)
+images:
+- name: ghcr.io/example/unet-server
+  newTag: latest
+- name: postgres
+  newTag: "15-alpine"
+- name: redis
+  newTag: "7-alpine"
+
+# Resource name prefix (optional)
+namePrefix: ""
+
+# Resource name suffix (optional)
+nameSuffix: ""
+
+# Configuration replacements
+replacements:
+- source:
+    kind: ConfigMap
+    name: unet-config
+    fieldPath: data.config\.toml
+  targets:
+  - select:
+      kind: Deployment
+      name: unet-server
+    fieldPaths:
+    - spec.template.spec.containers.[name=unet-server].env.[name=UNET_CONFIG_PATH].value
+
+# Patches (applied to specific resources)
+patches:
+- target:
+    kind: Deployment
+    name: unet-server
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: DEPLOYMENT_ENVIRONMENT
+        value: "base"

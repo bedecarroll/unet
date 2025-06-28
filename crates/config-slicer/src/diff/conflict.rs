@@ -3,7 +3,10 @@
 //! This module provides conflict detection and resolution capabilities for
 //! configuration changes that may have conflicts or require special handling.
 
-use crate::diff::types::*;
+use crate::diff::types::{
+    ChangeSeverity, DiffChange, DiffResult, DiffSection, DiffType, FunctionalChangeType,
+    HierarchicalDiff, SemanticDiff, TextDiff,
+};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -18,7 +21,7 @@ pub struct ConflictResolver {
 }
 
 /// Types of conflicts that can occur in configuration diffs
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConflictType {
     /// Duplicate configuration commands
     Duplicate,
@@ -41,7 +44,7 @@ pub enum ConflictType {
 }
 
 /// Resolution strategies for handling conflicts
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResolutionStrategy {
     /// Prefer the older configuration (conservative)
     PreferOld,
@@ -56,7 +59,7 @@ pub enum ResolutionStrategy {
 }
 
 /// Resolution result for a conflict
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Resolution {
     /// Type of conflict that was resolved
     pub conflict_type: ConflictType,
@@ -86,7 +89,7 @@ pub struct ResolutionRule {
 }
 
 /// Actions that can be taken for conflict resolution
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResolutionAction {
     /// Keep the old configuration line
     KeepOld,
@@ -104,6 +107,7 @@ pub enum ResolutionAction {
 
 impl ConflictResolver {
     /// Create a new conflict resolver with the specified strategy
+    #[must_use]
     pub fn new(strategy: ResolutionStrategy) -> Self {
         Self {
             strategy,
@@ -407,7 +411,7 @@ impl ConflictResolver {
         conflict: &ConflictType,
     ) -> Result<Resolution> {
         // Look for matching custom rules
-        for (name, rule) in &self.custom_rules {
+        if let Some((name, rule)) = self.custom_rules.iter().next() {
             // This is a simplified custom resolution - in practice, you'd want
             // more sophisticated pattern matching
             let resolution = match rule.action {
@@ -438,11 +442,7 @@ impl ConflictResolver {
 
     fn extract_command(&self, line: &str) -> String {
         // Extract the main command from a configuration line
-        line.trim()
-            .split_whitespace()
-            .next()
-            .unwrap_or("")
-            .to_string()
+        line.split_whitespace().next().unwrap_or("").to_string()
     }
 
     fn extract_old_lines(&self, diff_result: &DiffResult, _conflict: &ConflictType) -> Vec<String> {

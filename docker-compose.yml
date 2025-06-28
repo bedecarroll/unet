@@ -1,0 +1,194 @@
+# Docker Compose configuration for μNet
+version: '3.8'
+
+services:
+  # μNet Server - Production mode
+  unet-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+    container_name: unet-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - unet-data:/app/data
+      - unet-config:/app/config
+      - unet-logs:/app/logs
+    environment:
+      - RUST_LOG=info
+      - UNET_CONFIG_PATH=/app/config
+      - UNET_DATA_PATH=/app/data
+      - UNET_LOG_PATH=/app/logs
+      - UNET_DATABASE_URL=sqlite:///app/data/unet.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - unet-network
+
+  # PostgreSQL Database (for production deployment)
+  postgres:
+    image: postgres:15-alpine
+    container_name: unet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: unet
+      POSTGRES_USER: unet
+      POSTGRES_PASSWORD: unet_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - unet-network
+
+  # Redis (for distributed locking and caching)
+  redis:
+    image: redis:7-alpine
+    container_name: unet-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - unet-network
+
+  # μNet Server with PostgreSQL
+  unet-server-postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+    container_name: unet-server-postgres
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+      - "8444:8443"
+    volumes:
+      - unet-data-postgres:/app/data
+      - unet-config-postgres:/app/config
+      - unet-logs-postgres:/app/logs
+    environment:
+      - RUST_LOG=info
+      - UNET_CONFIG_PATH=/app/config
+      - UNET_DATA_PATH=/app/data
+      - UNET_LOG_PATH=/app/logs
+      - UNET_DATABASE_URL=postgres://unet:unet_password@postgres:5432/unet
+      - UNET_REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - unet-network
+    profiles:
+      - postgres
+
+  # μNet CLI Tools
+  unet-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: cli
+    container_name: unet-cli
+    volumes:
+      - unet-data:/app/data
+      - unet-config:/app/config
+      - .:/workspace
+    environment:
+      - RUST_LOG=info
+      - UNET_CONFIG_PATH=/app/config
+      - UNET_DATA_PATH=/app/data
+      - UNET_SERVER_URL=http://unet-server:8080
+    networks:
+      - unet-network
+    profiles:
+      - cli
+
+  # All-in-one development container
+  unet-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: all-in-one
+    container_name: unet-dev
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+      - "8445:8443"
+    volumes:
+      - unet-data-dev:/app/data
+      - unet-config-dev:/app/config
+      - unet-logs-dev:/app/logs
+    environment:
+      - RUST_LOG=debug
+      - UNET_CONFIG_PATH=/app/config
+      - UNET_DATA_PATH=/app/data
+      - UNET_LOG_PATH=/app/logs
+      - UNET_DATABASE_URL=sqlite:///app/data/unet.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - unet-network
+    profiles:
+      - dev
+
+volumes:
+  unet-data:
+    driver: local
+  unet-config:
+    driver: local
+  unet-logs:
+    driver: local
+  unet-data-postgres:
+    driver: local
+  unet-config-postgres:
+    driver: local
+  unet-logs-postgres:
+    driver: local
+  unet-data-dev:
+    driver: local
+  unet-config-dev:
+    driver: local
+  unet-logs-dev:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  unet-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

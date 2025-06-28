@@ -12,7 +12,7 @@
 
 1. [Crate Layout](#1-crate-layout)
 2. [Configuration File (](#2-configuration-file-configtoml)[`config.toml`](#2-configuration-file-configtoml)[)](#2-configuration-file-configtoml)
-3. [`main.rs`](#3-mainrs-boot-sequence)[ Boot Sequence](#3-mainrs-boot-sequence)
+3. [`main.rs`](#3-mainrs-boot-sequence)[Boot Sequence](#3-mainrs-boot-sequence)
 4. [HTTP Layer (Axum)](#4-http-layer-axum)
 5. [Data Access & Connection Pools](#5-data-access--connection-pools)
 6. [Background Tasks](#6-background-tasks)
@@ -132,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
-*`shutdown_signal()`** listens for SIGINT/SIGTERM & triggers Task cancellation (see §9).*
+*`shutdown_signal()`**listens for SIGINT/SIGTERM & triggers Task cancellation (see §9).*
 
 ---
 
@@ -362,4 +362,3 @@ Optimization backlog: prepared statement cache, predicate push‑down (SeaORM �
 5. Integrate **Policy Engine** (see 03\_policy\_engine.md) and expose `?eval=true` query param.
 
 *Proceed to *[*07\_ci\_cd.md*](07_ci_cd.md)*.*
-

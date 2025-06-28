@@ -1,0 +1,303 @@
+name: Docker Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
+      - '.github/workflows/docker-security.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
+  schedule:
+    # Run weekly security scans
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  dockerfile-lint:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true
+
+      - name: Upload Hadolint results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: hadolint-results.sarif
+
+  security-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    
+    strategy:
+      matrix:
+        target: [server, cli, all-in-one]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.target }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.target }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.target }}.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.target }}.sarif'
+
+      - name: Run Trivy for high/critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.target }}:${{ github.sha }}
+          format: 'json'
+          output: 'trivy-results-${{ matrix.target }}.json'
+          severity: 'HIGH,CRITICAL'
+          exit-code: 1
+
+      - name: Generate security report
+        if: always()
+        run: |
+          mkdir -p security-reports
+          
+          # Create comprehensive security report
+          cat > security-reports/security-report-${{ matrix.target }}.md << 'EOF'
+          # Security Scan Report - ${{ matrix.target }}
+          
+          **Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.target }}:${{ github.sha }}
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Workflow:** ${{ github.workflow }}
+          **Run ID:** ${{ github.run_id }}
+          
+          ## Vulnerability Summary
+          
+          EOF
+          
+          # Add Trivy results if available
+          if [[ -f "trivy-results-${{ matrix.target }}.json" ]]; then
+            echo "### Trivy Scan Results" >> security-reports/security-report-${{ matrix.target }}.md
+            echo "" >> security-reports/security-report-${{ matrix.target }}.md
+            
+            # Count vulnerabilities by severity
+            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-results-${{ matrix.target }}.json || echo 0)
+            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length' trivy-results-${{ matrix.target }}.json || echo 0)
+            
+            echo "- **Critical:** $CRITICAL" >> security-reports/security-report-${{ matrix.target }}.md
+            echo "- **High:** $HIGH" >> security-reports/security-report-${{ matrix.target }}.md
+            echo "" >> security-reports/security-report-${{ matrix.target }}.md
+            
+            if [[ $CRITICAL -gt 0 ]] || [[ $HIGH -gt 0 ]]; then
+              echo "⚠️ **Action Required:** Address high/critical vulnerabilities before deployment" >> security-reports/security-report-${{ matrix.target }}.md
+            else
+              echo "✅ **No high/critical vulnerabilities found**" >> security-reports/security-report-${{ matrix.target }}.md
+            fi
+            echo "" >> security-reports/security-report-${{ matrix.target }}.md
+          fi
+          
+          echo "## Recommendations" >> security-reports/security-report-${{ matrix.target }}.md
+          echo "" >> security-reports/security-report-${{ matrix.target }}.md
+          echo "1. Regularly update base images" >> security-reports/security-report-${{ matrix.target }}.md
+          echo "2. Monitor security advisories for dependencies" >> security-reports/security-report-${{ matrix.target }}.md
+          echo "3. Implement automated vulnerability scanning in CI/CD" >> security-reports/security-report-${{ matrix.target }}.md
+          echo "4. Use distroless or minimal base images when possible" >> security-reports/security-report-${{ matrix.target }}.md
+
+      - name: Upload security report artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report-${{ matrix.target }}-${{ github.sha }}
+          path: |
+            security-reports/
+            trivy-results-${{ matrix.target }}.json
+            trivy-results-${{ matrix.target }}.sarif
+          retention-days: 30
+
+      - name: Comment PR with security results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const target = '${{ matrix.target }}';
+            
+            try {
+              const reportPath = `security-reports/security-report-${target}.md`;
+              if (fs.existsSync(reportPath)) {
+                const report = fs.readFileSync(reportPath, 'utf8');
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## Security Scan Results - ${target}\n\n${report}`
+                });
+              }
+            } catch (error) {
+              console.log('Could not post security report comment:', error);
+            }
+
+  docker-bench-security:
+    name: Docker Bench Security
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Docker Bench Security
+        run: |
+          git clone https://github.com/docker/docker-bench-security.git /tmp/docker-bench-security
+          cd /tmp/docker-bench-security
+          sudo ./docker-bench-security.sh -l /tmp/docker-bench-results.log
+          
+          # Parse results and create summary
+          WARNINGS=$(grep -c "WARN" /tmp/docker-bench-results.log || echo "0")
+          INFOS=$(grep -c "INFO" /tmp/docker-bench-results.log || echo "0")
+          PASSES=$(grep -c "PASS" /tmp/docker-bench-results.log || echo "0")
+          
+          echo "Docker Bench Security Results:" >> $GITHUB_STEP_SUMMARY
+          echo "- Warnings: $WARNINGS" >> $GITHUB_STEP_SUMMARY
+          echo "- Info items: $INFOS" >> $GITHUB_STEP_SUMMARY  
+          echo "- Passed checks: $PASSES" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Docker Bench results
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-bench-security-${{ github.sha }}
+          path: /tmp/docker-bench-results.log
+          retention-days: 30
+
+  policy-compliance:
+    name: Security Policy Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check security compliance
+        run: |
+          echo "## Security Policy Compliance Check" >> $GITHUB_STEP_SUMMARY
+          
+          # Check for security best practices in Dockerfile
+          COMPLIANCE_SCORE=0
+          TOTAL_CHECKS=6
+          
+          # Check 1: Non-root user
+          if grep -q "USER.*[^0]" Dockerfile; then
+            echo "✅ Running as non-root user" >> $GITHUB_STEP_SUMMARY
+            ((COMPLIANCE_SCORE++))
+          else
+            echo "❌ Not running as non-root user" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check 2: Multi-stage build
+          if grep -q "FROM.*AS" Dockerfile; then
+            echo "✅ Using multi-stage builds" >> $GITHUB_STEP_SUMMARY
+            ((COMPLIANCE_SCORE++))
+          else
+            echo "❌ Not using multi-stage builds" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check 3: Health check
+          if grep -q "HEALTHCHECK" Dockerfile; then
+            echo "✅ Health check defined" >> $GITHUB_STEP_SUMMARY
+            ((COMPLIANCE_SCORE++))
+          else
+            echo "❌ No health check defined" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check 4: Specific base image tags
+          if ! grep -q "FROM.*:latest" Dockerfile; then
+            echo "✅ Not using latest tags" >> $GITHUB_STEP_SUMMARY
+            ((COMPLIANCE_SCORE++))
+          else
+            echo "❌ Using latest tags in FROM statements" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check 5: Security scanning in CI
+          if [[ -f ".github/workflows/docker-security.yml" ]]; then
+            echo "✅ Security scanning configured in CI" >> $GITHUB_STEP_SUMMARY
+            ((COMPLIANCE_SCORE++))
+          else
+            echo "❌ No security scanning in CI" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check 6: .dockerignore exists
+          if [[ -f ".dockerignore" ]]; then
+            echo "✅ .dockerignore file present" >> $GITHUB_STEP_SUMMARY
+            ((COMPLIANCE_SCORE++))
+          else
+            echo "❌ .dockerignore file missing" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          COMPLIANCE_PERCENTAGE=$((COMPLIANCE_SCORE * 100 / TOTAL_CHECKS))
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Compliance Score: $COMPLIANCE_SCORE/$TOTAL_CHECKS ($COMPLIANCE_PERCENTAGE%)**" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ $COMPLIANCE_PERCENTAGE -ge 80 ]]; then
+            echo "🎉 Good security compliance!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Security compliance needs improvement" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

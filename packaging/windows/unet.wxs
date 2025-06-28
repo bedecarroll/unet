@@ -1,0 +1,349 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+  <!-- Product definition -->
+  <Product Id='*' 
+           Name='μNet Network Configuration Management' 
+           Language='1033' 
+           Version='0.1.0' 
+           Manufacturer='μNet Development Team' 
+           UpgradeCode='12345678-1234-1234-1234-123456789012'>
+
+    <!-- Package definition -->
+    <Package Id='*' 
+             Keywords='Network Configuration Management Automation SNMP' 
+             Description='μNet Network Configuration Management and Automation Tool' 
+             Manufacturer='μNet Development Team' 
+             InstallerVersion='200' 
+             Languages='1033' 
+             Compressed='yes' 
+             SummaryCodepage='1252' 
+             Platform='x64'
+             InstallScope='perMachine' />
+
+    <!-- Media definition -->
+    <Media Id='1' 
+           Cabinet='unet.cab' 
+           EmbedCab='yes' />
+
+    <!-- Installation directory structure -->
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='ProgramFiles64Folder'>
+        <Directory Id='INSTALLFOLDER' Name='uNet'>
+          
+          <!-- Binaries directory -->
+          <Directory Id='BinFolder' Name='bin'>
+            <!-- Main executables will be added here -->
+          </Directory>
+          
+          <!-- Configuration directory -->
+          <Directory Id='ConfigFolder' Name='config'>
+            <!-- Configuration files will be added here -->
+          </Directory>
+          
+          <!-- Documentation directory -->
+          <Directory Id='DocsFolder' Name='docs'>
+            <!-- Documentation files will be added here -->
+          </Directory>
+          
+          <!-- Example policies and templates -->
+          <Directory Id='ExamplesFolder' Name='examples'>
+            <Directory Id='PoliciesFolder' Name='policies' />
+            <Directory Id='TemplatesFolder' Name='templates' />
+          </Directory>
+          
+        </Directory>
+      </Directory>
+      
+      <!-- Program Data directory for application data -->
+      <Directory Id='CommonAppDataFolder'>
+        <Directory Id='UnetDataFolder' Name='uNet'>
+          <Directory Id='DataFolder' Name='data' />
+          <Directory Id='LogsFolder' Name='logs' />
+        </Directory>
+      </Directory>
+      
+      <!-- Start Menu -->
+      <Directory Id='ProgramMenuFolder'>
+        <Directory Id='ApplicationProgramsFolder' Name='μNet' />
+      </Directory>
+      
+    </Directory>
+
+    <!-- Feature definitions -->
+    <Feature Id='Complete' 
+             Title='μNet Complete Installation' 
+             Description='Complete installation of μNet including CLI tool and server.' 
+             Level='1' 
+             ConfigurableDirectory='INSTALLFOLDER'>
+      
+      <Feature Id='CoreFeature' 
+               Title='Core Components' 
+               Description='Core μNet components including CLI tool and libraries.' 
+               Level='1'
+               AllowAdvertise='no'>
+        <ComponentRef Id='UnetCLI' />
+        <ComponentRef Id='Configuration' />
+        <ComponentRef Id='Documentation' />
+        <ComponentRef Id='ApplicationShortcuts' />
+        <ComponentRef Id='EnvironmentPath' />
+      </Feature>
+      
+      <Feature Id='ServerFeature' 
+               Title='μNet Server' 
+               Description='HTTP server daemon for μNet API and web interface.' 
+               Level='1'
+               AllowAdvertise='no'>
+        <ComponentRef Id='UnetServer' />
+        <ComponentRef Id='WindowsService' />
+      </Feature>
+      
+      <Feature Id='ExamplesFeature' 
+               Title='Examples and Templates' 
+               Description='Example policies and configuration templates.' 
+               Level='1000'
+               AllowAdvertise='no'>
+        <ComponentRef Id='ExamplePolicies' />
+        <ComponentRef Id='ExampleTemplates' />
+      </Feature>
+      
+    </Feature>
+
+    <!-- Components -->
+    
+    <!-- CLI Tool Component -->
+    <DirectoryRef Id='BinFolder'>
+      <Component Id='UnetCLI' Guid='*' Win64='yes'>
+        <File Id='UnetExe' 
+              Name='unet.exe' 
+              Source='target\release\unet.exe' 
+              KeyPath='yes'>
+          <Shortcut Id='UnetCLIShortcut'
+                    Directory='ApplicationProgramsFolder'
+                    Name='μNet CLI'
+                    Description='μNet Command Line Interface'
+                    WorkingDirectory='DataFolder'
+                    Arguments='--help' />
+        </File>
+      </Component>
+    </DirectoryRef>
+
+    <!-- Server Component -->
+    <DirectoryRef Id='BinFolder'>
+      <Component Id='UnetServer' Guid='*' Win64='yes'>
+        <File Id='UnetServerExe' 
+              Name='unet-server.exe' 
+              Source='target\release\unet-server.exe' 
+              KeyPath='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Configuration Component -->
+    <DirectoryRef Id='ConfigFolder'>
+      <Component Id='Configuration' Guid='*'>
+        <File Id='ConfigToml' 
+              Name='config.toml.example' 
+              Source='config.toml' />
+        <File Id='ConfigPostgres' 
+              Name='config-postgres.toml.example' 
+              Source='config-postgres.toml' />
+        <File Id='ConfigLoadBalancer' 
+              Name='config-load-balancer.toml.example' 
+              Source='config-load-balancer.toml' />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Documentation Component -->
+    <DirectoryRef Id='DocsFolder'>
+      <Component Id='Documentation' Guid='*'>
+        <File Id='ReadmeMd' 
+              Name='README.md' 
+              Source='README.md' />
+        <!-- Additional documentation files would be added here -->
+      </Component>
+    </DirectoryRef>
+
+    <!-- Example Policies Component -->
+    <DirectoryRef Id='PoliciesFolder'>
+      <Component Id='ExamplePolicies' Guid='*'>
+        <!-- Policy files would be added here if they exist -->
+        <CreateFolder />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Example Templates Component -->
+    <DirectoryRef Id='TemplatesFolder'>
+      <Component Id='ExampleTemplates' Guid='*'>
+        <!-- Template files would be added here if they exist -->
+        <CreateFolder />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Application Shortcuts Component -->
+    <DirectoryRef Id='ApplicationProgramsFolder'>
+      <Component Id='ApplicationShortcuts' Guid='*'>
+        <Shortcut Id='UnetDocumentationShortcut'
+                  Name='μNet Documentation'
+                  Description='μNet Documentation'
+                  Target='[DocsFolder]README.md' />
+        <Shortcut Id='UnetConfigShortcut'
+                  Name='μNet Configuration'
+                  Description='μNet Configuration Directory'
+                  Target='[ConfigFolder]' />
+        <RemoveFolder Id='ApplicationProgramsFolder' On='uninstall' />
+        <RegistryValue Root='HKCU' 
+                       Key='Software\uNet\Installed' 
+                       Name='shortcuts' 
+                       Type='integer' 
+                       Value='1' 
+                       KeyPath='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Environment PATH Component -->
+    <DirectoryRef Id='BinFolder'>
+      <Component Id='EnvironmentPath' Guid='*'>
+        <Environment Id='PATH' 
+                     Name='PATH' 
+                     Value='[BinFolder]' 
+                     Permanent='no' 
+                     Part='last' 
+                     Action='set' 
+                     System='yes' />
+        <RegistryValue Root='HKLM' 
+                       Key='Software\uNet\Installed' 
+                       Name='path' 
+                       Type='string' 
+                       Value='[BinFolder]' 
+                       KeyPath='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Windows Service Component -->
+    <DirectoryRef Id='BinFolder'>
+      <Component Id='WindowsService' Guid='*' Win64='yes'>
+        <File Id='UnetServiceExe' 
+              Name='unet-service.exe' 
+              Source='packaging\windows\unet-service.exe' />
+        
+        <!-- Service Installation -->
+        <ServiceInstall Id='UnetServiceInstall'
+                        Type='ownProcess'
+                        Vital='yes'
+                        Name='UnetService'
+                        DisplayName='μNet Network Configuration Management Service'
+                        Description='μNet HTTP server for network configuration management and automation'
+                        Start='demand'
+                        Account='LocalSystem'
+                        ErrorControl='ignore'
+                        Interactive='no'>
+          <util:ServiceConfig FirstFailureActionType='restart'
+                              SecondFailureActionType='restart'
+                              ThirdFailureActionType='restart'
+                              RestartServiceDelayInSeconds='60'
+                              ResetPeriodInDays='1' />
+        </ServiceInstall>
+        
+        <ServiceControl Id='UnetServiceControl'
+                        Start='install'
+                        Stop='both'
+                        Remove='uninstall'
+                        Name='UnetService'
+                        Wait='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Create application data directories -->
+    <DirectoryRef Id='DataFolder'>
+      <Component Id='DataDirectories' Guid='*'>
+        <CreateFolder>
+          <util:PermissionEx User='Users' GenericAll='yes' />
+        </CreateFolder>
+        <RegistryValue Root='HKLM' 
+                       Key='Software\uNet\Installed' 
+                       Name='datadir' 
+                       Type='string' 
+                       Value='[DataFolder]' 
+                       KeyPath='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id='LogsFolder'>
+      <Component Id='LogDirectories' Guid='*'>
+        <CreateFolder>
+          <util:PermissionEx User='Users' GenericAll='yes' />
+        </CreateFolder>
+        <RegistryValue Root='HKLM' 
+                       Key='Software\uNet\Installed' 
+                       Name='logdir' 
+                       Type='string' 
+                       Value='[LogsFolder]' 
+                       KeyPath='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <!-- Registry entries for application -->
+    <DirectoryRef Id='INSTALLFOLDER'>
+      <Component Id='RegistryEntries' Guid='*'>
+        <RegistryKey Root='HKLM' Key='Software\uNet'>
+          <RegistryValue Name='InstallPath' Type='string' Value='[INSTALLFOLDER]' />
+          <RegistryValue Name='Version' Type='string' Value='0.1.0' />
+          <RegistryValue Name='ConfigPath' Type='string' Value='[ConfigFolder]' />
+          <RegistryValue Name='DataPath' Type='string' Value='[DataFolder]' />
+          <RegistryValue Name='LogPath' Type='string' Value='[LogsFolder]' />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+
+    <!-- Include registry entries in core feature -->
+    <FeatureRef Id='CoreFeature'>
+      <ComponentRef Id='DataDirectories' />
+      <ComponentRef Id='LogDirectories' />
+      <ComponentRef Id='RegistryEntries' />
+    </FeatureRef>
+
+    <!-- Upgrade logic -->
+    <Upgrade Id='12345678-1234-1234-1234-123456789012'>
+      <UpgradeVersion OnlyDetect='no' 
+                      Property='PREVIOUSFOUND'
+                      Minimum='0.0.0' 
+                      IncludeMinimum='yes'
+                      Maximum='0.1.0' 
+                      IncludeMaximum='no' />
+    </Upgrade>
+
+    <!-- Installation sequence -->
+    <InstallExecuteSequence>
+      <RemoveExistingProducts After='InstallValidate' />
+    </InstallExecuteSequence>
+
+    <!-- Custom actions for post-install configuration -->
+    <Binary Id='ConfigurationScript' SourceFile='packaging\windows\configure.exe' />
+    
+    <CustomAction Id='RunPostInstallConfiguration'
+                  BinaryKey='ConfigurationScript'
+                  ExeCommand='--post-install --config-dir "[ConfigFolder]" --data-dir "[DataFolder]"'
+                  Execute='deferred'
+                  Return='check'
+                  Impersonate='no' />
+
+    <InstallExecuteSequence>
+      <Custom Action='RunPostInstallConfiguration' After='InstallFiles'>
+        NOT Installed
+      </Custom>
+    </InstallExecuteSequence>
+
+    <!-- UI and dialogs -->
+    <UIRef Id='WixUI_FeatureTree' />
+    <UIRef Id='WixUI_ErrorProgressText' />
+
+    <!-- License -->
+    <WixVariable Id='WixUILicenseRtf' Value='packaging\windows\License.rtf' />
+
+    <!-- Branding -->
+    <WixVariable Id='WixUIBannerBmp' Value='packaging\windows\banner.bmp' />
+    <WixVariable Id='WixUIDialogBmp' Value='packaging\windows\dialog.bmp' />
+
+  </Product>
+</Wix>

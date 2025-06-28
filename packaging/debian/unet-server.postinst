@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+# Reload systemd daemon to pick up new service file
+if [ -d /run/systemd/system ]; then
+    systemctl --system daemon-reload >/dev/null || true
+fi
+
+# Don't automatically start the service - let the admin configure it first
+echo "μNet server service installed but not started."
+echo "Please:"
+echo "1. Review and customize /etc/unet/config.toml"
+echo "2. Initialize the database: unet migrate"
+echo "3. Start the service: systemctl start unet-server"
+echo "4. Enable on boot: systemctl enable unet-server"
+
+#DEBHELPER#
+
+exit 0

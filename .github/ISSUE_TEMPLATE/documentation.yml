@@ -1,0 +1,99 @@
+name: Documentation Issue
+description: Report issues with documentation or suggest improvements
+title: "[DOCS] "
+labels: ["documentation", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve μNet's documentation! Clear documentation is essential for user success.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs attention?
+      options:
+        - User Guide
+        - API Reference
+        - Installation Guide
+        - Configuration Examples
+        - Troubleshooting Guide
+        - Developer Documentation
+        - Architecture Documentation
+        - Tutorial/Walkthrough
+        - README files
+        - Code Comments
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing Information
+        - Incorrect/Outdated Information
+        - Unclear Instructions
+        - Broken Links
+        - Formatting Issues
+        - Typos/Grammar
+        - New Documentation Needed
+        - Reorganization Needed
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation located?
+      placeholder: "Example: docs/src/user_getting_started.md, README.md, API endpoint /nodes"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content (if applicable)
+      description: Quote the current documentation that needs improvement
+      render: markdown
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem Description
+      description: Describe what's wrong or missing
+      placeholder: Explain what makes the current documentation confusing or incomplete
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-improvement
+    attributes:
+      label: Proposed Improvement
+      description: Suggest how to improve the documentation
+      placeholder: Describe what should be added, changed, or reorganized
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-context
+    attributes:
+      label: User Context
+      description: What were you trying to accomplish when you encountered this issue?
+      placeholder: "Example: I was trying to set up my first μNet deployment and couldn't understand..."
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-submission checklist
+      description: Please verify these before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided specific location and description of the issue
+          required: true

@@ -1,0 +1,111 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: unet-server
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: unet
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: unet-server
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: false
+  namespaceSelector:
+    matchNames:
+    - unet
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: unet-server-alerts
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: unet
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: unet-server.rules
+    rules:
+    # High CPU usage alert
+    - alert: UNetServerHighCPU
+      expr: rate(container_cpu_usage_seconds_total{container="unet-server"}[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "μNet server high CPU usage"
+        description: "μNet server CPU usage is above 80% for more than 5 minutes"
+    
+    # High memory usage alert
+    - alert: UNetServerHighMemory
+      expr: container_memory_usage_bytes{container="unet-server"} / container_spec_memory_limit_bytes{container="unet-server"} > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "μNet server high memory usage"
+        description: "μNet server memory usage is above 90% for more than 5 minutes"
+    
+    # Pod restart alert
+    - alert: UNetServerPodRestarting
+      expr: rate(kube_pod_container_status_restarts_total{container="unet-server"}[15m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "μNet server pod restarting"
+        description: "μNet server pod has restarted {{ $value }} times in the last 15 minutes"
+    
+    # Database connection alert
+    - alert: UNetServerDatabaseDown
+      expr: unet_database_connections_active == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "μNet server database connection lost"
+        description: "μNet server has no active database connections"
+    
+    # API response time alert
+    - alert: UNetServerHighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="unet-server"}[5m])) > 1.0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "μNet server high response time"
+        description: "95th percentile response time is above 1 second for more than 5 minutes"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unet-server-metrics
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: unet
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: unet-server

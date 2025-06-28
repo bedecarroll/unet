@@ -1,6 +1,5 @@
 //! Server error types and HTTP response handling
 
-use crate::api::ApiError;
 use axum::{
     Json,
     http::StatusCode,
@@ -35,6 +34,14 @@ pub enum ServerError {
     /// Internal server error
     #[error("Internal server error: {0}")]
     Internal(String),
+
+    /// Serialization error
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
+    /// Generic error for other types
+    #[error("Error: {0}")]
+    Other(#[from] anyhow::Error),
 }
 
 impl IntoResponse for ServerError {
@@ -58,10 +65,18 @@ impl IntoResponse for ServerError {
             ServerError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             ServerError::Validation(_) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR"),
             ServerError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
+            ServerError::Serialization(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "SERIALIZATION_ERROR")
+            }
+            ServerError::Other(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
         };
 
-        let error = ApiError::new(self.to_string(), error_code.to_string());
+        let error = serde_json::json!({
+            "error": self.to_string(),
+            "code": error_code,
+            "success": false
+        });
         (status, Json(error)).into_response()
     }
 }

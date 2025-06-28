@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: unet-server
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: unet
+  annotations:
+    # AWS IAM role for service account (if using AWS EKS)
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT-ID:role/unet-server-role
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: unet-server
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: unet
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: unet-server
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: unet
+subjects:
+- kind: ServiceAccount
+  name: unet-server
+  namespace: unet
+roleRef:
+  kind: Role
+  name: unet-server
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Network policies for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: unet-server-netpol
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: unet
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: unet-server
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    # Allow ingress from load balancer and within namespace
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - namespaceSelector:
+        matchLabels:
+          name: unet
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8443
+  egress:
+  - to:
+    # Allow egress to database
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    # Allow egress to redis
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to: []
+    # Allow DNS resolution
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to: []
+    # Allow HTTPS for external Git repositories
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 22
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-netpol
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: unet
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    # Only allow connections from unet-server
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: unet-server
+    ports:
+    - protocol: TCP
+      port: 5432
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-netpol
+  namespace: unet
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: unet
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    # Only allow connections from unet-server
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: unet-server
+    ports:
+    - protocol: TCP
+      port: 6379

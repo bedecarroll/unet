@@ -1,0 +1,283 @@
+# μNet Staging Environment Configuration
+# Based on staging.toml template with staging-specific values
+# 
+# This configuration mirrors production but with:
+# - Reduced resource limits
+# - More permissive security settings
+# - Shorter retention periods
+# - Enhanced debugging capabilities
+
+[database]
+url = "postgresql://unet_staging:${UNET_STAGING_DB_PASSWORD}@staging-db.internal:5432/unet_staging"
+max_connections = 25
+timeout = 30
+
+[database.postgres]
+ssl = true
+ssl_mode = "prefer"
+application_name = "unet-staging"
+search_path = ["public", "unet"]
+statement_timeout = 300
+lock_timeout = 30
+idle_timeout = 600
+
+[database.pool]
+min_connections = 2
+max_connections = 25
+acquire_timeout = 30
+max_lifetime = 3600
+idle_timeout = 600
+test_query = "SELECT 1"
+
+[database.migration]
+auto_migrate = true  # Allow auto-migrate in staging
+timeout = 600
+lock_timeout = 120
+
+[logging]
+level = "debug"  # More verbose for staging
+format = "json"
+file = "/var/log/unet/unet-staging.log"
+
+[logging.opentelemetry]
+enabled = true
+jaeger_endpoint = "http://jaeger-staging:14268/api/traces"
+service_name = "unet-staging"
+service_version = "staging"
+environment = "staging"
+sample_rate = 0.5
+
+[logging.aggregation]
+enabled = true
+syslog_endpoint = "syslog://log-staging:514"
+rotation = { max_size_mb = 50, max_files = 14, schedule = "daily" }
+parsing = { enabled = true, indexed_fields = ["timestamp", "level", "target", "message", "span_id", "trace_id"], enrichment = true }
+
+[logging.alerting]
+enabled = true
+
+[[logging.alerting.rules]]
+name = "error_rate_high"
+level = "error"
+window_minutes = 5
+threshold = 25
+severity = "high"
+
+[[logging.alerting.rules]]
+name = "critical_errors"
+level = "error"
+pattern = "CRITICAL|FATAL"
+window_minutes = 1
+threshold = 1
+severity = "critical"
+
+[[logging.alerting.channels]]
+channel_type = "slack"
+[logging.alerting.channels.config]
+webhook_url = "${STAGING_SLACK_WEBHOOK_URL}"
+channel = "#staging-alerts"
+
+[snmp]
+community = "staging"
+timeout = 5
+retries = 3
+
+[server]
+host = "0.0.0.0"
+port = 8080
+max_request_size = 5242880  # 5MB
+
+[server.tls]
+cert_file = "/etc/tls/staging/tls.crt"
+key_file = "/etc/tls/staging/tls.key"
+force_https = true
+http_redirect_port = 8081
+
+[git]
+policies_repo = "https://github.com/company/unet-policies.git"
+templates_repo = "https://github.com/company/unet-templates.git"
+branch = "staging"
+sync_interval = 180
+
+[domain]
+default_domain = "staging.company.internal"
+search_domains = ["staging.internal", "company.internal"]
+
+[auth]
+enabled = true
+jwt_secret = "${UNET_STAGING_JWT_SECRET}"
+token_expiry = 7200
+
+[secrets]
+enabled = true
+provider = "hashicorp_vault"
+
+[secrets.external_providers.hashicorp_vault]
+url = "https://vault-staging.internal:8200"
+auth_method = "token"
+mount_path = "secret/staging"
+token_file = "/etc/unet/vault-staging-token"
+
+[secrets.encryption]
+algorithm = "aes-256-gcm"
+key_derivation = "pbkdf2"
+key_rotation_days = 30
+
+[network]
+enabled = true
+allowed_ranges = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "203.0.113.0/24"]
+enable_geolocation = false
+enable_network_rate_limits = true
+
+[metrics]
+enabled = true
+endpoint = "/metrics"
+collection_interval = 15
+enable_performance_metrics = true
+enable_business_metrics = true
+enable_system_metrics = true
+retention_days = 7
+
+[metrics.labels]
+service = "unet"
+version = "staging"
+environment = "staging"
+cluster = "staging-cluster"
+
+[load_balancer]
+enabled = true
+shutdown_timeout = 30
+proxy_protocol = true
+trusted_proxies = ["10.0.0.0/8", "172.16.0.0/12"]
+balancer_type = "nginx"
+
+[load_balancer.health_check]
+basic_path = "/health"
+detailed_path = "/health/detailed"
+readiness_path = "/ready"
+liveness_path = "/live"
+timeout = 5
+include_dependencies = true
+check_interval = 30
+
+[cluster]
+enabled = true
+cluster_id = "unet-staging-cluster"
+
+[cluster.node]
+name = "${HOSTNAME}"
+roles = ["primary", "worker"]
+priority = 150
+advertise_addr = "${POD_IP}:8080"
+
+[cluster.node.metadata]
+zone = "staging-zone"
+instance_type = "t3.medium"
+version = "staging"
+
+[cluster.node.capacity]
+max_connections = 1000
+max_cpu = 0.80
+max_memory_mb = 2048
+
+[cluster.service_discovery]
+method = "static"
+discovery_interval = 30
+service_ttl = 60
+
+[[cluster.service_discovery.static_nodes]]
+node_id = "staging-node-02"
+address = "staging-node-02:8080"
+roles = ["worker"]
+
+[cluster.health_monitoring]
+check_interval = 15
+check_timeout = 5
+failure_threshold = 3
+success_threshold = 2
+enable_deep_checks = true
+
+[cluster.config_sync]
+enabled = true
+sync_interval = 300
+sync_timeout = 30
+propagation_method = "immediate"
+validate_before_sync = true
+rollback_on_failure = true
+
+[cluster.failover]
+enabled = true
+detection_timeout = 45
+execution_timeout = 90
+
+[cluster.scaling]
+enabled = false
+
+[shared_state]
+backend = "redis"
+redis_url = "redis://redis-staging:6379/1"
+default_expiry_seconds = 1800
+key_prefix = "unet:staging"
+
+[stateless]
+enabled = true
+
+[stateless.session_management]
+type = "jwt"
+jwt_secret_source = "env:UNET_STAGING_JWT_SECRET"
+
+[stateless.background_tasks]
+coordination_method = "leader_election"
+task_distribution = "round_robin"
+
+[stateless.distributed_locking]
+provider = "redis"
+default_timeout = 30
+retry_attempts = 3
+
+[stateless.rate_limiting]
+type = "sliding_window"
+window_size = 60
+shared_counters = true
+
+[resource_management]
+enabled = true
+
+[resource_management.memory]
+max_cache_size_mb = 512
+cache_ttl_seconds = 1800
+enable_memory_pooling = true
+pool_sizes = { small = 512, medium = 2048, large = 8192 }
+gc_interval_seconds = 300
+monitoring_enabled = true
+
+[resource_management.limits]
+max_cpu_percent = 80.0
+max_memory_mb = 2048
+max_disk_usage_percent = 80.0
+max_file_descriptors = 32768
+max_concurrent_requests = 500
+request_timeout_seconds = 30
+
+[resource_management.throttling]
+cpu_throttle_threshold = 85.0
+memory_throttle_threshold = 85.0
+throttle_response_delay_ms = 50
+user_request_quotas = { default = 200, premium = 2000 }
+rate_limit_window_seconds = 60
+
+[resource_management.degradation]
+enable_circuit_breakers = true
+circuit_breaker_failure_threshold = 15
+circuit_breaker_timeout_seconds = 30
+circuit_breaker_success_threshold = 3
+fallback_response_enabled = true
+reduce_functionality_on_overload = true
+priority_request_handling = true
+
+[resource_management.monitoring]
+enable_detailed_metrics = true
+metrics_collection_interval = 15
+alert_thresholds = { cpu = 75.0, memory = 75.0, disk = 75.0, connections = 400 }
+capacity_planning_enabled = true
+trend_analysis_window_hours = 12

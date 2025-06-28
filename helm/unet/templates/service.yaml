@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "unet.fullname" . }}
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+  {{- with .Values.unet.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.unet.service.type }}
+  {{- if and (eq .Values.unet.service.type "LoadBalancer") .Values.unet.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.unet.service.loadBalancerIP }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.unet.service.port }}
+      targetPort: {{ .Values.unet.service.targetPort }}
+      protocol: TCP
+      name: http
+    - port: {{ .Values.unet.service.httpsPort }}
+      targetPort: {{ .Values.unet.service.httpsTargetPort }}
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "unet.selectorLabels" . | nindent 4 }}
+
+---
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "unet.fullname" . }}-metrics
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "unet.selectorLabels" . | nindent 4 }}
+{{- end }}

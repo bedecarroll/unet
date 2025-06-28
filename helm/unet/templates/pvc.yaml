@@ -1,0 +1,46 @@
+{{- if .Values.unet.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "unet.fullname" . }}-data
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.unet.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.unet.persistence.size }}
+  {{- if .Values.unet.persistence.storageClass }}
+  {{- if (eq "-" .Values.unet.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.unet.persistence.storageClass }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+
+---
+{{- if .Values.unet.logs.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "unet.fullname" . }}-logs
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+    app.kubernetes.io/component: logs
+spec:
+  accessModes:
+    - {{ .Values.unet.logs.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.unet.logs.persistence.size }}
+  {{- if .Values.unet.logs.persistence.storageClass }}
+  {{- if (eq "-" .Values.unet.logs.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.unet.logs.persistence.storageClass }}
+  {{- end }}
+  {{- end }}
+{{- end }}

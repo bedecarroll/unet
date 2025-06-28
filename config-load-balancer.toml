@@ -1,0 +1,91 @@
+# Load Balancer Configuration Example for μNet
+
+[load_balancer]
+enabled = true
+shutdown_timeout = 30
+proxy_protocol = true
+trusted_proxies = ["127.0.0.1", "::1", "192.168.1.0/24", "10.0.0.0/8"]
+balancer_type = "Generic"
+
+[load_balancer.health_check]
+basic_path = "/health"
+detailed_path = "/health/detailed"
+readiness_path = "/ready"
+liveness_path = "/live"
+timeout = 10
+include_dependencies = true
+check_interval = 30
+
+# Example custom health check
+[[load_balancer.health_check.custom_checks]]
+name = "database_connectivity"
+check_type = "database"
+timeout = 5
+criticality = "Critical"
+
+[load_balancer.health_check.custom_checks.parameters]
+connection_pool = "true"
+timeout_threshold = "5"
+
+# Example external service health check
+[[load_balancer.health_check.custom_checks]]
+name = "external_api"
+check_type = "external_service"
+timeout = 3
+criticality = "Warning"
+
+[load_balancer.health_check.custom_checks.parameters]
+url = "https://api.example.com/health"
+expected_status = "200"
+
+# Example disk space health check
+[[load_balancer.health_check.custom_checks]]
+name = "disk_space"
+check_type = "disk_space"
+timeout = 2
+criticality = "Warning"
+
+[load_balancer.health_check.custom_checks.parameters]
+threshold_percent = "85"
+mount_point = "/"
+
+# Example custom load balancer endpoint
+[[load_balancer.custom_endpoints]]
+path = "/health/quick"
+method = "GET"
+expected_status = 200
+response_body = '{"status": "ok"}'
+dependencies = ["datastore", "metrics"]
+
+# AWS ALB Configuration Example
+# [load_balancer]
+# enabled = true
+# balancer_type = { Alb = {} }
+# trusted_proxies = ["0.0.0.0/0"]  # ALB IPs
+# 
+# [load_balancer.health_check]
+# basic_path = "/health"
+# timeout = 5
+# include_dependencies = false  # Faster checks for ALB
+
+# Kubernetes Configuration Example
+# [load_balancer]
+# enabled = true
+# balancer_type = "KubernetesIngress"
+# 
+# [load_balancer.health_check]
+# readiness_path = "/ready"
+# liveness_path = "/live"
+# timeout = 3
+# check_interval = 15
+
+# NGINX Configuration Example
+# [load_balancer]
+# enabled = true
+# balancer_type = "Nginx"
+# proxy_protocol = true
+# 
+# [load_balancer.health_check]
+# basic_path = "/health"
+# detailed_path = "/health/detailed"
+# timeout = 10

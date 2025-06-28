@@ -1,0 +1,94 @@
+# μNet Configuration File - PostgreSQL Example
+# This file demonstrates PostgreSQL database configuration
+
+[database]
+# PostgreSQL database URL
+url = "postgresql://username:password@localhost:5432/unet_db"
+# Maximum number of connections in the pool
+max_connections = 20
+# Connection timeout in seconds
+timeout = 30
+
+# PostgreSQL-specific configuration
+[database.postgres]
+# Enable SSL connection
+ssl = true
+# SSL mode (disable, allow, prefer, require, verify-ca, verify-full)
+ssl_mode = "prefer"
+# Application name for connection identification
+application_name = "unet-server"
+# Schema search path
+search_path = ["public", "unet"]
+# Statement timeout in seconds
+statement_timeout = 300
+# Lock timeout in seconds
+lock_timeout = 30
+# Idle connection timeout in seconds
+idle_timeout = 600
+
+# Connection pool configuration
+[database.pool]
+# Minimum number of connections to maintain
+min_connections = 2
+# Maximum number of connections in the pool
+max_connections = 20
+# Time to wait for a connection before timing out (seconds)
+acquire_timeout = 30
+# Maximum lifetime of a connection (seconds)
+max_lifetime = 3600
+# Idle timeout for connections (seconds)
+idle_timeout = 600
+# Test query to validate connections
+test_query = "SELECT 1"
+
+# Migration configuration
+[database.migration]
+# Enable automatic migrations on startup
+auto_migrate = true
+# Migration timeout in seconds
+timeout = 300
+# Lock timeout for migration operations (seconds)
+lock_timeout = 60
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+# Log format: json, pretty
+format = "pretty"
+# Optional log file path
+# file = "./unet.log"
+
+[snmp]
+# Default SNMP community string
+community = "public"
+# Default timeout in seconds
+timeout = 5
+# Default retry count
+retries = 3
+
+[server]
+# Server bind address
+host = "0.0.0.0"
+# Server port
+port = 8080
+# Maximum request size in bytes (1MB)
+max_request_size = 1048576
+
+[git]
+# Git repository configuration for Policy Engine
+# policies_repo = "https://github.com/example/unet-policies.git"
+# templates_repo = "https://github.com/example/unet-templates.git"
+branch = "main"
+sync_interval = 300  # 5 minutes
+
+[domain]
+# Domain configuration
+# default_domain = "example.com"
+search_domains = []
+# search_domains = ["local", "internal.com"]
+
+[auth]
+# Authentication configuration
+enabled = true
+# token_endpoint = "https://auth.example.com/validate"
+token_expiry = 3600  # 1 hour

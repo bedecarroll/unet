@@ -9,6 +9,7 @@ This guide provides advanced patterns, best practices, and optimization techniqu
 Each policy rule should have a single, well-defined purpose.
 
 **Good:**
+
 ```
 // Clear purpose: Configure SNMP for Cisco devices
 WHEN node.vendor == "cisco" THEN SET custom_data.snmp.version TO "v2c"
@@ -18,6 +19,7 @@ WHEN node.lifecycle == "live" THEN SET custom_data.monitoring.enabled TO true
 ```
 
 **Avoid:**
+
 ```
 // Multiple responsibilities in one rule
 WHEN node.vendor == "cisco" 
@@ -31,6 +33,7 @@ THEN SET custom_data.snmp.version TO "v2c"
 Focus on describing the desired state rather than the steps to achieve it.
 
 **Good:**
+
 ```
 // Declares desired state
 WHEN node.role == "router" THEN SET custom_data.bgp.enabled TO true
@@ -38,6 +41,7 @@ WHEN custom_data.bgp.enabled == true THEN SET custom_data.bgp.as_number TO 65001
 ```
 
 **Avoid:**
+
 ```
 // Too imperative/procedural
 WHEN node.role == "router" THEN SET custom_data.step1_complete TO true
@@ -49,12 +53,14 @@ WHEN custom_data.step1_complete == true THEN SET custom_data.step2_complete TO t
 Policies should be safe to run multiple times without side effects.
 
 **Good:**
+
 ```
 // Safe to run repeatedly
 WHEN node.vendor == "cisco" THEN SET custom_data.vendor_class TO "ios"
 ```
 
 **Good (with guards):**
+
 ```
 // Only applies template if not already applied
 WHEN node.role == "router" AND custom_data.assigned_templates NOT CONTAINS "router-base.j2" 
@@ -581,6 +587,7 @@ THEN SET custom_data.tenant TO "shared"
 ### Anti-Pattern: Over-Complex Conditions
 
 **Avoid:**
+
 ```
 WHEN (node.vendor == "cisco" OR node.vendor == "Cisco" OR node.vendor == "CISCO") 
      AND (node.role == "switch" OR node.role == "Switch") 
@@ -590,6 +597,7 @@ THEN SET custom_data.complex_match TO true
 ```
 
 **Better:**
+
 ```
 # Normalize vendor field first
 WHEN node.vendor MATCHES "(?i)cisco" THEN SET custom_data.vendor_normalized TO "cisco"
@@ -603,12 +611,14 @@ THEN SET custom_data.datacenter_cisco_switch TO true
 ### Anti-Pattern: Magic Numbers and Strings
 
 **Avoid:**
+
 ```
 WHEN custom_data.cpu_usage > 85.7 THEN SET custom_data.alert_level TO "red"
 WHEN custom_data.memory_usage > 92.3 THEN SET custom_data.alert_level TO "red"
 ```
 
 **Better:**
+
 ```
 # Define thresholds clearly
 WHEN node.role == "router" THEN SET custom_data.thresholds.cpu_critical TO 85
@@ -622,12 +632,14 @@ THEN SET custom_data.alert_level TO "critical"
 ### Anti-Pattern: Implicit Dependencies
 
 **Avoid:**
+
 ```
 # Hidden dependency - assumes classification already happened
 WHEN custom_data.device_class == "critical" THEN SET custom_data.backup.frequency TO "hourly"
 ```
 
 **Better:**
+
 ```
 # Explicit prerequisite checking
 WHEN custom_data.device_class IS NOT NULL AND custom_data.device_class == "critical"

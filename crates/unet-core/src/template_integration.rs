@@ -125,9 +125,7 @@ impl TemplateService {
 
     /// Loads all templates with their dependencies into the shared environment
     pub async fn load_all_templates_with_dependencies(&mut self) -> Result<Vec<String>> {
-        // Need to make environment mutable
-        let env_arc = Arc::clone(&self.environment);
-        // This is tricky because Arc<TemplateEnvironment> is not mutable
+        // Note: Arc<TemplateEnvironment> is not directly mutable
         // We need to refactor the service to use Arc<RwLock<TemplateEnvironment>>
         // For now, let's create a new environment and replace it
         let mut new_env = crate::template::environment::TemplateEnvironment::new()?;

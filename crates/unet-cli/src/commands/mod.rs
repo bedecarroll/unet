@@ -9,8 +9,6 @@ pub mod policy;
 pub mod template;
 
 use anyhow::Result;
-use serde_json;
-use serde_yaml;
 
 /// Common output formatting utilities
 pub fn format_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat) -> Result<String> {

@@ -1,0 +1,5 @@
+# Binary installations are handled by debian/rules
+# This file documents additional files to include
+
+# Systemd service file
+packaging/debian/unet-server.service lib/systemd/system/
