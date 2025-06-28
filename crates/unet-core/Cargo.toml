@@ -41,8 +41,8 @@ minijinja = { workspace = true }
 # SNMP client
 snmp2 = { workspace = true }
 
-# Git integration (will be added in milestone 6)
-# git2 = { workspace = true }
+# Git integration
+git2 = { workspace = true }
 
 # Policy parsing
 pest = { workspace = true }
@@ -59,6 +59,8 @@ tracing-subscriber = { workspace = true }
 
 # File system utilities
 walkdir = { workspace = true }
+sha2 = { workspace = true }
+glob-match = { workspace = true }
 
 # HTTP client and async utilities for live config
 futures = { workspace = true }

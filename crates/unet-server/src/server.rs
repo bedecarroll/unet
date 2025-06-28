@@ -185,6 +185,101 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
             "/api/v1/templates/:id/assignments",
             get(handlers::templates::get_template_assignments_for_template),
         )
+        // Git version control endpoints
+        .route(
+            "/api/v1/git/sync/status",
+            get(handlers::git::get_git_sync_status),
+        )
+        .route("/api/v1/git/sync", post(handlers::git::trigger_git_sync))
+        .route(
+            "/api/v1/git/changes",
+            get(handlers::git::get_change_history),
+        )
+        .route(
+            "/api/v1/git/changes/:id",
+            get(handlers::git::get_change_details),
+        )
+        .route(
+            "/api/v1/git/repository",
+            get(handlers::git::get_repository_info),
+        )
+        .route(
+            "/api/v1/git/webhooks",
+            post(handlers::git::handle_git_webhook),
+        )
+        .route(
+            "/api/v1/git/webhooks/config",
+            get(handlers::git::get_webhook_config),
+        )
+        .route(
+            "/api/v1/git/webhooks/config",
+            put(handlers::git::update_webhook_config),
+        )
+        // Change management endpoints
+        .route("/api/v1/changes", get(handlers::changes::list_changes))
+        .route("/api/v1/changes", post(handlers::changes::create_change))
+        .route("/api/v1/changes/:id", get(handlers::changes::get_change))
+        .route(
+            "/api/v1/changes/:id/approve",
+            post(handlers::changes::approve_change),
+        )
+        .route(
+            "/api/v1/changes/:id/reject",
+            post(handlers::changes::reject_change),
+        )
+        .route(
+            "/api/v1/changes/:id/apply",
+            post(handlers::changes::apply_change),
+        )
+        .route(
+            "/api/v1/changes/:id/rollback",
+            post(handlers::changes::rollback_change),
+        )
+        .route(
+            "/api/v1/changes/:id/audit",
+            get(handlers::changes::get_change_audit_trail),
+        )
+        .route(
+            "/api/v1/changes/history/:entity_type/:entity_id",
+            get(handlers::changes::get_change_history),
+        )
+        .route(
+            "/api/v1/changes/pending",
+            get(handlers::changes::get_pending_approvals),
+        )
+        .route(
+            "/api/v1/changes/stats",
+            get(handlers::changes::get_change_statistics),
+        )
+        .route(
+            "/api/v1/changes/status",
+            get(handlers::changes::get_change_management_status),
+        )
+        // Change notification endpoints
+        .route(
+            "/api/v1/changes/notifications/subscribe",
+            post(handlers::changes::subscribe_to_notifications),
+        )
+        .route(
+            "/api/v1/changes/notifications/subscribe/:user_id",
+            delete(handlers::changes::unsubscribe_from_notifications),
+        )
+        .route(
+            "/api/v1/changes/notifications/send",
+            post(handlers::changes::send_notification),
+        )
+        .route(
+            "/api/v1/changes/notifications/config/:user_id",
+            get(handlers::changes::get_notification_config),
+        )
+        .route(
+            "/api/v1/changes/notifications/config/:user_id",
+            put(handlers::changes::update_notification_config),
+        )
+        .route(
+            "/api/v1/changes/notifications/history/:user_id",
+            get(handlers::changes::get_notification_history),
+        )
         // Health check
         .route("/health", get(handlers::health::health_check))
         // Add application state

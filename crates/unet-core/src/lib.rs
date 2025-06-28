@@ -38,10 +38,12 @@
 #![warn(clippy::nursery)]
 
 // Public modules
+pub mod change_tracking;
 pub mod config;
 pub mod datastore;
 pub mod entities;
 pub mod error;
+pub mod git;
 pub mod live_config;
 pub mod logging;
 pub mod models;
@@ -49,6 +51,7 @@ pub mod policy;
 pub mod policy_integration;
 pub mod snmp;
 pub mod template;
+pub mod template_integration;
 
 // Re-exports for convenience
 pub use error::{Error, Result};
@@ -112,6 +115,14 @@ pub mod prelude {
         OidMap, PollingConfig, PollingHandle, PollingResult, PollingScheduler, PollingTask,
         SessionConfig, SnmpClient, SnmpClientConfig, SnmpCredentials, SnmpError, SnmpResult,
         SnmpValue, StandardOid, VendorOid,
+    };
+
+    // Git integration types
+    pub use crate::git::{
+        BranchInfo, CommitInfo, FileChange, FileStatus, GitClient, GitClientConfig,
+        GitCredentialProvider, GitCredentials, GitError, GitRepository, GitResult, GitState,
+        GitStateTracker, MemoryCredentialProvider, RepositoryInfo, RepositoryStatus,
+        StateChangeEvent,
     };
 
     // Policy integration types

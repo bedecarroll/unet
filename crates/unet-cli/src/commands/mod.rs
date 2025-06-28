@@ -1,5 +1,6 @@
 pub mod config;
 pub mod export;
+pub mod git;
 pub mod import;
 pub mod links;
 pub mod locations;

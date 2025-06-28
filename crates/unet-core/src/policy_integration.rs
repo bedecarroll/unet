@@ -304,6 +304,62 @@ impl PolicyService {
     pub fn orchestrator(&self) -> &PolicyOrchestrator {
         &self.orchestrator
     }
+
+    /// Sync policies from Git and reload them with validation
+    pub async fn sync_and_reload_policies(&mut self) -> PolicyResult<Vec<PolicyRule>> {
+        let result = self.loader.sync_and_reload().await?;
+
+        // Flatten all rules from all loaded files
+        let policies: Vec<PolicyRule> = result
+            .loaded
+            .into_iter()
+            .flat_map(|file| file.rules)
+            .collect();
+
+        tracing::info!("Synced and loaded {} policies from Git", policies.len());
+
+        // Log any errors from the sync process
+        if !result.errors.is_empty() {
+            tracing::warn!("Policy sync completed with {} errors:", result.errors.len());
+            for (path, error) in &result.errors {
+                tracing::warn!("Policy error in {}: {}", path.display(), error);
+            }
+        }
+
+        Ok(policies)
+    }
+
+    /// Force reload policies from source (clears cache)
+    pub async fn reload_policies(&mut self) -> PolicyResult<Vec<PolicyRule>> {
+        let result = self.loader.reload_policies().await?;
+
+        // Flatten all rules from all loaded files
+        let policies: Vec<PolicyRule> = result
+            .loaded
+            .into_iter()
+            .flat_map(|file| file.rules)
+            .collect();
+
+        tracing::info!("Force reloaded {} policies", policies.len());
+
+        // Log any errors from the reload process
+        if !result.errors.is_empty() {
+            tracing::warn!(
+                "Policy reload completed with {} errors:",
+                result.errors.len()
+            );
+            for (path, error) in &result.errors {
+                tracing::warn!("Policy error in {}: {}", path.display(), error);
+            }
+        }
+
+        Ok(policies)
+    }
+
+    /// Get policy loader mutable reference for advanced operations
+    pub fn loader_mut(&mut self) -> &mut PolicyLoader {
+        &mut self.loader
+    }
 }
 
 #[cfg(test)]

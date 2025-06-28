@@ -62,8 +62,8 @@ minijinja = { version = "1.0", features = ["json"] }
 # SNMP client  
 snmp2 = "0.4.8"
 
-# Git integration (will be added when needed)
-# git2 = "0.18"
+# Git integration
+git2 = "0.18"
 
 # Policy parsing
 pest = "2.7"
@@ -84,6 +84,8 @@ ipnet = "2.9"
 rayon = "1.8"
 indicatif = "0.17"
 glob = "0.3"
+sha2 = "0.10"
+glob-match = "0.2"
 
 # Task scheduling
 tokio-cron-scheduler = "0.10"
