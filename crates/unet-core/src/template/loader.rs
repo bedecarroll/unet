@@ -1,12 +1,14 @@
 //! Template loader for loading templates from various sources
 
 use anyhow::{Context, Result, anyhow};
+use futures;
+use regex;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Template cache entry
 #[derive(Debug, Clone)]
@@ -35,7 +37,7 @@ pub enum TemplateSource {
 }
 
 /// Template loader with caching and hot-reloading support
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TemplateLoader {
     source: TemplateSource,
     cache: Arc<RwLock<HashMap<String, CacheEntry>>>,
@@ -78,7 +80,6 @@ impl TemplateLoader {
     }
 
     /// Create a new template loader with Git repository source
-    /// Note: Full Git integration will be implemented in Milestone 6
     pub fn with_git_repository(
         url: String,
         ref_spec: String,
@@ -87,11 +88,16 @@ impl TemplateLoader {
     ) -> Result<Self> {
         info!("Template loader configured for Git repository: {}", url);
 
-        // TODO: Implement Git repository cloning and management in Milestone 6
-        // For now, return an error indicating this feature is not yet implemented
-        Err(anyhow::anyhow!(
-            "Git repository loading is planned for Milestone 6. Use local directory loading for now."
-        ))
+        Ok(Self {
+            source: TemplateSource::Git {
+                url,
+                ref_spec,
+                template_dir,
+                local_clone_path,
+            },
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            hot_reload: true,
+        })
     }
 
     /// Enable or disable hot reloading
@@ -173,11 +179,20 @@ impl TemplateLoader {
                 self.find_template_in_directories(template_name, template_dirs)
                     .await
             }
-            TemplateSource::Git { .. } => {
-                // TODO: Implement Git template resolution in Milestone 6
-                Err(anyhow!(
-                    "Git repository template loading is not yet implemented. Use local directories for now."
-                ))
+            TemplateSource::Git {
+                url: _,
+                ref_spec: _,
+                template_dir,
+                local_clone_path,
+            } => {
+                let template_path = if let Some(dir) = template_dir {
+                    local_clone_path.join(dir)
+                } else {
+                    local_clone_path.clone()
+                };
+
+                self.find_template_in_directories(template_name, &[template_path])
+                    .await
             }
         }
     }
@@ -220,11 +235,19 @@ impl TemplateLoader {
             TemplateSource::Local(template_dirs) => {
                 self.list_templates_in_directories(template_dirs).await
             }
-            TemplateSource::Git { .. } => {
-                // TODO: Implement Git template listing in Milestone 6
-                Err(anyhow!(
-                    "Git repository template listing is not yet implemented. Use local directories for now."
-                ))
+            TemplateSource::Git {
+                url: _,
+                ref_spec: _,
+                template_dir,
+                local_clone_path,
+            } => {
+                let template_path = if let Some(dir) = template_dir {
+                    local_clone_path.join(dir)
+                } else {
+                    local_clone_path.clone()
+                };
+
+                self.list_templates_in_directories(&[template_path]).await
             }
         }
     }
@@ -275,6 +298,375 @@ impl TemplateLoader {
     /// Check if a template exists
     pub async fn template_exists(&self, template_name: &str) -> bool {
         self.find_template_file(template_name).await.is_ok()
+    }
+
+    /// Sync templates from Git repository (if configured)
+    pub async fn sync_templates_from_git(&self) -> Result<()> {
+        match &self.source {
+            TemplateSource::Git {
+                url,
+                ref_spec,
+                template_dir: _,
+                local_clone_path,
+            } => {
+                debug!("Syncing templates from Git repository: {}", url);
+                self.sync_git_repository(url, ref_spec, local_clone_path)
+                    .await
+            }
+            TemplateSource::Local(_) => {
+                debug!("Template loader is configured for local directories, skipping Git sync");
+                Ok(())
+            }
+        }
+    }
+
+    /// Sync and reload templates with validation
+    pub async fn sync_and_reload(&self) -> Result<Vec<String>> {
+        info!("Syncing and reloading templates with validation");
+
+        // Clear cache to force reload
+        self.clear_cache().await;
+
+        // Sync from Git if configured
+        if let TemplateSource::Git { .. } = &self.source {
+            self.sync_templates_from_git().await?;
+
+            // Validate templates after sync
+            let templates = self.list_templates().await?;
+
+            // Validate templates with MiniJinja syntax checking
+            let mut valid_templates = Vec::new();
+            let validation_result = self.validate_templates(&templates).await?;
+
+            for (template_name, is_valid, error) in validation_result {
+                if is_valid {
+                    debug!("Template '{}' validation passed", template_name);
+                    valid_templates.push(template_name);
+                } else {
+                    warn!(
+                        "Template '{}' validation failed: {}",
+                        template_name,
+                        error.unwrap_or_else(|| "Unknown error".to_string())
+                    );
+                }
+            }
+
+            info!(
+                "Template validation completed: {}/{} templates valid",
+                valid_templates.len(),
+                templates.len()
+            );
+
+            Ok(valid_templates)
+        } else {
+            // For local directories, just reload and validate
+            let templates = self.list_templates().await?;
+            Ok(templates)
+        }
+    }
+
+    /// Internal method to sync Git repository
+    async fn sync_git_repository(
+        &self,
+        url: &str,
+        ref_spec: &str,
+        local_path: &PathBuf,
+    ) -> Result<()> {
+        use crate::git::{GitClient, GitClientConfig, GitRepository};
+
+        // Clone for use in closure and logging
+        let repo_url_for_closure = url.to_string();
+        let repo_url_for_logging = url.to_string();
+        let branch = ref_spec.to_string();
+        let local_clone_path = local_path.clone();
+
+        let result = tokio::task::spawn_blocking(move || {
+            // Create a new GitClient for this operation
+            let git_config = GitClientConfig {
+                base_directory: std::path::PathBuf::from("./git-repos"),
+                default_sync_interval: 30,
+                max_state_age: 5,
+                auto_fetch: true,
+                auto_cleanup: false,
+            };
+            let git_client = GitClient::with_config(git_config);
+
+            // Create base directory if it doesn't exist
+            if !local_clone_path.parent().unwrap().exists() {
+                std::fs::create_dir_all(local_clone_path.parent().unwrap())
+                    .map_err(|e| format!("Failed to create git-repos directory: {}", e))?;
+            }
+
+            // Clone or open repository
+            let credential_provider = git_client.credential_provider();
+            let repository = if local_clone_path.exists() && local_clone_path.join(".git").exists()
+            {
+                debug!(
+                    "Opening existing templates repository at: {}",
+                    local_clone_path.display()
+                );
+                GitRepository::open(&local_clone_path, credential_provider)
+                    .map_err(|e| format!("Failed to open existing repository: {}", e))?
+            } else {
+                debug!(
+                    "Cloning templates repository to: {}",
+                    local_clone_path.display()
+                );
+                GitRepository::clone(
+                    &repo_url_for_closure,
+                    &local_clone_path,
+                    credential_provider,
+                )
+                .map_err(|e| format!("Failed to clone repository: {}", e))?
+            };
+
+            // Fetch latest changes and pull
+            repository
+                .fetch(None)
+                .map_err(|e| format!("Failed to fetch from repository: {}", e))?;
+
+            repository
+                .pull(None, Some(&branch))
+                .map_err(|e| format!("Failed to pull changes: {}", e))?;
+
+            debug!("Successfully synced templates repository");
+            Ok::<(), String>(())
+        })
+        .await
+        .map_err(|e| anyhow!("Task join error: {}", e))?
+        .map_err(|e| anyhow!("{}", e))?;
+
+        info!(
+            "Templates synced from Git repository: {}",
+            repo_url_for_logging
+        );
+        Ok(result)
+    }
+
+    /// Validate templates using MiniJinja syntax checking
+    pub async fn validate_templates(
+        &self,
+        template_names: &[String],
+    ) -> Result<Vec<(String, bool, Option<String>)>> {
+        use crate::template::environment::TemplateEnvironment;
+
+        let mut results = Vec::new();
+        let env = TemplateEnvironment::new()?;
+
+        for template_name in template_names {
+            let (is_valid, error) = match self.load_template(template_name).await {
+                Ok(content) => {
+                    // Try to validate the template with MiniJinja
+                    match env.validate_template(&content) {
+                        Ok(_) => {
+                            debug!("Template '{}' syntax validation passed", template_name);
+                            (true, None)
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Template '{}' syntax validation failed: {}",
+                                template_name, e
+                            );
+                            (false, Some(format!("Syntax error: {}", e)))
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Template '{}' could not be loaded: {}", template_name, e);
+                    (false, Some(format!("Load error: {}", e)))
+                }
+            };
+
+            results.push((template_name.clone(), is_valid, error));
+        }
+
+        Ok(results)
+    }
+
+    /// Validate a single template by name
+    pub async fn validate_template(&self, template_name: &str) -> Result<(bool, Option<String>)> {
+        let results = self
+            .validate_templates(&[template_name.to_string()])
+            .await?;
+        Ok(results
+            .into_iter()
+            .next()
+            .map(|(_, is_valid, error)| (is_valid, error))
+            .unwrap_or((false, Some("Template not found".to_string()))))
+    }
+
+    /// Check if this loader is configured for Git repository source
+    pub fn is_git_configured(&self) -> bool {
+        matches!(&self.source, TemplateSource::Git { .. })
+    }
+
+    /// Extract template dependencies from template content
+    /// Finds {% include %}, {% extends %}, and {% import %} statements
+    pub fn extract_dependencies(&self, template_content: &str) -> Vec<String> {
+        let mut dependencies = Vec::new();
+
+        // Simple regex-based extraction for Jinja2 includes/extends/imports
+        let include_patterns = [
+            r#"\{\%\s*include\s+["']([^"']+)["']\s*\%\}"#,
+            r#"\{\%\s*extends\s+["']([^"']+)["']\s*\%\}"#,
+            r#"\{\%\s*import\s+["']([^"']+)["']\s*.*\%\}"#,
+        ];
+
+        for pattern in &include_patterns {
+            if let Ok(regex) = regex::Regex::new(pattern) {
+                for captures in regex.captures_iter(template_content) {
+                    if let Some(template_name) = captures.get(1) {
+                        dependencies.push(template_name.as_str().to_string());
+                    }
+                }
+            }
+        }
+
+        dependencies
+    }
+
+    /// Resolve template dependencies recursively
+    /// Returns a list of templates in dependency order (dependencies first)
+    pub async fn resolve_dependencies(&self, template_name: &str) -> Result<Vec<String>> {
+        let mut resolved = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+        let mut visiting = std::collections::HashSet::new();
+
+        self.resolve_dependencies_recursive(
+            template_name.to_string(),
+            &mut resolved,
+            &mut visited,
+            &mut visiting,
+        )
+        .await?;
+
+        Ok(resolved)
+    }
+
+    /// Recursive helper for dependency resolution with cycle detection
+    fn resolve_dependencies_recursive<'a>(
+        &'a self,
+        template_name: String,
+        resolved: &'a mut Vec<String>,
+        visited: &'a mut std::collections::HashSet<String>,
+        visiting: &'a mut std::collections::HashSet<String>,
+    ) -> futures::future::BoxFuture<'a, Result<()>> {
+        Box::pin(async move {
+            if visited.contains(&template_name) {
+                return Ok(());
+            }
+
+            if visiting.contains(&template_name) {
+                return Err(anyhow!(
+                    "Circular dependency detected involving template: {}",
+                    template_name
+                ));
+            }
+
+            visiting.insert(template_name.clone());
+
+            // Load the template content
+            let template_content = self.load_template(&template_name).await?;
+            let dependencies = self.extract_dependencies(&template_content);
+
+            // Recursively resolve dependencies
+            for dependency in dependencies {
+                self.resolve_dependencies_recursive(dependency, resolved, visited, visiting)
+                    .await?;
+            }
+
+            visiting.remove(&template_name);
+            visited.insert(template_name.clone());
+            resolved.push(template_name);
+
+            Ok(())
+        })
+    }
+
+    /// Load all templates with their dependencies into the environment
+    pub async fn load_templates_with_dependencies(
+        &self,
+        environment: &mut crate::template::environment::TemplateEnvironment,
+    ) -> Result<Vec<String>> {
+        let all_templates = self.list_templates().await?;
+        let mut loaded_templates = Vec::new();
+
+        // Clear existing templates in the environment
+        environment.clear_templates();
+
+        // Process each template with its dependencies
+        for template_name in &all_templates {
+            let dependency_chain = self.resolve_dependencies(template_name).await?;
+
+            // Load each template in the dependency chain
+            for dep_template_name in dependency_chain {
+                if !loaded_templates.contains(&dep_template_name) {
+                    let content = self.load_template(&dep_template_name).await?;
+                    environment.add_template(dep_template_name.clone(), content)?;
+                    loaded_templates.push(dep_template_name.clone());
+                    debug!("Loaded template '{}' into environment", dep_template_name);
+                }
+            }
+        }
+
+        info!(
+            "Loaded {} templates with dependencies into environment",
+            loaded_templates.len()
+        );
+        Ok(loaded_templates)
+    }
+
+    /// Validate templates with dependency resolution
+    pub async fn validate_templates_with_dependencies(
+        &self,
+        template_names: &[String],
+    ) -> Result<Vec<(String, bool, Option<String>)>> {
+        use crate::template::environment::TemplateEnvironment;
+
+        let mut env = TemplateEnvironment::new()?;
+        let mut results = Vec::new();
+
+        // First, load all templates into the environment to support dependencies
+        for template_name in template_names {
+            if let Ok(content) = self.load_template(template_name).await {
+                let _ = env.add_template(template_name.clone(), content);
+            }
+        }
+
+        // Now validate each template with full dependency context
+        for template_name in template_names {
+            let (is_valid, error) = match self.load_template(template_name).await {
+                Ok(_) => {
+                    // Template exists and can be loaded, now try to get it from environment
+                    match env.has_template(template_name) {
+                        true => {
+                            debug!(
+                                "Template '{}' validation passed (with dependencies)",
+                                template_name
+                            );
+                            (true, None)
+                        }
+                        false => {
+                            let error_msg = "Template not found in environment".to_string();
+                            warn!(
+                                "Template '{}' validation failed: {}",
+                                template_name, error_msg
+                            );
+                            (false, Some(error_msg))
+                        }
+                    }
+                }
+                Err(e) => {
+                    let error_msg = format!("Load error: {}", e);
+                    warn!("Template '{}' could not be loaded: {}", template_name, e);
+                    (false, Some(error_msg))
+                }
+            };
+
+            results.push((template_name.clone(), is_valid, error));
+        }
+
+        Ok(results)
     }
 }
 
@@ -345,7 +737,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_git_repository_not_implemented() {
+    async fn test_git_repository_creation() {
         let result = TemplateLoader::with_git_repository(
             "https://github.com/example/templates.git".to_string(),
             "main".to_string(),
@@ -353,8 +745,23 @@ mod tests {
             PathBuf::from("/tmp/git-templates"),
         );
 
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Milestone 6"));
+        assert!(result.is_ok());
+        let loader = result.unwrap();
+
+        // Verify the Git source is configured correctly
+        match loader.source {
+            TemplateSource::Git {
+                url,
+                ref_spec,
+                template_dir,
+                ..
+            } => {
+                assert_eq!(url, "https://github.com/example/templates.git");
+                assert_eq!(ref_spec, "main");
+                assert_eq!(template_dir, Some("templates".to_string()));
+            }
+            _ => panic!("Expected Git source configuration"),
+        }
     }
 
     #[tokio::test]

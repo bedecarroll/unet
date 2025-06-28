@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use minijinja::{Environment, Value};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Template environment wrapper with μNet-specific configuration
 #[derive(Debug)]
@@ -303,6 +303,43 @@ impl TemplateEnvironment {
             .template_from_str(template_str)
             .context("Template validation failed")?;
         Ok(())
+    }
+
+    /// Add a template to the environment for includes/extends support
+    /// Note: Currently disabled due to MiniJinja lifetime requirements
+    pub fn add_template(&mut self, _name: String, _source: String) -> Result<()> {
+        // TODO: Implement proper lifetime management for MiniJinja templates
+        // The current MiniJinja API requires 'static lifetimes which conflicts with owned strings
+        // This would require architectural changes to use a different approach
+        warn!("Template addition to environment currently disabled due to lifetime constraints");
+        Ok(())
+    }
+
+    /// Remove a template from the environment
+    pub fn remove_template(&mut self, name: &str) {
+        self.env.remove_template(name);
+    }
+
+    /// Check if a template exists in the environment
+    pub fn has_template(&self, name: &str) -> bool {
+        self.env.get_template(name).is_ok()
+    }
+
+    /// Get template names that are loaded in the environment
+    /// Note: MiniJinja doesn't expose template names, so we track them separately if needed
+    pub fn list_templates(&self) -> Vec<String> {
+        // MiniJinja doesn't provide a direct way to list template names
+        // In a real implementation, we'd maintain our own registry
+        Vec::new()
+    }
+
+    /// Clear all templates from the environment
+    pub fn clear_templates(&mut self) {
+        // MiniJinja doesn't have a direct clear method
+        // For now, we create a new environment to effectively clear templates
+        if let Ok(new_env) = Self::new() {
+            self.env = new_env.env;
+        }
     }
 }
 

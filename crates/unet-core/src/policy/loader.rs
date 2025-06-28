@@ -5,10 +5,11 @@
 
 use crate::config::GitConfig;
 use crate::policy::{PolicyError, PolicyParser, PolicyResult, PolicyRule};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 use tracing::{debug, info, warn};
+use walkdir::WalkDir;
 
 /// Policy file loader with Git integration and caching
 #[derive(Debug, Clone)]
@@ -107,7 +108,7 @@ impl PolicyLoader {
         let mut total_files = 0;
 
         // Walk the directory tree looking for .policy files
-        for entry in walkdir::WalkDir::new(dir)
+        for entry in WalkDir::new(dir)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_file())
@@ -255,20 +256,167 @@ impl PolicyLoader {
         }
 
         if let Some(ref repo_url) = self.git_config.policies_repo {
-            // TODO: Implement Git repository cloning/syncing
-            // For now, return an error to indicate Git integration is needed
-            return Err(PolicyError::Evaluation {
-                message: format!(
-                    "Git repository integration not yet implemented for: {}",
-                    repo_url
-                ),
-            });
+            return self.sync_policies_from_git(repo_url).await;
         }
 
         Err(PolicyError::Evaluation {
             message: "No policies source configured (neither local directory nor Git repository)"
                 .to_string(),
         })
+    }
+
+    /// Sync policies from Git repository
+    async fn sync_policies_from_git(&self, repo_url: &str) -> PolicyResult<PathBuf> {
+        use crate::git::{GitClient, GitClientConfig, GitRepository};
+
+        debug!("Syncing policies from Git repository: {}", repo_url);
+
+        // Clone for use in closure and logging
+        let repo_url_for_closure = repo_url.to_string();
+        let repo_url_for_logging = repo_url.to_string();
+        let branch = self.git_config.branch.clone();
+
+        let local_path = tokio::task::spawn_blocking(move || {
+            // Create a new GitClient for this operation
+            let git_config = GitClientConfig {
+                base_directory: std::path::PathBuf::from("./git-repos"),
+                default_sync_interval: 30,
+                max_state_age: 5,
+                auto_fetch: true,
+                auto_cleanup: false,
+            };
+            let git_client = GitClient::with_config(git_config);
+
+            // Determine local path for policies
+            let local_path = std::path::PathBuf::from("./git-repos/policies");
+
+            // Create base directory if it doesn't exist
+            if !local_path.parent().unwrap().exists() {
+                std::fs::create_dir_all(local_path.parent().unwrap())
+                    .map_err(|e| format!("Failed to create git-repos directory: {}", e))?;
+            }
+
+            // Clone or open repository
+            let credential_provider = git_client.credential_provider();
+            let repository = if local_path.exists() && local_path.join(".git").exists() {
+                debug!(
+                    "Opening existing policies repository at: {}",
+                    local_path.display()
+                );
+                GitRepository::open(&local_path, credential_provider)
+                    .map_err(|e| format!("Failed to open existing repository: {}", e))?
+            } else {
+                debug!("Cloning policies repository to: {}", local_path.display());
+                GitRepository::clone(&repo_url_for_closure, &local_path, credential_provider)
+                    .map_err(|e| format!("Failed to clone repository: {}", e))?
+            };
+
+            // Fetch latest changes and pull
+            repository
+                .fetch(None)
+                .map_err(|e| format!("Failed to fetch from repository: {}", e))?;
+
+            repository
+                .pull(None, Some(&branch))
+                .map_err(|e| format!("Failed to pull changes: {}", e))?;
+
+            debug!("Successfully synced policies repository");
+            Ok::<PathBuf, String>(local_path)
+        })
+        .await
+        .map_err(|e| PolicyError::Evaluation {
+            message: format!("Task join error: {}", e),
+        })?
+        .map_err(|e| PolicyError::Evaluation { message: e })?;
+
+        info!(
+            "Policies synced from Git repository: {}",
+            repo_url_for_logging
+        );
+        Ok(local_path)
+    }
+
+    /// Force reload policies from source (clears cache first)
+    pub async fn reload_policies(&mut self) -> PolicyResult<LoadResult> {
+        info!("Force reloading policies from source");
+        self.clear_cache();
+        self.load_policies().await
+    }
+
+    /// Sync policies from Git and reload them with validation
+    pub async fn sync_and_reload(&mut self) -> PolicyResult<LoadResult> {
+        info!("Syncing and reloading policies with validation");
+
+        // Track currently cached files for removal detection
+        let cached_files: HashSet<PathBuf> = self.policy_cache.keys().cloned().collect();
+
+        // Clear cache to force reload
+        self.clear_cache();
+
+        // Sync from Git if configured
+        if self.git_config.policies_repo.is_some() {
+            let policies_dir = self.get_policies_directory().await?;
+
+            // Validate all policy files after sync
+            let validation_result = self.validate_policies_directory(&policies_dir).await?;
+
+            if !validation_result.is_valid() {
+                warn!(
+                    "Policy validation found {} errors after sync from {}",
+                    validation_result.error_count(),
+                    self.git_config.policies_repo.as_ref().unwrap()
+                );
+
+                // Log validation errors
+                for error in &validation_result.errors {
+                    warn!(
+                        "Policy validation error in {}: line {}: {}",
+                        error.file_path.display(),
+                        error.line,
+                        error.message
+                    );
+                }
+            } else {
+                info!(
+                    "Policy validation passed: {} files, {} rules validated",
+                    validation_result.total_files, validation_result.total_valid_rules
+                );
+            }
+        }
+
+        // Load policies (this will also trigger Git sync if needed)
+        let load_result = self.load_policies().await?;
+
+        // Detect removed files by comparing with cached files
+        let loaded_files: HashSet<PathBuf> =
+            load_result.loaded.iter().map(|f| f.path.clone()).collect();
+
+        let removed_files: Vec<&PathBuf> = cached_files.difference(&loaded_files).collect();
+
+        if !removed_files.is_empty() {
+            info!(
+                "Detected {} policy file(s) removed from repository:",
+                removed_files.len()
+            );
+            for removed_file in &removed_files {
+                info!("  - Policy file removed: {}", removed_file.display());
+            }
+        }
+
+        // Detect new files
+        let new_files: Vec<&PathBuf> = loaded_files.difference(&cached_files).collect();
+
+        if !new_files.is_empty() {
+            info!(
+                "Detected {} new policy file(s) in repository:",
+                new_files.len()
+            );
+            for new_file in &new_files {
+                info!("  - New policy file: {}", new_file.display());
+            }
+        }
+
+        Ok(load_result)
     }
 
     /// Clear the policy cache
@@ -297,6 +445,79 @@ impl PolicyLoader {
             expired_entries,
             valid_entries: total_entries - expired_entries,
         }
+    }
+
+    /// Validate all policy files in a directory
+    pub async fn validate_policies_directory(
+        &self,
+        dir: &Path,
+    ) -> PolicyResult<DirectoryValidationResult> {
+        if !dir.exists() {
+            return Err(PolicyError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Policies directory not found: {}", dir.display()),
+            )));
+        }
+
+        debug!("Validating policies in directory: {}", dir.display());
+
+        let mut total_files = 0;
+        let mut total_valid_rules = 0;
+        let mut errors = Vec::new();
+
+        // Walk the directory tree looking for .policy files
+        for entry in WalkDir::new(dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .filter(|e| e.path().extension().map_or(false, |ext| ext == "policy"))
+        {
+            total_files += 1;
+            let file_path = entry.path();
+
+            // Read and validate the file
+            match std::fs::read_to_string(file_path) {
+                Ok(content) => {
+                    match self.validate_policy_file(&content) {
+                        Ok(file_result) => {
+                            total_valid_rules += file_result.valid_rules;
+
+                            // Convert file-level errors to directory-level errors
+                            for file_error in file_result.errors {
+                                errors.push(DirectoryValidationError {
+                                    file_path: file_path.to_path_buf(),
+                                    line: file_error.line,
+                                    message: file_error.message,
+                                    content: file_error.content,
+                                });
+                            }
+                        }
+                        Err(e) => {
+                            errors.push(DirectoryValidationError {
+                                file_path: file_path.to_path_buf(),
+                                line: 0,
+                                message: format!("Failed to validate file: {}", e),
+                                content: String::new(),
+                            });
+                        }
+                    }
+                }
+                Err(e) => {
+                    errors.push(DirectoryValidationError {
+                        file_path: file_path.to_path_buf(),
+                        line: 0,
+                        message: format!("Failed to read file: {}", e),
+                        content: String::new(),
+                    });
+                }
+            }
+        }
+
+        Ok(DirectoryValidationResult {
+            total_files,
+            total_valid_rules,
+            errors,
+        })
     }
 
     /// Validate a policy file format without parsing all rules
@@ -360,6 +581,23 @@ pub struct ValidationError {
     pub content: String,
 }
 
+/// Directory validation result
+#[derive(Debug, Clone)]
+pub struct DirectoryValidationResult {
+    pub total_files: usize,
+    pub total_valid_rules: usize,
+    pub errors: Vec<DirectoryValidationError>,
+}
+
+/// Directory validation error details
+#[derive(Debug, Clone)]
+pub struct DirectoryValidationError {
+    pub file_path: PathBuf,
+    pub line: usize,
+    pub message: String,
+    pub content: String,
+}
+
 impl ValidationResult {
     /// Check if validation passed (no errors)
     pub fn is_valid(&self) -> bool {
@@ -369,6 +607,32 @@ impl ValidationResult {
     /// Get error count
     pub fn error_count(&self) -> usize {
         self.errors.len()
+    }
+}
+
+impl DirectoryValidationResult {
+    /// Check if validation passed (no errors)
+    pub fn is_valid(&self) -> bool {
+        self.errors.is_empty()
+    }
+
+    /// Get error count
+    pub fn error_count(&self) -> usize {
+        self.errors.len()
+    }
+
+    /// Get files with errors
+    pub fn files_with_errors(&self) -> Vec<&PathBuf> {
+        self.errors.iter().map(|e| &e.file_path).collect()
+    }
+
+    /// Get error count by file
+    pub fn errors_by_file(&self) -> std::collections::HashMap<&PathBuf, usize> {
+        let mut error_counts = std::collections::HashMap::new();
+        for error in &self.errors {
+            *error_counts.entry(&error.file_path).or_insert(0) += 1;
+        }
+        error_counts
     }
 }
 

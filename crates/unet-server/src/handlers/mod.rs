@@ -1,5 +1,7 @@
 //! HTTP request handlers
 
+pub mod changes;
+pub mod git;
 pub mod health;
 pub mod links;
 pub mod locations;

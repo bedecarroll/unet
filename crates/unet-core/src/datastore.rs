@@ -745,6 +745,175 @@ pub trait DataStore: Send + Sync {
             operation: "get_template_usage_stats not implemented".to_string(),
         })
     }
+
+    // Change tracking operations
+    /// Creates a new configuration change
+    async fn create_configuration_change(
+        &self,
+        change: &crate::models::change_tracking::ConfigurationChange,
+    ) -> DataStoreResult<crate::models::change_tracking::ConfigurationChange> {
+        let _ = change;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_configuration_change not implemented".to_string(),
+        })
+    }
+
+    /// Gets a configuration change by ID
+    async fn get_configuration_change(
+        &self,
+        id: &str,
+    ) -> DataStoreResult<Option<crate::models::change_tracking::ConfigurationChange>> {
+        let _ = id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_configuration_change not implemented".to_string(),
+        })
+    }
+
+    /// Updates an existing configuration change
+    async fn update_configuration_change(
+        &self,
+        change: &crate::models::change_tracking::ConfigurationChange,
+    ) -> DataStoreResult<crate::models::change_tracking::ConfigurationChange> {
+        let _ = change;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "update_configuration_change not implemented".to_string(),
+        })
+    }
+
+    /// Lists configuration changes for a specific entity
+    async fn get_configuration_changes_for_entity(
+        &self,
+        entity_type: &str,
+        entity_id: &str,
+    ) -> DataStoreResult<Vec<crate::models::change_tracking::ConfigurationChange>> {
+        let _ = (entity_type, entity_id);
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_configuration_changes_for_entity not implemented".to_string(),
+        })
+    }
+
+    /// Lists configuration changes by status
+    async fn get_configuration_changes_by_status(
+        &self,
+        status: crate::models::change_tracking::ChangeStatus,
+    ) -> DataStoreResult<Vec<crate::models::change_tracking::ConfigurationChange>> {
+        let _ = status;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_configuration_changes_by_status not implemented".to_string(),
+        })
+    }
+
+    /// Lists all configuration changes with optional filtering and pagination
+    async fn list_configuration_changes(
+        &self,
+        options: &QueryOptions,
+    ) -> DataStoreResult<PagedResult<crate::models::change_tracking::ConfigurationChange>> {
+        let _ = options;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "list_configuration_changes not implemented".to_string(),
+        })
+    }
+
+    /// Creates a new audit log entry
+    async fn create_audit_log_entry(
+        &self,
+        entry: &crate::models::change_tracking::ChangeAuditLog,
+    ) -> DataStoreResult<crate::models::change_tracking::ChangeAuditLog> {
+        let _ = entry;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_audit_log_entry not implemented".to_string(),
+        })
+    }
+
+    /// Gets audit log entries for a specific change
+    async fn get_audit_log_entries_for_change(
+        &self,
+        change_id: &str,
+    ) -> DataStoreResult<Vec<crate::models::change_tracking::ChangeAuditLog>> {
+        let _ = change_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_audit_log_entries_for_change not implemented".to_string(),
+        })
+    }
+
+    /// Lists audit log entries with optional filtering and pagination
+    async fn list_audit_log_entries(
+        &self,
+        options: &QueryOptions,
+    ) -> DataStoreResult<PagedResult<crate::models::change_tracking::ChangeAuditLog>> {
+        let _ = options;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "list_audit_log_entries not implemented".to_string(),
+        })
+    }
+
+    /// Creates a new approval workflow
+    async fn create_approval_workflow(
+        &self,
+        workflow: &crate::models::change_tracking::ChangeApprovalWorkflow,
+    ) -> DataStoreResult<crate::models::change_tracking::ChangeApprovalWorkflow> {
+        let _ = workflow;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_approval_workflow not implemented".to_string(),
+        })
+    }
+
+    /// Gets an approval workflow for a specific change
+    async fn get_approval_workflow_for_change(
+        &self,
+        change_id: &str,
+    ) -> DataStoreResult<Option<crate::models::change_tracking::ChangeApprovalWorkflow>> {
+        let _ = change_id;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_approval_workflow_for_change not implemented".to_string(),
+        })
+    }
+
+    /// Updates an existing approval workflow
+    async fn update_approval_workflow(
+        &self,
+        workflow: &crate::models::change_tracking::ChangeApprovalWorkflow,
+    ) -> DataStoreResult<crate::models::change_tracking::ChangeApprovalWorkflow> {
+        let _ = workflow;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "update_approval_workflow not implemented".to_string(),
+        })
+    }
+
+    /// Creates a new rollback snapshot
+    async fn create_rollback_snapshot(
+        &self,
+        snapshot: &crate::models::change_tracking::ChangeRollbackSnapshot,
+    ) -> DataStoreResult<crate::models::change_tracking::ChangeRollbackSnapshot> {
+        let _ = snapshot;
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "create_rollback_snapshot not implemented".to_string(),
+        })
+    }
+
+    /// Gets a rollback snapshot for a specific change and type
+    async fn get_rollback_snapshot_for_change(
+        &self,
+        change_id: &str,
+        snapshot_type: crate::models::change_tracking::SnapshotType,
+    ) -> DataStoreResult<Option<crate::models::change_tracking::ChangeRollbackSnapshot>> {
+        let _ = (change_id, snapshot_type);
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_rollback_snapshot_for_change not implemented".to_string(),
+        })
+    }
+
+    /// Lists rollback snapshots for a specific entity
+    async fn list_rollback_snapshots_for_entity(
+        &self,
+        entity_type: &str,
+        entity_id: &str,
+    ) -> DataStoreResult<Vec<crate::models::change_tracking::ChangeRollbackSnapshot>> {
+        let _ = (entity_type, entity_id);
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "list_rollback_snapshots_for_entity not implemented".to_string(),
+        })
+    }
 }
 
 // Helper functions for creating common query options

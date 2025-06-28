@@ -5,6 +5,7 @@ mod m20241221_000002_create_nodes_table;
 mod m20241221_000003_create_links_table;
 mod m20241221_000004_create_derived_state_tables;
 mod m20241224_000001_create_template_tables;
+mod m20241226_000001_create_change_tracking_tables;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241221_000003_create_links_table::Migration),
             Box::new(m20241221_000004_create_derived_state_tables::Migration),
             Box::new(m20241224_000001_create_template_tables::Migration),
+            Box::new(m20241226_000001_create_change_tracking_tables::Migration),
         ]
     }
 }

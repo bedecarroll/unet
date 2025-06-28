@@ -1,5 +1,9 @@
 //! SeaORM Entities for μNet Core Database Tables
 
+pub mod change_approval_workflow;
+pub mod change_audit_log;
+pub mod change_rollback_snapshot;
+pub mod configuration_changes;
 pub mod interface_status;
 pub mod links;
 pub mod locations;
@@ -11,6 +15,10 @@ pub mod template_usage;
 pub mod template_versions;
 pub mod templates;
 
+pub use change_approval_workflow::Entity as ChangeApprovalWorkflow;
+pub use change_audit_log::Entity as ChangeAuditLog;
+pub use change_rollback_snapshot::Entity as ChangeRollbackSnapshot;
+pub use configuration_changes::Entity as ConfigurationChanges;
 pub use interface_status::Entity as InterfaceStatus;
 pub use links::Entity as Links;
 pub use locations::Entity as Locations;
