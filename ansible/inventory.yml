@@ -1,0 +1,84 @@
+---
+# Ansible inventory for μNet deployment
+
+all:
+  children:
+    unet_servers:
+      hosts:
+        # Production servers
+        unet-prod-01:
+          ansible_host: 10.0.1.10
+          ansible_user: ubuntu
+          unet_environment: production
+          unet_postgres_password: "{{ vault_unet_postgres_password_prod }}"
+          install_postgres: true
+          install_redis: true
+        
+        unet-prod-02:
+          ansible_host: 10.0.1.11
+          ansible_user: ubuntu
+          unet_environment: production
+          unet_postgres_password: "{{ vault_unet_postgres_password_prod }}"
+          install_postgres: false  # Use external DB
+          install_redis: true
+        
+        # Staging servers
+        unet-staging-01:
+          ansible_host: 10.0.2.10
+          ansible_user: ubuntu
+          unet_environment: staging
+          unet_postgres_password: "{{ vault_unet_postgres_password_staging }}"
+          install_postgres: true
+          install_redis: true
+        
+        # Development servers
+        unet-dev-01:
+          ansible_host: 10.0.3.10
+          ansible_user: ubuntu
+          unet_environment: development
+          unet_postgres_password: "changeme"
+          install_postgres: true
+          install_redis: true
+      
+      vars:
+        # Common variables for all μNet servers
+        unet_version: "v0.1.0"
+        unet_user: "unet"
+        unet_group: "unet"
+        unet_install_dir: "/usr/bin"
+        unet_config_dir: "/etc/unet"
+        unet_data_dir: "/var/lib/unet"
+        unet_log_dir: "/var/log/unet"
+        unet_backup_dir: "/var/backups/unet"
+        postgres_version: "15"
+        redis_version: "7"
+        
+        # SSH settings
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+        ansible_python_interpreter: /usr/bin/python3
+
+# Environment-specific groups
+production:
+  hosts:
+    unet-prod-01:
+    unet-prod-02:
+  vars:
+    unet_log_level: "info"
+    unet_backup_retention_days: 30
+    unet_monitoring_enabled: true
+
+staging:
+  hosts:
+    unet-staging-01:
+  vars:
+    unet_log_level: "debug"
+    unet_backup_retention_days: 7
+    unet_monitoring_enabled: true
+
+development:
+  hosts:
+    unet-dev-01:
+  vars:
+    unet_log_level: "debug"
+    unet_backup_retention_days: 3
+    unet_monitoring_enabled: false

@@ -1,0 +1,72 @@
+# Git and version control
+.git/
+.gitignore
+
+# Rust build artifacts
+target/
+**/*.rs.bk
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation build artifacts
+docs/book/
+*.html
+
+# Test artifacts
+test_*.db
+*.db-*
+/test_data/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Log files
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Cache directories
+.cache/
+node_modules/
+
+# Development scripts
+scripts/
+fixtures/
+
+# Archive files
+TODO-ARCHIVE.md
+TODO-BACKUP.md
+
+# Personal files
+THOUGHTS.md
+quality_report_*.md
+
+# Build outputs not needed in container
+dashboards/
+examples/

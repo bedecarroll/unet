@@ -62,6 +62,7 @@ struct DetectionPattern {
 
 impl PluginRegistry {
     /// Create a new plugin registry
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -79,16 +80,22 @@ impl PluginRegistry {
     }
 
     /// Get a registered plugin by name
+    #[must_use]
     pub fn get_plugin(&self, name: &str) -> Option<&dyn ConfigParserPlugin> {
-        self.plugins.get(name).map(|p| p.as_ref())
+        self.plugins.get(name).map(std::convert::AsRef::as_ref)
     }
 
     /// List all registered plugins
+    #[must_use]
     pub fn list_plugins(&self) -> Vec<&str> {
-        self.plugins.keys().map(|s| s.as_str()).collect()
+        self.plugins
+            .keys()
+            .map(std::string::String::as_str)
+            .collect()
     }
 
     /// Auto-detect the best parser for given configuration
+    #[must_use]
     pub fn detect_parser(&self, config_text: &str) -> Option<&str> {
         let mut candidates: Vec<(&str, u32, usize)> = Vec::new();
 
@@ -197,6 +204,7 @@ pub struct PluginRegistryBuilder {
 
 impl PluginRegistryBuilder {
     /// Create a new builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             registry: PluginRegistry::new(),
@@ -247,6 +255,7 @@ impl PluginRegistryBuilder {
     }
 
     /// Build the plugin registry
+    #[must_use]
     pub fn build(self) -> PluginRegistry {
         self.registry
     }
@@ -265,13 +274,13 @@ struct AristaParserPlugin;
 struct GenericParserPlugin;
 
 impl CiscoParserPlugin {
-    fn new() -> Result<Self> {
+    const fn new() -> Result<Self> {
         Ok(Self)
     }
 }
 
 impl ConfigParserPlugin for CiscoParserPlugin {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "cisco"
     }
 
@@ -299,7 +308,7 @@ impl ConfigParserPlugin for CiscoParserPlugin {
         // Simple heuristic: look for Cisco-specific patterns
         config_text.contains("interface GigabitEthernet")
             || config_text.contains("interface FastEthernet")
-            || (config_text.contains("hostname") && config_text.contains("!"))
+            || (config_text.contains("hostname") && config_text.contains('!'))
     }
 
     fn priority(&self) -> u32 {
@@ -308,13 +317,13 @@ impl ConfigParserPlugin for CiscoParserPlugin {
 }
 
 impl JuniperParserPlugin {
-    fn new() -> Result<Self> {
+    const fn new() -> Result<Self> {
         Ok(Self)
     }
 }
 
 impl ConfigParserPlugin for JuniperParserPlugin {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "juniper"
     }
 
@@ -349,13 +358,13 @@ impl ConfigParserPlugin for JuniperParserPlugin {
 }
 
 impl AristaParserPlugin {
-    fn new() -> Result<Self> {
+    const fn new() -> Result<Self> {
         Ok(Self)
     }
 }
 
 impl ConfigParserPlugin for AristaParserPlugin {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "arista"
     }
 
@@ -390,13 +399,13 @@ impl ConfigParserPlugin for AristaParserPlugin {
 }
 
 impl GenericParserPlugin {
-    fn new() -> Result<Self> {
+    const fn new() -> Result<Self> {
         Ok(Self)
     }
 }
 
 impl ConfigParserPlugin for GenericParserPlugin {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "generic"
     }
 
@@ -470,13 +479,13 @@ mod tests {
     fn test_cisco_detection() -> Result<()> {
         let registry = PluginRegistryBuilder::new().with_default_plugins()?.build();
 
-        let cisco_config = r#"
+        let cisco_config = r"
 hostname test-router
 !
 interface GigabitEthernet0/1
  description Uplink
 ip route 0.0.0.0 0.0.0.0 192.168.1.1
-"#;
+";
 
         let detected = registry.detect_parser(cisco_config);
         assert_eq!(detected, Some("cisco"));
@@ -508,11 +517,11 @@ interfaces {
     fn test_parse_with_detection() -> Result<()> {
         let registry = PluginRegistryBuilder::new().with_default_plugins()?.build();
 
-        let cisco_config = r#"
+        let cisco_config = r"
 hostname test-router
 interface GigabitEthernet0/1
  description Test
-"#;
+";
 
         let config = ParserConfig::default();
         let (tree, parser_name) = registry.parse_with_detection(cisco_config, &config, None)?;

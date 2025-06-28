@@ -1,0 +1,8 @@
+[Unit]
+Description=μNet Network Configuration Management System
+Documentation=https://github.com/example/unet
+After=network.target
+Wants=network.target
+
+[Install]
+WantedBy=multi-user.target

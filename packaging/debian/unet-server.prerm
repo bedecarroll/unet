@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+# Stop the service before removal
+if [ -d /run/systemd/system ] && [ "$1" = remove ]; then
+    deb-systemd-invoke stop unet-server.service >/dev/null || true
+fi
+
+#DEBHELPER#
+
+exit 0

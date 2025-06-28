@@ -152,7 +152,7 @@ pub fn render_templates(node: &NodeWithPolicy, env: &Environment) -> RenderedCon
 }
 ```
 
-*`NodeWithPolicy`** = Node + **`custom_data`** mutations + template list.*
+*`NodeWithPolicy`**= Node + **`custom_data`** mutations + template list.*
 
 ---
 
@@ -255,7 +255,7 @@ pub struct RenderedSnippet {
 }
 ```
 
-*`MatchSpec`** imported from **`config_slicer::spec::MatchSpec`**.*
+*`MatchSpec`**imported from **`config_slicer::spec::MatchSpec`**.*
 
 ---
 
@@ -388,4 +388,3 @@ CI runs all with `cargo test --workspace`.
 - Provide sample live configs in `tests/fixtures` for diff testing.
 
 *Proceed to *[*05\_cli\_tool.md*](05_cli_tool.md)*.*
-

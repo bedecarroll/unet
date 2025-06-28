@@ -19,7 +19,8 @@ pub struct ConfigSlicer {
 }
 
 impl ConfigSlicer {
-    /// Create a new ConfigSlicer with default extractors
+    /// Create a new `ConfigSlicer` with default extractors
+    #[must_use]
     pub fn new() -> Self {
         let mut slicer = Self {
             extractors: HashMap::new(),
@@ -85,6 +86,7 @@ impl ConfigSlicer {
     }
 
     /// Get available extractor names
+    #[must_use]
     pub fn available_extractors(&self) -> Vec<String> {
         self.extractors.keys().cloned().collect()
     }
@@ -99,8 +101,15 @@ impl Default for ConfigSlicer {
 /// Glob pattern-based slice extractor
 pub struct GlobExtractor;
 
+impl Default for GlobExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GlobExtractor {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -140,8 +149,15 @@ impl SliceAlgorithm for GlobExtractor {
 /// Regex pattern-based slice extractor
 pub struct RegexExtractor;
 
+impl Default for RegexExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RegexExtractor {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -181,8 +197,15 @@ impl SliceAlgorithm for RegexExtractor {
 /// Hierarchical slice extractor
 pub struct HierarchicalExtractor;
 
+impl Default for HierarchicalExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HierarchicalExtractor {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -226,8 +249,15 @@ impl SliceAlgorithm for HierarchicalExtractor {
 /// Context-aware slice extractor
 pub struct ContextExtractor;
 
+impl Default for ContextExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextExtractor {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -338,7 +368,7 @@ fn extract_context_matches(
 }
 
 /// Hierarchical pattern for complex tree matching
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HierarchicalPattern {
     /// Path segments for hierarchical matching
     pub path_segments: Vec<PathSegment>,
@@ -349,7 +379,7 @@ pub struct HierarchicalPattern {
 }
 
 /// A segment in a hierarchical path
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PathSegment {
     /// Pattern to match the segment
     pub pattern: String,
@@ -369,16 +399,19 @@ impl HierarchicalPattern {
         })
     }
 
-    pub fn with_exact_depth(mut self) -> Self {
+    #[must_use]
+    pub const fn with_exact_depth(mut self) -> Self {
         self.exact_depth = true;
         self
     }
 
-    pub fn with_max_depth(mut self, depth: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_depth(mut self, depth: usize) -> Self {
         self.max_depth = Some(depth);
         self
     }
 
+    #[must_use]
     pub fn matches_node(&self, node: &ConfigNode) -> bool {
         // Implementation for hierarchical node matching
         // This would involve building a path from root to this node
@@ -466,11 +499,11 @@ fn glob_match(text: &str, pattern: &str) -> bool {
 
     // Convert glob pattern to regex
     let regex_pattern = pattern
-        .replace(".", r"\.")
-        .replace("*", ".*")
-        .replace("?", ".");
+        .replace('.', r"\.")
+        .replace('*', ".*")
+        .replace('?', ".");
 
-    if let Ok(regex) = Regex::new(&format!("^{}$", regex_pattern)) {
+    if let Ok(regex) = Regex::new(&format!("^{regex_pattern}$")) {
         regex.is_match(text)
     } else {
         false

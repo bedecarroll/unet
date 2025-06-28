@@ -1,0 +1,183 @@
+# μNet Development Configuration Template
+# This template provides development-friendly defaults with enhanced debugging and faster iteration
+#
+# Usage:
+# 1. Copy this template to your development environment
+# 2. Customize values as needed for local development
+# 3. Use SQLite by default for simplicity
+# 4. Enable verbose logging and debugging features
+#
+# Environment Variables:
+# - UNET_DATABASE_URL: Optional database override
+# - UNET_LOG_LEVEL: Optional log level override
+
+[database]
+# SQLite for development simplicity
+url = "sqlite:./unet-dev.db?mode=rwc"
+max_connections = 10
+timeout = 30
+
+# Optional PostgreSQL for testing
+# url = "postgresql://unet_dev:dev_password@localhost:5432/unet_dev"
+
+# Development pool settings - smaller for local development
+[database.pool]
+min_connections = 1
+max_connections = 10
+acquire_timeout = 30
+max_lifetime = 1800  # 30 minutes
+idle_timeout = 300   # 5 minutes
+test_query = "SELECT 1"
+
+# Development migration settings - auto-migrate for convenience
+[database.migration]
+auto_migrate = true
+timeout = 300
+lock_timeout = 60
+
+[logging]
+level = "debug"  # Verbose logging for development
+format = "pretty"  # Human-readable format
+file = "./logs/unet-dev.log"
+
+# Development OpenTelemetry - disabled by default
+[logging.opentelemetry]
+enabled = false
+service_name = "unet-development"
+service_version = "dev"
+environment = "development"
+sample_rate = 1.0  # Sample everything in development
+
+# Development log aggregation - simplified
+[logging.aggregation]
+enabled = false
+rotation = { max_size_mb = 10, max_files = 5, schedule = "daily" }
+parsing = { enabled = true, indexed_fields = ["timestamp", "level", "message"], enrichment = false }
+
+# Development alerting - disabled
+[logging.alerting]
+enabled = false
+rules = []
+channels = []
+
+[snmp]
+community = "public"
+timeout = 5
+retries = 3
+
+[server]
+host = "127.0.0.1"  # Localhost only for development
+port = 8080
+max_request_size = 1048576  # 1MB
+
+# TLS disabled for development ease
+[server.tls]
+# cert_file = "./certs/dev-cert.pem"
+# key_file = "./certs/dev-key.pem"
+# force_https = false
+
+[git]
+# Use local repositories for development
+policies_repo = "./dev-policies"
+templates_repo = "./dev-templates"
+branch = "main"
+sync_interval = 60  # More frequent sync for development
+
+[domain]
+default_domain = "dev.local"
+search_domains = ["local", "dev"]
+
+# Authentication disabled by default for development ease
+[auth]
+enabled = false
+jwt_secret = "dev-secret-key-not-for-production"
+token_expiry = 86400  # 24 hours for development convenience
+
+# Secrets management - simplified for development
+[secrets]
+enabled = false
+provider = "file"
+
+[secrets.file_provider]
+secrets_dir = "./dev-secrets"
+encryption_enabled = false
+
+# Network security - relaxed for development
+[network]
+enabled = false  # Disable network restrictions for development
+allowed_ips = ["127.0.0.1", "::1"]
+allowed_ranges = ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"]
+enable_geolocation = false
+enable_network_rate_limits = false
+
+# Development metrics - enabled for testing
+[metrics]
+enabled = true
+endpoint = "/metrics"
+collection_interval = 30  # Less frequent collection
+enable_performance_metrics = true
+enable_business_metrics = true
+enable_system_metrics = false  # Disable system metrics for development
+retention_days = 1
+
+[metrics.labels]
+service = "unet"
+version = "dev"
+environment = "development"
+
+# Load balancer - disabled for development
+[load_balancer]
+enabled = false
+shutdown_timeout = 10
+
+[load_balancer.health_check]
+basic_path = "/health"
+timeout = 3
+include_dependencies = true
+check_interval = 60
+
+# Cluster - disabled for development
+[cluster]
+enabled = false
+
+# Shared state - disabled for development
+[shared_state]
+backend = "memory"  # In-memory for development
+default_expiry_seconds = 300
+
+# Stateless - disabled for development
+[stateless]
+enabled = false
+
+# Resource management - relaxed for development
+[resource_management]
+enabled = false
+
+[resource_management.memory]
+max_cache_size_mb = 256
+cache_ttl_seconds = 300
+enable_memory_pooling = false
+monitoring_enabled = false
+
+[resource_management.limits]
+max_cpu_percent = 95.0
+max_memory_mb = 2048
+max_concurrent_requests = 100
+request_timeout_seconds = 60
+
+[resource_management.throttling]
+cpu_throttle_threshold = 95.0
+memory_throttle_threshold = 95.0
+user_request_quotas = { default = 1000 }
+rate_limit_window_seconds = 60
+
+[resource_management.degradation]
+enable_circuit_breakers = false
+fallback_response_enabled = false
+reduce_functionality_on_overload = false
+
+[resource_management.monitoring]
+enable_detailed_metrics = false
+metrics_collection_interval = 60
+alert_thresholds = { cpu = 90.0, memory = 90.0 }
+capacity_planning_enabled = false

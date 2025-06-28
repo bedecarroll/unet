@@ -1,0 +1,1104 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Custom business metrics dashboard allowing dynamic visualization of μNet-specific metrics",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [],
+      "title": "μNet Custom Metrics Dashboard",
+      "type": "text",
+      "options": {
+        "content": "# Custom μNet Metrics Visualization\n\nThis dashboard provides flexible visualization for custom business metrics, network operations analytics, and application-specific KPIs. Use the metric selector variables to customize your view.",
+        "mode": "markdown"
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Customizable metric display based on selected metric type",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "${metric_unit}"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 3
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "${custom_metric_query}",
+          "interval": "",
+          "legendFormat": "${metric_label}",
+          "refId": "A"
+        }
+      ],
+      "title": "Custom Metric: ${metric_name}",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Rate-based metrics for operational analytics",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 3
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "rate(${rate_metric_query}[${rate_interval}])",
+          "interval": "",
+          "legendFormat": "${rate_metric_label}",
+          "refId": "A"
+        }
+      ],
+      "title": "Rate Metrics: ${rate_metric_name}",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Policy engine performance metrics",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 10000
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 11
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "unet_policy_evaluations_total",
+          "interval": "",
+          "legendFormat": "Policy Evaluations",
+          "refId": "A"
+        }
+      ],
+      "title": "Policy Evaluations (Total)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Template rendering performance",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 11
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "unet_template_renderings_total",
+          "interval": "",
+          "legendFormat": "Template Renderings",
+          "refId": "A"
+        }
+      ],
+      "title": "Template Renderings (Total)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Network configuration changes",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 11
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "unet_config_changes_total",
+          "interval": "",
+          "legendFormat": "Config Changes",
+          "refId": "A"
+        }
+      ],
+      "title": "Configuration Changes (Total)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Custom metric correlation analysis",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "rate(unet_git_sync_operations_total[5m])",
+          "interval": "",
+          "legendFormat": "Git Sync Rate",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "rate(unet_snmp_queries_total[5m])",
+          "interval": "",
+          "legendFormat": "SNMP Query Rate",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "rate(unet_config_changes_total[5m])",
+          "interval": "",
+          "legendFormat": "Config Change Rate",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "rate(unet_policy_evaluations_total[5m])",
+          "interval": "",
+          "legendFormat": "Policy Evaluation Rate",
+          "refId": "D"
+        }
+      ],
+      "title": "Network Operations Correlation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Histogram analysis for custom performance metrics",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "histogram_quantile(0.50, rate(${histogram_metric}_bucket[5m]))",
+          "interval": "",
+          "legendFormat": "50th percentile",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "histogram_quantile(0.90, rate(${histogram_metric}_bucket[5m]))",
+          "interval": "",
+          "legendFormat": "90th percentile",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "histogram_quantile(0.95, rate(${histogram_metric}_bucket[5m]))",
+          "interval": "",
+          "legendFormat": "95th percentile",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "histogram_quantile(0.99, rate(${histogram_metric}_bucket[5m]))",
+          "interval": "",
+          "legendFormat": "99th percentile",
+          "refId": "D"
+        }
+      ],
+      "title": "Performance Percentiles: ${histogram_name}",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 37,
+  "style": "dark",
+  "tags": [
+    "unet",
+    "custom",
+    "metrics",
+    "analysis"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Prometheus Data Source",
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "unet_nodes_total",
+          "value": "unet_nodes_total"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Custom Metric",
+        "multi": false,
+        "name": "custom_metric_query",
+        "options": [
+          {
+            "selected": true,
+            "text": "unet_nodes_total",
+            "value": "unet_nodes_total"
+          },
+          {
+            "selected": false,
+            "text": "unet_users_total",
+            "value": "unet_users_total"
+          },
+          {
+            "selected": false,
+            "text": "unet_active_connections",
+            "value": "unet_active_connections"
+          },
+          {
+            "selected": false,
+            "text": "unet_background_tasks_active",
+            "value": "unet_background_tasks_active"
+          }
+        ],
+        "query": "unet_nodes_total,unet_users_total,unet_active_connections,unet_background_tasks_active",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "Total Nodes",
+          "value": "Total Nodes"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Metric Label",
+        "multi": false,
+        "name": "metric_label",
+        "options": [
+          {
+            "selected": true,
+            "text": "Total Nodes",
+            "value": "Total Nodes"
+          },
+          {
+            "selected": false,
+            "text": "Total Users",
+            "value": "Total Users"
+          },
+          {
+            "selected": false,
+            "text": "Active Connections",
+            "value": "Active Connections"
+          },
+          {
+            "selected": false,
+            "text": "Background Tasks",
+            "value": "Background Tasks"
+          }
+        ],
+        "query": "Total Nodes,Total Users,Active Connections,Background Tasks",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "Nodes",
+          "value": "Nodes"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Metric Name",
+        "multi": false,
+        "name": "metric_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "Nodes",
+            "value": "Nodes"
+          },
+          {
+            "selected": false,
+            "text": "Users",
+            "value": "Users"
+          },
+          {
+            "selected": false,
+            "text": "Connections",
+            "value": "Connections"
+          },
+          {
+            "selected": false,
+            "text": "Tasks",
+            "value": "Tasks"
+          }
+        ],
+        "query": "Nodes,Users,Connections,Tasks",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "short",
+          "value": "short"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Metric Unit",
+        "multi": false,
+        "name": "metric_unit",
+        "options": [
+          {
+            "selected": true,
+            "text": "short",
+            "value": "short"
+          },
+          {
+            "selected": false,
+            "text": "percent",
+            "value": "percent"
+          },
+          {
+            "selected": false,
+            "text": "bytes",
+            "value": "bytes"
+          },
+          {
+            "selected": false,
+            "text": "ops",
+            "value": "ops"
+          },
+          {
+            "selected": false,
+            "text": "s",
+            "value": "s"
+          }
+        ],
+        "query": "short,percent,bytes,ops,s",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "unet_http_requests_total",
+          "value": "unet_http_requests_total"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Rate Metric",
+        "multi": false,
+        "name": "rate_metric_query",
+        "options": [
+          {
+            "selected": true,
+            "text": "unet_http_requests_total",
+            "value": "unet_http_requests_total"
+          },
+          {
+            "selected": false,
+            "text": "unet_auth_attempts_total",
+            "value": "unet_auth_attempts_total"
+          },
+          {
+            "selected": false,
+            "text": "unet_policy_evaluations_total",
+            "value": "unet_policy_evaluations_total"
+          },
+          {
+            "selected": false,
+            "text": "unet_git_sync_operations_total",
+            "value": "unet_git_sync_operations_total"
+          }
+        ],
+        "query": "unet_http_requests_total,unet_auth_attempts_total,unet_policy_evaluations_total,unet_git_sync_operations_total",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "HTTP Requests/sec",
+          "value": "HTTP Requests/sec"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Rate Metric Label",
+        "multi": false,
+        "name": "rate_metric_label",
+        "options": [
+          {
+            "selected": true,
+            "text": "HTTP Requests/sec",
+            "value": "HTTP Requests/sec"
+          },
+          {
+            "selected": false,
+            "text": "Auth Attempts/sec",
+            "value": "Auth Attempts/sec"
+          },
+          {
+            "selected": false,
+            "text": "Policy Evaluations/sec",
+            "value": "Policy Evaluations/sec"
+          },
+          {
+            "selected": false,
+            "text": "Git Sync Ops/sec",
+            "value": "Git Sync Ops/sec"
+          }
+        ],
+        "query": "HTTP Requests/sec,Auth Attempts/sec,Policy Evaluations/sec,Git Sync Ops/sec",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "HTTP Requests",
+          "value": "HTTP Requests"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Rate Metric Name",
+        "multi": false,
+        "name": "rate_metric_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "HTTP Requests",
+            "value": "HTTP Requests"
+          },
+          {
+            "selected": false,
+            "text": "Auth Attempts",
+            "value": "Auth Attempts"
+          },
+          {
+            "selected": false,
+            "text": "Policy Evaluations",
+            "value": "Policy Evaluations"
+          },
+          {
+            "selected": false,
+            "text": "Git Sync Operations",
+            "value": "Git Sync Operations"
+          }
+        ],
+        "query": "HTTP Requests,Auth Attempts,Policy Evaluations,Git Sync Operations",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "5m",
+          "value": "5m"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Rate Interval",
+        "multi": false,
+        "name": "rate_interval",
+        "options": [
+          {
+            "selected": false,
+            "text": "1m",
+            "value": "1m"
+          },
+          {
+            "selected": true,
+            "text": "5m",
+            "value": "5m"
+          },
+          {
+            "selected": false,
+            "text": "15m",
+            "value": "15m"
+          },
+          {
+            "selected": false,
+            "text": "1h",
+            "value": "1h"
+          }
+        ],
+        "query": "1m,5m,15m,1h",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "unet_http_request_duration_seconds",
+          "value": "unet_http_request_duration_seconds"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Histogram Metric",
+        "multi": false,
+        "name": "histogram_metric",
+        "options": [
+          {
+            "selected": true,
+            "text": "unet_http_request_duration_seconds",
+            "value": "unet_http_request_duration_seconds"
+          },
+          {
+            "selected": false,
+            "text": "unet_database_query_duration_seconds",
+            "value": "unet_database_query_duration_seconds"
+          }
+        ],
+        "query": "unet_http_request_duration_seconds,unet_database_query_duration_seconds",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "HTTP Request Duration",
+          "value": "HTTP Request Duration"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Histogram Name",
+        "multi": false,
+        "name": "histogram_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "HTTP Request Duration",
+            "value": "HTTP Request Duration"
+          },
+          {
+            "selected": false,
+            "text": "Database Query Duration",
+            "value": "Database Query Duration"
+          }
+        ],
+        "query": "HTTP Request Duration,Database Query Duration",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "μNet - Custom Metrics Visualization",
+  "uid": "unet-custom-metrics",
+  "version": 1,
+  "weekStart": ""
+}

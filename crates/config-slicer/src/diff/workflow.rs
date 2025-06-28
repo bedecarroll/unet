@@ -14,7 +14,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 /// Represents the status of a diff workflow
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkflowStatus {
     /// Diff is being computed
     Computing,
@@ -77,7 +77,7 @@ pub struct ApprovalInfo {
 }
 
 /// Priority levels for approval workflows
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ApprovalPriority {
     /// Low priority changes
     Low,
@@ -106,6 +106,7 @@ pub struct CachedDiffResult {
 
 impl CachedDiffResult {
     /// Check if this cached result is still valid
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -115,6 +116,7 @@ impl CachedDiffResult {
     }
 
     /// Get the age of this cached result in seconds
+    #[must_use]
     pub fn age(&self) -> u64 {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -181,11 +183,13 @@ impl Default for CacheConfig {
 
 impl DiffWorkflowOrchestrator {
     /// Create a new workflow orchestrator
+    #[must_use]
     pub fn new(diff_engine: DiffEngine) -> Self {
         Self::with_cache_config(diff_engine, CacheConfig::default())
     }
 
     /// Create a new workflow orchestrator with custom cache configuration
+    #[must_use]
     pub fn with_cache_config(diff_engine: DiffEngine, cache_config: CacheConfig) -> Self {
         Self {
             diff_engine: Arc::new(diff_engine),
@@ -261,7 +265,7 @@ impl DiffWorkflowOrchestrator {
                 execution_id,
                 source,
                 target,
-                workflow.status.clone(),
+                workflow.status,
                 None,
                 "Used cached result".to_string(),
                 None,
@@ -302,8 +306,7 @@ impl DiffWorkflowOrchestrator {
                 );
 
                 return Err(Error::DiffWorkflowError(format!(
-                    "Diff computation failed: {}",
-                    e
+                    "Diff computation failed: {e}"
                 )));
             }
         };
@@ -472,18 +475,21 @@ impl DiffWorkflowOrchestrator {
     }
 
     /// Get a workflow execution by ID
+    #[must_use]
     pub fn get_workflow(&self, execution_id: Uuid) -> Option<WorkflowExecution> {
         let workflows = self.active_workflows.read().unwrap();
         workflows.get(&execution_id).cloned()
     }
 
     /// List all active workflows
+    #[must_use]
     pub fn list_workflows(&self) -> Vec<WorkflowExecution> {
         let workflows = self.active_workflows.read().unwrap();
         workflows.values().cloned().collect()
     }
 
     /// Get workflow history
+    #[must_use]
     pub fn get_history(&self, limit: Option<usize>) -> Vec<WorkflowHistoryEntry> {
         let history = self.history.read().unwrap();
         let mut entries = history.clone();
@@ -497,6 +503,7 @@ impl DiffWorkflowOrchestrator {
     }
 
     /// Get workflow history for a specific execution
+    #[must_use]
     pub fn get_workflow_history(&self, execution_id: Uuid) -> Vec<WorkflowHistoryEntry> {
         let history = self.history.read().unwrap();
         history
@@ -565,6 +572,7 @@ impl DiffWorkflowOrchestrator {
     }
 
     /// Get cache statistics
+    #[must_use]
     pub fn get_cache_stats(&self) -> CacheStats {
         let cache = self.result_cache.read().unwrap();
         let total_entries = cache.len();
@@ -593,7 +601,7 @@ impl DiffWorkflowOrchestrator {
         new_config.hash(&mut hasher);
 
         // Create a hashable representation of options
-        let options_str = format!("{:?}", options);
+        let options_str = format!("{options:?}");
         options_str.hash(&mut hasher);
 
         format!("{:x}", hasher.finish())

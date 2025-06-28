@@ -158,6 +158,10 @@ fn bench_slicing_performance(c: &mut Criterion) {
             if let Ok(config_tree) = api.parse_config(&config, Some(Vendor::Cisco)) {
                 let result = api.slice_by_glob(black_box(&config_tree), "interface*");
                 black_box(result)
+            } else {
+                Err(config_slicer::Error::MalformedConfig(
+                    "Parse failed".to_string(),
+                ))
             }
         });
     });
@@ -167,6 +171,10 @@ fn bench_slicing_performance(c: &mut Criterion) {
             if let Ok(config_tree) = api.parse_config(&config, Some(Vendor::Cisco)) {
                 let result = api.slice_by_regex(black_box(&config_tree), r"interface\s+\S+");
                 black_box(result)
+            } else {
+                Err(config_slicer::Error::MalformedConfig(
+                    "Parse failed".to_string(),
+                ))
             }
         });
     });

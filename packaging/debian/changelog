@@ -1,0 +1,34 @@
+unet (0.1.0-1) unstable; urgency=medium
+
+  * Initial release of μNet network configuration management tool
+  * Features:
+    - Declarative configuration management with templates and policies
+    - Real-time SNMP monitoring and state tracking
+    - Git-based version control integration
+    - REST API with JWT authentication and RBAC
+    - Command-line interface for network operators
+    - Policy engine with custom DSL for validation rules
+    - Template engine with MiniJinja for configuration generation
+    - Database support for SQLite and PostgreSQL
+    - TLS/HTTPS support with certificate management
+    - Prometheus metrics and comprehensive monitoring
+    - Horizontal scaling with load balancer compatibility
+    - Container support with Docker and Kubernetes manifests
+  * Security features:
+    - Input validation and sanitization
+    - Rate limiting and DDoS protection
+    - Security audit logging
+    - Vulnerability scanning integration
+    - Secure credential storage with external secret managers
+  * Observability:
+    - Structured logging with multiple output formats
+    - Prometheus metrics with custom business metrics
+    - Multi-channel alerting and escalation procedures
+    - Grafana dashboards and operational runbooks
+  * Performance optimizations:
+    - Multi-layer caching and connection pooling
+    - Async processing and resource management
+    - Memory optimization and graceful degradation
+    - Benchmarking framework and performance monitoring
+
+ -- μNet Development Team <dev@unet.example.com>  Mon, 30 Jun 2025 09:15:00 -0700

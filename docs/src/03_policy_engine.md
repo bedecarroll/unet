@@ -263,7 +263,7 @@ impl EvalCtx<'_> {
 }
 ```
 
-*`fetch_node_value`** uses **`serde_json::value::to_value`** for dynamic attrs.*
+*`fetch_node_value`**uses **`serde_json::value::to_value`** for dynamic attrs.*
 
 ### 6.4 Operator Semantics
 
@@ -380,4 +380,3 @@ Run in CI (`cargo test --workspace`).
 4. Document two real rules in `policies/10_version.rules` as examples.
 
 *Proceed to *[*04\_template\_engine.md*](04_template_engine.md)*.*
-

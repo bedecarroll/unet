@@ -1,0 +1,84 @@
+# μNet Staging Environment Configuration
+# This file contains staging-specific settings for the μNet system
+
+[server]
+host = "0.0.0.0"
+port = 8080
+tls_port = 8443
+workers = 4
+max_connections_per_worker = 1000
+
+[database]
+# Database configuration for staging
+connection_pool_size = 15
+max_connections = 50
+query_timeout_seconds = 30
+migration_timeout_seconds = 120
+idle_connection_timeout_seconds = 600
+
+[logging]
+level = "debug"
+format = "json"
+file_rotation = true
+max_file_size = "100MB"
+max_files = 10
+structured_logging = true
+
+[security]
+# Security settings for staging environment
+jwt_expiration_hours = 24
+jwt_refresh_hours = 168  # 7 days
+bcrypt_cost = 10
+rate_limit_requests_per_minute = 1000
+rate_limit_burst = 200
+enable_cors = true
+cors_allowed_origins = ["https://staging.example.com"]
+
+[monitoring]
+# Enhanced monitoring for staging
+metrics_enabled = true
+metrics_path = "/metrics"
+health_check_path = "/health"
+readiness_check_path = "/ready"
+telemetry_enabled = true
+performance_monitoring = true
+
+[features]
+# Feature flags for staging
+git_integration_enabled = true
+policy_engine_enabled = true
+template_engine_enabled = true
+change_tracking_enabled = true
+vulnerability_scanning_enabled = true
+audit_logging_enabled = true
+distributed_locking_enabled = true
+
+[snmp]
+# SNMP configuration for staging
+default_timeout = 5
+default_retries = 3
+max_concurrent_requests = 100
+community_string_cache_ttl = 300
+session_pool_size = 20
+
+[performance]
+# Performance tuning for staging
+cache_ttl_seconds = 300
+request_timeout_seconds = 30
+background_task_interval_seconds = 60
+max_template_cache_size = 1000
+policy_evaluation_timeout_seconds = 10
+
+[git]
+# Git integration settings
+default_branch = "main"
+commit_timeout_seconds = 30
+clone_timeout_seconds = 120
+max_concurrent_operations = 10
+
+[notification]
+# Notification settings for staging
+email_enabled = true
+slack_enabled = true
+webhook_timeout_seconds = 10
+max_retry_attempts = 3

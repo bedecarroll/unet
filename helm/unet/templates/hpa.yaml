@@ -1,0 +1,36 @@
+{{- if .Values.unet.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "unet.fullname" . }}
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "unet.fullname" . }}
+  minReplicas: {{ .Values.unet.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.unet.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.unet.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.unet.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.unet.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.unet.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- if .Values.unet.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.unet.autoscaling.behavior | nindent 4 }}
+  {{- end }}
+{{- end }}

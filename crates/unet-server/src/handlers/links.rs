@@ -58,7 +58,7 @@ pub async fn list_links(
         total,
         page,
         per_page,
-        total_pages: (total + per_page - 1) / per_page,
+        total_pages: total.div_ceil(per_page),
         has_next: page * per_page < total,
         has_prev: page > 1,
     };

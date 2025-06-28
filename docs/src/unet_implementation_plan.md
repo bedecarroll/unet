@@ -186,4 +186,3 @@ Library exports `slice(text, &MatchSpec)` for integration into μNet.
 4. Docs live in `/docs` – update in same PR as code.
 
 Happy building! 🎉
-

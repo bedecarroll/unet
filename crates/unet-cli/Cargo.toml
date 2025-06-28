@@ -50,6 +50,9 @@ config = { workspace = true }
 # CLI parsing
 clap = { workspace = true }
 
+# Git integration
+git2 = { workspace = true }
+
 # HTTP client (will be added when needed)
 # reqwest = { workspace = true }
 

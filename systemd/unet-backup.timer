@@ -1,0 +1,12 @@
+[Unit]
+Description=μNet Database Backup Timer
+Documentation=https://github.com/example/unet
+Requires=unet-backup.service
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

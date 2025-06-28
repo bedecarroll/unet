@@ -4,28 +4,120 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.2.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
+  pre-release-tests:
+    name: Pre-Release Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check format
+        run: cargo fmt --all -- --check
+
+      - name: Check clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace --verbose
+
+      - name: Security audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
+
+      - name: Build documentation
+        run: cargo doc --workspace --no-deps --document-private-items
+
+      - name: Install mdbook
+        run: |
+          mkdir mdbook
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
+          echo `pwd`/mdbook >> $GITHUB_PATH
+
+      - name: Build and test book
+        run: |
+          mdbook build docs
+          mdbook test docs
+
   create-release:
     name: Create Release
+    needs: pre-release-tests
     runs-on: ubuntu-latest
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: get_tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "tag_name=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get version
+        id: get_version
+        run: |
+          TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
+          VERSION="${TAG_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [[ -f "CHANGELOG.md" ]]; then
+            # Extract changelog section for this version
+            awk "/^## \[$VERSION\]/, /^## \[/ { if (/^## \[/ && !/^## \[$VERSION\]/) exit; if (!/^## \[$VERSION\]/) print }" CHANGELOG.md > release_notes.md
+            echo "Found changelog for version $VERSION"
+          else
+            echo "No changelog found, using default release notes"
+            echo "Release ${{ steps.get_tag.outputs.tag_name }}" > release_notes.md
+          fi
+
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          name: μNet ${{ steps.get_version.outputs.version }}
+          body_path: release_notes.md
           draft: false
-          prerelease: false
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          generate_release_notes: true
 
   build-and-upload:
     name: Build and Upload
@@ -80,6 +172,8 @@ jobs:
           cp target/${{ matrix.target }}/release/unet-server release/
           cp target/${{ matrix.target }}/release/unet-cli release/
           cp README.md release/
+          cp CHANGELOG.md release/
+          cp scripts/install.sh release/
           cp -r docs/src release/docs
           cd release
           tar czf ../${{ matrix.name }} *
@@ -91,19 +185,19 @@ jobs:
           cp target/${{ matrix.target }}/release/unet-server.exe release/
           cp target/${{ matrix.target }}/release/unet-cli.exe release/
           cp README.md release/
+          cp CHANGELOG.md release/
+          cp scripts/install.sh release/
           cp -r docs/src release/docs
           cd release
           7z a ../${{ matrix.name }} *
 
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.name }}
-          asset_name: ${{ matrix.name }}
-          asset_content_type: application/octet-stream
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: ${{ matrix.name }}
 
   publish-docs:
     name: Publish Documentation

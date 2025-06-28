@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "unet.fullname" . }}-config
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    # μNet Configuration
+    [server]
+    host = {{ .Values.unet.config.server.host | quote }}
+    port = {{ .Values.unet.config.server.port }}
+    tls_port = {{ .Values.unet.config.server.tls_port }}
+    
+    [logging]
+    level = {{ .Values.unet.config.logging.level | quote }}
+    format = {{ .Values.unet.config.logging.format | quote }}
+    
+    [snmp]
+    timeout = {{ .Values.unet.config.snmp.timeout | quote }}
+    retries = {{ .Values.unet.config.snmp.retries }}
+    
+    [git]
+    sync_interval = {{ .Values.unet.config.git.sync_interval | quote }}
+    
+    [metrics]
+    enabled = {{ .Values.unet.config.metrics.enabled }}
+    endpoint = {{ .Values.unet.config.metrics.endpoint | quote }}
+    
+    {{- if .Values.postgresql.enabled }}
+    [database]
+    connection_pool_size = 10
+    query_timeout_seconds = 30
+    {{- end }}
+    
+    {{- if .Values.redis.enabled }}
+    [cache]
+    ttl_seconds = 300
+    max_size = 1000
+    {{- end }}

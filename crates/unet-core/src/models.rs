@@ -1,5 +1,6 @@
 //! Data models for μNet Core
 
+pub mod auth;
 pub mod change_tracking;
 pub mod derived;
 pub mod template;

@@ -13,6 +13,7 @@ WHEN <condition> THEN <action>
 ```
 
 Every policy rule consists of:
+
 - **Condition**: A boolean expression that evaluates node properties
 - **Action**: An operation to perform when the condition is met
 
@@ -27,12 +28,14 @@ WHEN node.vendor == "cisco" THEN SET custom_data.snmp.community TO "public"
 ```
 
 This policy:
+
 1. Checks if a node's vendor is "cisco"
 2. Sets the SNMP community in the node's custom data
 
 ### Running Policies
 
 Policies can be executed through:
+
 - **CLI**: `unet policies evaluate <policy-file> --node <node-id>`
 - **API**: POST to `/api/v1/policies/evaluate`
 - **Automatic**: Background policy evaluation (coming in future releases)
@@ -71,11 +74,13 @@ derived.interfaces   # Derived data from SNMP polling
 ### String Operations
 
 #### Contains Check
+
 ```
 WHEN node.model CONTAINS "catalyst" THEN SET custom_data.switch_type TO "cisco_catalyst"
 ```
 
 #### Regex Matching
+
 ```
 WHEN node.name MATCHES "^(rtr|router)-.*" THEN SET custom_data.device_type TO "router"
 ```
@@ -92,24 +97,28 @@ WHEN custom_data.location IS NULL THEN SET custom_data.location TO "unknown"
 ### Logical Operators
 
 #### AND Conditions
+
 ```
 WHEN node.vendor == "cisco" AND node.role == "switch" 
 THEN SET custom_data.management.snmp_version TO "v3"
 ```
 
 #### OR Conditions
+
 ```
 WHEN node.vendor == "cisco" OR node.vendor == "arista" 
 THEN SET custom_data.os_type TO "ios_like"
 ```
 
 #### NOT Conditions
+
 ```
 WHEN NOT (node.lifecycle == "decommissioned") 
 THEN SET custom_data.monitoring.enabled TO true
 ```
 
 #### Complex Expressions
+
 ```
 WHEN (node.vendor == "cisco" AND node.model CONTAINS "2960") 
   OR (node.vendor == "arista" AND node.role == "switch")
@@ -125,6 +134,7 @@ Actions define what to do when a condition is satisfied. μNet supports three ty
 Updates custom_data fields with new values.
 
 #### Syntax
+
 ```
 SET <field_path> TO <value>
 ```
@@ -132,11 +142,13 @@ SET <field_path> TO <value>
 #### Examples
 
 **Simple field assignment:**
+
 ```
 SET custom_data.location TO "datacenter-1"
 ```
 
 **Nested field assignment:**
+
 ```
 SET custom_data.snmp.community TO "private"
 SET custom_data.monitoring.enabled TO true
@@ -144,6 +156,7 @@ SET custom_data.thresholds.cpu_warning TO 75
 ```
 
 **Creating nested structures:**
+
 ```
 SET custom_data.compliance.last_check TO "2024-01-15"
 SET custom_data.compliance.status TO "passed"
@@ -154,6 +167,7 @@ SET custom_data.compliance.status TO "passed"
 Validates that a field matches an expected value. Used for compliance checking.
 
 #### Syntax
+
 ```
 ASSERT <field_path> IS <expected_value>
 ```
@@ -161,11 +175,13 @@ ASSERT <field_path> IS <expected_value>
 #### Examples
 
 **Compliance validation:**
+
 ```
 WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 ```
 
 **Configuration validation:**
+
 ```
 WHEN node.role == "firewall" THEN ASSERT custom_data.security.enabled IS true
 ```
@@ -175,6 +191,7 @@ WHEN node.role == "firewall" THEN ASSERT custom_data.security.enabled IS true
 Assigns configuration templates to nodes for later generation.
 
 #### Syntax
+
 ```
 APPLY "<template_path>"
 ```
@@ -182,11 +199,13 @@ APPLY "<template_path>"
 #### Examples
 
 **Basic template assignment:**
+
 ```
 WHEN node.role == "router" THEN APPLY "templates/base-router.j2"
 ```
 
 **Vendor-specific templates:**
+
 ```
 WHEN node.vendor == "cisco" AND node.role == "switch" 
 THEN APPLY "templates/cisco-switch-base.j2"
@@ -316,12 +335,14 @@ THEN APPLY "templates/production-hardening.j2"
 ### 1. Use Descriptive Conditions
 
 **Good:**
+
 ```
 WHEN node.vendor == "cisco" AND node.model CONTAINS "catalyst" 
 THEN SET custom_data.switch_family TO "cisco_catalyst"
 ```
 
 **Avoid:**
+
 ```
 WHEN node.vendor == "cisco" AND node.model CONTAINS "cat" 
 THEN SET custom_data.type TO "cat"
@@ -347,12 +368,14 @@ SET custom_data.last_compliance_check TO "2024-01-15"
 ### 3. Use Explicit Comparisons
 
 **Good:**
+
 ```
 WHEN custom_data.monitoring.enabled == true THEN ...
 WHEN node.lifecycle != "decommissioned" THEN ...
 ```
 
 **Avoid:**
+
 ```
 WHEN custom_data.monitoring.enabled THEN ...
 WHEN NOT node.lifecycle THEN ...
@@ -395,21 +418,27 @@ THEN SET custom_data.switch_family TO "catalyst_distribution"
 ### Common Errors
 
 #### 1. Field Not Found
+
 ```
 Error: Field not found: custom_data.nonexistent.field
 ```
+
 **Solution:** Check field paths and ensure parent objects exist.
 
 #### 2. Type Mismatch
+
 ```
 Error: Type mismatch: expected String, got Number
 ```
+
 **Solution:** Ensure value types match field expectations.
 
 #### 3. Invalid Regex
+
 ```
 Error: Invalid regex: [invalid-pattern
 ```
+
 **Solution:** Test regex patterns before using in policies.
 
 ### Debugging Tips

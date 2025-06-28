@@ -1,0 +1,331 @@
+# μNet Production Configuration Template
+# This template provides production-ready defaults with security and performance optimizations
+#
+# Usage:
+# 1. Copy this template to your environment-specific config directory
+# 2. Customize the values marked with {{ }} placeholders
+# 3. Set environment variables for sensitive values
+# 4. Validate using `unet config validate`
+#
+# Environment Variables:
+# - UNET_DATABASE_URL: Database connection string
+# - UNET_JWT_SECRET: JWT signing secret (required in production)
+# - UNET_TLS_CERT_FILE: Path to TLS certificate file
+# - UNET_TLS_KEY_FILE: Path to TLS private key file
+
+[database]
+# Production database URL - use environment variable for security
+url = "{{ database_url | default('postgresql://unet:password@localhost:5432/unet_production') }}"
+max_connections = {{ database_max_connections | default(50) }}
+timeout = {{ database_timeout | default(30) }}
+
+# PostgreSQL production settings
+[database.postgres]
+ssl = true
+ssl_mode = "{{ ssl_mode | default('require') }}"
+application_name = "unet-production"
+search_path = ["public", "unet"]
+statement_timeout = 300
+lock_timeout = 30
+idle_timeout = 600
+
+# Production connection pool settings
+[database.pool]
+min_connections = {{ pool_min_connections | default(5) }}
+max_connections = {{ pool_max_connections | default(50) }}
+acquire_timeout = 30
+max_lifetime = 3600
+idle_timeout = 600
+test_query = "SELECT 1"
+
+# Production migration settings
+[database.migration]
+auto_migrate = {{ auto_migrate | default(false) }}
+timeout = 600
+lock_timeout = 120
+
+[logging]
+level = "{{ log_level | default('info') }}"
+format = "json"
+file = "{{ log_file | default('/var/log/unet/unet.log') }}"
+
+# Production OpenTelemetry configuration
+[logging.opentelemetry]
+enabled = {{ otel_enabled | default(true) }}
+jaeger_endpoint = "{{ jaeger_endpoint }}"
+service_name = "unet-production"
+service_version = "{{ app_version | default('0.1.0') }}"
+environment = "production"
+sample_rate = {{ otel_sample_rate | default(0.1) }}
+
+# Production log aggregation
+[logging.aggregation]
+enabled = true
+syslog_endpoint = "{{ syslog_endpoint }}"
+rotation = { max_size_mb = 100, max_files = 30, schedule = "daily" }
+parsing = { enabled = true, indexed_fields = ["timestamp", "level", "target", "message", "span_id", "trace_id", "user_id", "request_id"], enrichment = true }
+
+# Production alerting configuration
+[logging.alerting]
+enabled = true
+
+[[logging.alerting.rules]]
+name = "error_rate_high"
+level = "error"
+window_minutes = 5
+threshold = 50
+severity = "critical"
+
+[[logging.alerting.rules]]
+name = "critical_errors"
+level = "error"
+pattern = "CRITICAL|FATAL|PANIC"
+window_minutes = 1
+threshold = 1
+severity = "critical"
+
+[[logging.alerting.rules]]
+name = "authentication_failures"
+level = "warn"
+pattern = "authentication.*failed|unauthorized"
+window_minutes = 5
+threshold = 20
+severity = "high"
+
+[[logging.alerting.channels]]
+channel_type = "email"
+[logging.alerting.channels.config]
+smtp_server = "{{ smtp_server }}"
+recipients = "{{ alert_email_recipients }}"
+
+[[logging.alerting.channels]]
+channel_type = "slack"
+[logging.alerting.channels.config]
+webhook_url = "{{ slack_webhook_url }}"
+channel = "#ops-alerts"
+
+[snmp]
+community = "{{ snmp_community | default('public') }}"
+timeout = 5
+retries = 3
+
+[server]
+host = "{{ server_host | default('0.0.0.0') }}"
+port = {{ server_port | default(8080) }}
+max_request_size = {{ max_request_size | default(10485760) }}
+
+# Production TLS configuration (required)
+[server.tls]
+cert_file = "{{ tls_cert_file | default('/etc/unet/tls/server.crt') }}"
+key_file = "{{ tls_key_file | default('/etc/unet/tls/server.key') }}"
+force_https = true
+http_redirect_port = 8081
+
+[git]
+policies_repo = "{{ policies_repo }}"
+templates_repo = "{{ templates_repo }}"
+branch = "{{ git_branch | default('main') }}"
+sync_interval = {{ git_sync_interval | default(300) }}
+
+[domain]
+default_domain = "{{ default_domain }}"
+search_domains = {{ search_domains | default([]) }}
+
+# Production authentication (required)
+[auth]
+enabled = true
+jwt_secret = "{{ jwt_secret }}"
+token_expiry = {{ token_expiry | default(3600) }}
+
+# Production secrets management
+[secrets]
+enabled = true
+provider = "{{ secrets_provider | default('hashicorp_vault') }}"
+vault_url = "{{ vault_url }}"
+vault_token_file = "{{ vault_token_file | default('/etc/unet/vault-token') }}"
+
+[secrets.encryption]
+algorithm = "aes-256-gcm"
+key_derivation = "pbkdf2"
+key_rotation_days = {{ key_rotation_days | default(90) }}
+
+[secrets.external_providers.hashicorp_vault]
+url = "{{ vault_url }}"
+auth_method = "{{ vault_auth_method | default('token') }}"
+mount_path = "{{ vault_mount_path | default('secret') }}"
+token_file = "{{ vault_token_file | default('/etc/unet/vault-token') }}"
+
+# Production network security
+[network]
+enabled = true
+allowed_ranges = {{ allowed_ip_ranges | default(['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']) }}
+blocked_ranges = {{ blocked_ip_ranges | default([]) }}
+enable_geolocation = {{ enable_geolocation | default(true) }}
+blocked_countries = {{ blocked_countries | default([]) }}
+allowed_countries = {{ allowed_countries }}
+untrusted_max_request_size = 65536
+enable_network_rate_limits = true
+
+# Production metrics and monitoring
+[metrics]
+enabled = true
+endpoint = "/metrics"
+collection_interval = 15
+enable_performance_metrics = true
+enable_business_metrics = true
+enable_system_metrics = true
+retention_days = {{ metrics_retention_days | default(30) }}
+
+[metrics.labels]
+service = "unet"
+version = "{{ app_version | default('0.1.0') }}"
+environment = "production"
+cluster = "{{ cluster_name }}"
+
+# Production load balancer configuration
+[load_balancer]
+enabled = true
+shutdown_timeout = 30
+proxy_protocol = true
+trusted_proxies = {{ trusted_proxies | default(['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']) }}
+balancer_type = "{{ load_balancer_type | default('aws_alb') }}"
+
+[load_balancer.health_check]
+basic_path = "/health"
+detailed_path = "/health/detailed" 
+readiness_path = "/ready"
+liveness_path = "/live"
+timeout = 5
+include_dependencies = false
+check_interval = 30
+
+# Production cluster configuration
+[cluster]
+enabled = {{ cluster_enabled | default(true) }}
+cluster_id = "{{ cluster_id | default('unet-production') }}"
+
+[cluster.node]
+name = "{{ node_name }}"
+roles = {{ node_roles | default(['worker']) }}
+priority = {{ node_priority | default(100) }}
+advertise_addr = "{{ node_advertise_addr }}"
+
+[cluster.node.metadata]
+zone = "{{ availability_zone }}"
+instance_type = "{{ instance_type }}"
+version = "{{ app_version | default('0.1.0') }}"
+
+[cluster.node.capacity]
+max_connections = {{ node_max_connections | default(2000) }}
+max_cpu = {{ node_max_cpu | default(0.85) }}
+max_memory_mb = {{ node_max_memory_mb | default(4096) }}
+
+[cluster.service_discovery]
+method = "{{ service_discovery_method | default('kubernetes') }}"
+discovery_interval = 30
+service_ttl = 60
+
+[cluster.health_monitoring]
+check_interval = 10
+check_timeout = 5
+failure_threshold = 3
+success_threshold = 2
+enable_deep_checks = true
+
+[cluster.config_sync]
+enabled = true
+sync_interval = 300
+sync_timeout = 30
+propagation_method = "immediate"
+validate_before_sync = true
+rollback_on_failure = true
+
+[cluster.failover]
+enabled = true
+detection_timeout = 30
+execution_timeout = 60
+
+[cluster.scaling]
+enabled = true
+evaluation_interval = 60
+cooldown_period = 300
+
+[cluster.scaling.thresholds]
+cpu_scale_up = 0.75
+cpu_scale_down = 0.25
+memory_scale_up = 0.80
+memory_scale_down = 0.30
+connections_scale_up = 1500
+connections_scale_down = 300
+
+# Production shared state configuration
+[shared_state]
+backend = "{{ shared_state_backend | default('redis') }}"
+redis_url = "{{ redis_url }}"
+default_expiry_seconds = 3600
+key_prefix = "unet:production"
+
+# Production stateless configuration
+[stateless]
+enabled = true
+
+[stateless.session_management]
+type = "jwt"
+jwt_secret_source = "env:UNET_JWT_SECRET"
+
+[stateless.background_tasks]
+coordination_method = "leader_election"
+task_distribution = "round_robin"
+
+[stateless.distributed_locking]
+provider = "redis"
+default_timeout = 30
+retry_attempts = 3
+
+[stateless.rate_limiting]
+type = "sliding_window"
+window_size = 60
+shared_counters = true
+
+# Production resource management
+[resource_management]
+enabled = true
+
+[resource_management.memory]
+max_cache_size_mb = {{ max_cache_size_mb | default(1024) }}
+cache_ttl_seconds = {{ cache_ttl_seconds | default(3600) }}
+enable_memory_pooling = true
+pool_sizes = { small = 1024, medium = 4096, large = 16384 }
+gc_interval_seconds = 300
+monitoring_enabled = true
+
+[resource_management.limits]
+max_cpu_percent = {{ max_cpu_percent | default(85.0) }}
+max_memory_mb = {{ max_memory_mb | default(4096) }}
+max_disk_usage_percent = {{ max_disk_usage_percent | default(85.0) }}
+max_file_descriptors = {{ max_file_descriptors | default(65536) }}
+max_concurrent_requests = {{ max_concurrent_requests | default(1000) }}
+request_timeout_seconds = {{ request_timeout_seconds | default(30) }}
+
+[resource_management.throttling]
+cpu_throttle_threshold = {{ cpu_throttle_threshold | default(90.0) }}
+memory_throttle_threshold = {{ memory_throttle_threshold | default(90.0) }}
+throttle_response_delay_ms = {{ throttle_response_delay_ms | default(100) }}
+user_request_quotas = { default = 100, premium = 1000, admin = 10000 }
+rate_limit_window_seconds = {{ rate_limit_window_seconds | default(60) }}
+
+[resource_management.degradation]
+enable_circuit_breakers = true
+circuit_breaker_failure_threshold = {{ circuit_breaker_failure_threshold | default(10) }}
+circuit_breaker_timeout_seconds = {{ circuit_breaker_timeout_seconds | default(60) }}
+circuit_breaker_success_threshold = {{ circuit_breaker_success_threshold | default(5) }}
+fallback_response_enabled = true
+reduce_functionality_on_overload = true
+priority_request_handling = true
+
+[resource_management.monitoring]
+enable_detailed_metrics = true
+metrics_collection_interval = 15
+alert_thresholds = { cpu = 80.0, memory = 80.0, disk = 80.0, connections = 800 }
+capacity_planning_enabled = true
+trend_analysis_window_hours = {{ trend_analysis_window_hours | default(24) }}

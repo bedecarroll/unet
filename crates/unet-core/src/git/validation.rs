@@ -4,7 +4,6 @@
 //! for configuration changes before deployment. It ensures that changes are safe,
 //! properly validated, and have minimal risk of causing issues in production.
 
-use crate::git::{GitError, GitResult};
 use crate::models::change_tracking::{ChangeType, ConfigurationChange};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

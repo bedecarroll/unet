@@ -1,0 +1,55 @@
+[Unit]
+Description=PostgreSQL Database for μNet
+Documentation=man:postgres(1)
+After=network.target
+RequiresMountsFor=/var/lib/postgresql
+
+[Service]
+Type=notify
+User=postgres
+Group=postgres
+ExecStart=/usr/bin/postgres -D /var/lib/postgresql/data/unet -c config_file=/etc/postgresql/unet/postgresql.conf
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=0
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+
+# Allow writing to PostgreSQL data directory
+ReadWritePaths=/var/lib/postgresql /run/postgresql
+
+# Working directory
+WorkingDirectory=/var/lib/postgresql
+
+# Environment
+Environment=PGDATA=/var/lib/postgresql/data/unet
+Environment=POSTGRES_DB=unet
+Environment=POSTGRES_USER=unet
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# OOM protection (higher than unet-server)
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=unet.target

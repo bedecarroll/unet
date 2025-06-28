@@ -2,7 +2,11 @@
 //!
 //! This module provides different types of diff algorithms for comparing configurations.
 
-use crate::diff::types::*;
+use crate::diff::types::{
+    ChangeGroup, ChangeGroupType, ChangeSeverity, DiffChange, DiffOptions, DiffSection, DiffType,
+    FunctionalChange, FunctionalChangeType, HierarchicalDiff, ImpactAnalysis, RiskLevel,
+    SemanticDiff, StructureChange, TextDiff,
+};
 use crate::parser::ConfigNode;
 use anyhow::{Context, Result};
 use regex::Regex;
@@ -31,7 +35,8 @@ pub struct SemanticDiffer {
 
 impl TextDiffer {
     /// Create a new text differ with the given options
-    pub fn new(options: DiffOptions) -> Self {
+    #[must_use]
+    pub const fn new(options: DiffOptions) -> Self {
         Self { options }
     }
 
@@ -229,7 +234,8 @@ impl TextDiffer {
 
 impl HierarchicalDiffer {
     /// Create a new hierarchical differ with the given options
-    pub fn new(options: DiffOptions) -> Self {
+    #[must_use]
+    pub const fn new(options: DiffOptions) -> Self {
         Self { options }
     }
 
@@ -323,7 +329,7 @@ impl HierarchicalDiffer {
         // Find added children
         for (command, new_child) in &new_children {
             if !old_children.contains_key(command) {
-                let child_path = format!("{}.{}", path, command);
+                let child_path = format!("{path}.{command}");
                 let section = DiffSection {
                     path: child_path.clone(),
                     change_type: DiffType::Addition,
@@ -339,7 +345,7 @@ impl HierarchicalDiffer {
         // Find removed children
         for (command, old_child) in &old_children {
             if !new_children.contains_key(command) {
-                let child_path = format!("{}.{}", path, command);
+                let child_path = format!("{path}.{command}");
                 let section = DiffSection {
                     path: child_path.clone(),
                     change_type: DiffType::Deletion,
@@ -605,12 +611,12 @@ impl SemanticDiffer {
                 _ => ChangeGroupType::Custom("other".to_string()),
             };
 
-            let group_key = format!("{:?}", group_type);
+            let group_key = format!("{group_type:?}");
             groups
                 .entry(group_key.clone())
                 .or_insert_with(|| ChangeGroup {
                     id: group_key.clone(),
-                    description: format!("{:?} related changes", group_type),
+                    description: format!("{group_type:?} related changes"),
                     changes: Vec::new(),
                     group_type,
                 })

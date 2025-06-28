@@ -1069,7 +1069,7 @@ mdbook 0.4+ (docs)
 ### 🎯 Milestone 3 Complete Summary
 
 - **Status:** ✅ **MILESTONE 3 FULLY COMPLETED** - Policy Engine production-ready
-- **Duration:** 6 days (estimated 6-9 days) 
+- **Duration:** 6 days (estimated 6-9 days)
 - **Team:** 2 Senior Developers
 - **Key Achievements:**
   - Complete DSL with Pest grammar parser (WHEN/THEN syntax)

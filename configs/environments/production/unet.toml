@@ -1,0 +1,307 @@
+# μNet Production Environment Configuration
+# Based on production.toml template with environment-specific values
+# 
+# This configuration is used in production environments and includes:
+# - PostgreSQL database with connection pooling
+# - TLS/HTTPS enforcement
+# - Production logging and monitoring
+# - Security hardening
+# - Resource management and scaling
+
+[database]
+url = "postgresql://unet_prod:${UNET_DB_PASSWORD}@prod-db-cluster.internal:5432/unet_production"
+max_connections = 50
+timeout = 30
+
+[database.postgres]
+ssl = true
+ssl_mode = "require"
+application_name = "unet-production"
+search_path = ["public", "unet"]
+statement_timeout = 300
+lock_timeout = 30
+idle_timeout = 600
+
+[database.pool]
+min_connections = 5
+max_connections = 50
+acquire_timeout = 30
+max_lifetime = 3600
+idle_timeout = 600
+test_query = "SELECT 1"
+
+[database.migration]
+auto_migrate = false  # Manual migrations in production
+timeout = 600
+lock_timeout = 120
+
+[logging]
+level = "info"
+format = "json"
+file = "/var/log/unet/unet.log"
+
+[logging.opentelemetry]
+enabled = true
+jaeger_endpoint = "http://jaeger.observability.svc.cluster.local:14268/api/traces"
+service_name = "unet-production"
+service_version = "1.0.0"
+environment = "production"
+sample_rate = 0.1
+
+[logging.aggregation]
+enabled = true
+syslog_endpoint = "syslog://log-aggregator.observability.svc.cluster.local:514"
+rotation = { max_size_mb = 100, max_files = 30, schedule = "daily" }
+parsing = { enabled = true, indexed_fields = ["timestamp", "level", "target", "message", "span_id", "trace_id", "user_id", "request_id"], enrichment = true }
+
+[logging.alerting]
+enabled = true
+
+[[logging.alerting.rules]]
+name = "error_rate_high"
+level = "error"
+window_minutes = 5
+threshold = 50
+severity = "critical"
+
+[[logging.alerting.rules]]
+name = "critical_errors"
+level = "error"
+pattern = "CRITICAL|FATAL|PANIC"
+window_minutes = 1
+threshold = 1
+severity = "critical"
+
+[[logging.alerting.rules]]
+name = "authentication_failures"
+level = "warn"
+pattern = "authentication.*failed|unauthorized"
+window_minutes = 5
+threshold = 20
+severity = "high"
+
+[[logging.alerting.channels]]
+channel_type = "email"
+[logging.alerting.channels.config]
+smtp_server = "smtp.company.com:587"
+recipients = "ops-team@company.com,on-call@company.com"
+
+[[logging.alerting.channels]]
+channel_type = "slack"
+[logging.alerting.channels.config]
+webhook_url = "${SLACK_WEBHOOK_URL}"
+channel = "#production-alerts"
+
+[snmp]
+community = "prod_community"
+timeout = 5
+retries = 3
+
+[server]
+host = "0.0.0.0"
+port = 8080
+max_request_size = 10485760  # 10MB
+
+[server.tls]
+cert_file = "/etc/tls/unet/tls.crt"
+key_file = "/etc/tls/unet/tls.key"
+force_https = true
+http_redirect_port = 8081
+
+[git]
+policies_repo = "https://github.com/company/unet-policies-prod.git"
+templates_repo = "https://github.com/company/unet-templates-prod.git"
+branch = "production"
+sync_interval = 300
+
+[domain]
+default_domain = "company.com"
+search_domains = ["company.com", "internal.company.com"]
+
+[auth]
+enabled = true
+jwt_secret = "${UNET_JWT_SECRET}"
+token_expiry = 3600
+
+[secrets]
+enabled = true
+provider = "hashicorp_vault"
+
+[secrets.external_providers.hashicorp_vault]
+url = "https://vault.security.svc.cluster.local:8200"
+auth_method = "kubernetes"
+mount_path = "secret/unet/production"
+token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+[secrets.encryption]
+algorithm = "aes-256-gcm"
+key_derivation = "pbkdf2"
+key_rotation_days = 90
+
+[network]
+enabled = true
+allowed_ranges = ["10.0.0.0/8", "172.16.0.0/12"]
+blocked_ranges = []
+enable_geolocation = true
+blocked_countries = ["CN", "RU", "KP"]
+allowed_countries = ["US", "CA", "GB", "DE", "FR", "AU", "JP"]
+untrusted_max_request_size = 65536
+enable_network_rate_limits = true
+
+[metrics]
+enabled = true
+endpoint = "/metrics"
+collection_interval = 15
+enable_performance_metrics = true
+enable_business_metrics = true
+enable_system_metrics = true
+retention_days = 30
+
+[metrics.labels]
+service = "unet"
+version = "1.0.0"
+environment = "production"
+cluster = "production-us-west-2"
+
+[load_balancer]
+enabled = true
+shutdown_timeout = 30
+proxy_protocol = true
+trusted_proxies = ["10.0.0.0/8", "172.16.0.0/12", "100.64.0.0/10"]
+balancer_type = "aws_alb"
+
+[load_balancer.health_check]
+basic_path = "/health"
+detailed_path = "/health/detailed"
+readiness_path = "/ready"
+liveness_path = "/live"
+timeout = 5
+include_dependencies = false
+check_interval = 30
+
+[cluster]
+enabled = true
+cluster_id = "unet-production-us-west-2"
+
+[cluster.node]
+name = "${HOSTNAME}"
+roles = ["primary", "worker"]
+priority = 200
+advertise_addr = "${POD_IP}:8080"
+
+[cluster.node.metadata]
+zone = "${AWS_AVAILABILITY_ZONE}"
+instance_type = "${INSTANCE_TYPE}"
+version = "1.0.0"
+
+[cluster.node.capacity]
+max_connections = 2000
+max_cpu = 0.85
+max_memory_mb = 4096
+
+[cluster.service_discovery]
+method = "kubernetes"
+discovery_interval = 30
+service_ttl = 60
+
+[cluster.health_monitoring]
+check_interval = 10
+check_timeout = 5
+failure_threshold = 3
+success_threshold = 2
+enable_deep_checks = true
+
+[cluster.config_sync]
+enabled = true
+sync_interval = 300
+sync_timeout = 30
+propagation_method = "immediate"
+validate_before_sync = true
+rollback_on_failure = true
+
+[cluster.failover]
+enabled = true
+detection_timeout = 30
+execution_timeout = 60
+
+[cluster.scaling]
+enabled = true
+evaluation_interval = 60
+cooldown_period = 300
+
+[cluster.scaling.thresholds]
+cpu_scale_up = 0.75
+cpu_scale_down = 0.25
+memory_scale_up = 0.80
+memory_scale_down = 0.30
+connections_scale_up = 1500
+connections_scale_down = 300
+
+[shared_state]
+backend = "redis"
+redis_url = "redis://redis-cluster.cache.svc.cluster.local:6379/0"
+default_expiry_seconds = 3600
+key_prefix = "unet:production"
+
+[stateless]
+enabled = true
+
+[stateless.session_management]
+type = "jwt"
+jwt_secret_source = "env:UNET_JWT_SECRET"
+
+[stateless.background_tasks]
+coordination_method = "leader_election"
+task_distribution = "round_robin"
+
+[stateless.distributed_locking]
+provider = "redis"
+default_timeout = 30
+retry_attempts = 3
+
+[stateless.rate_limiting]
+type = "sliding_window"
+window_size = 60
+shared_counters = true
+
+[resource_management]
+enabled = true
+
+[resource_management.memory]
+max_cache_size_mb = 1024
+cache_ttl_seconds = 3600
+enable_memory_pooling = true
+pool_sizes = { small = 1024, medium = 4096, large = 16384 }
+gc_interval_seconds = 300
+monitoring_enabled = true
+
+[resource_management.limits]
+max_cpu_percent = 85.0
+max_memory_mb = 4096
+max_disk_usage_percent = 85.0
+max_file_descriptors = 65536
+max_concurrent_requests = 1000
+request_timeout_seconds = 30
+
+[resource_management.throttling]
+cpu_throttle_threshold = 90.0
+memory_throttle_threshold = 90.0
+throttle_response_delay_ms = 100
+user_request_quotas = { default = 100, premium = 1000, admin = 10000 }
+rate_limit_window_seconds = 60
+
+[resource_management.degradation]
+enable_circuit_breakers = true
+circuit_breaker_failure_threshold = 10
+circuit_breaker_timeout_seconds = 60
+circuit_breaker_success_threshold = 5
+fallback_response_enabled = true
+reduce_functionality_on_overload = true
+priority_request_handling = true
+
+[resource_management.monitoring]
+enable_detailed_metrics = true
+metrics_collection_interval = 15
+alert_thresholds = { cpu = 80.0, memory = 80.0, disk = 80.0, connections = 800 }
+capacity_planning_enabled = true
+trend_analysis_window_hours = 24

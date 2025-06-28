@@ -1,7 +1,7 @@
 # μNet Development Makefile
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help setup build test fmt clippy docs clean run-server run-cli migrate dev-env
+.PHONY: help setup build test fmt clippy docs clean run-server run-cli migrate dev-env docker-build docker-run docker-compose-up docker-security-scan
 
 # Default target
 help: ## Show this help message
@@ -105,3 +105,40 @@ check-all: ## Run all quality checks
 	@make test
 	@cargo audit || echo "⚠️ Audit issues found"
 	@echo "✅ All checks completed!"
+
+# Docker targets
+docker-build: ## Build optimized Docker images
+	@echo "🐳 Building Docker images..."
+	@./scripts/docker-build.sh all
+
+docker-build-server: ## Build server Docker image only
+	@echo "🐳 Building server Docker image..."
+	@./scripts/docker-build.sh server
+
+docker-build-cli: ## Build CLI Docker image only
+	@echo "🐳 Building CLI Docker image..."
+	@./scripts/docker-build.sh cli
+
+docker-run: ## Run Docker container locally
+	@echo "🐳 Running Docker container..."
+	@docker run -p 8080:8080 --rm unet:latest
+
+docker-compose-up: ## Start services with docker-compose
+	@echo "🐳 Starting services with docker-compose..."
+	@docker-compose up -d
+
+docker-compose-down: ## Stop docker-compose services
+	@echo "🐳 Stopping docker-compose services..."
+	@docker-compose down
+
+docker-compose-logs: ## View docker-compose logs
+	@docker-compose logs -f
+
+docker-security-scan: ## Run security scan on Docker images
+	@echo "🔒 Running security scans on Docker images..."
+	@./scripts/docker-security-scan.sh
+
+docker-clean: ## Clean Docker images and containers
+	@echo "🧹 Cleaning Docker resources..."
+	@docker system prune -f
+	@docker image prune -f

@@ -1,0 +1,277 @@
+# μNet Resource Management Configuration Example
+# This demonstrates comprehensive resource management settings for production deployments
+
+[database]
+url = "sqlite:./unet.db?mode=rwc"
+
+[logging]
+level = "info"
+format = "json"
+
+[snmp]
+community = "public"
+timeout = 5
+retries = 3
+
+[server]
+host = "0.0.0.0"
+port = 8080
+max_request_size = 1048576
+
+[git]
+branch = "main"
+sync_interval = 300
+
+[domain]
+search_domains = []
+
+[auth]
+enabled = true
+jwt_secret = "your-secret-key-change-in-production"
+token_expiry = 3600
+
+[secrets]
+enabled = true
+
+[network]
+enabled = true
+allowed_ips = ["127.0.0.1", "::1"]
+blocked_ips = []
+allowed_ranges = ["192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"]
+blocked_ranges = []
+blocked_countries = []
+enable_geolocation = false
+untrusted_max_request_size = 65536
+enable_network_rate_limits = true
+
+[metrics]
+enabled = true
+endpoint = "/metrics"
+collection_interval = 15
+enable_performance_metrics = true
+enable_business_metrics = true
+enable_system_metrics = true
+retention_days = 7
+
+[load_balancer]
+enabled = false
+
+[shared_state]
+provider = "inmemory"
+
+[stateless]
+enabled = false
+
+[cluster]
+enabled = false
+
+# Resource Management Configuration
+[resource_management]
+
+# Memory optimization settings
+[resource_management.memory]
+enabled = true
+target_usage_mb = 1024      # Target 1GB memory usage
+max_usage_mb = 2048        # Emergency threshold at 2GB
+monitoring_interval = 30   # Monitor every 30 seconds
+
+# Cache configuration for memory optimization
+[resource_management.memory.cache]
+enabled = true
+max_size_mb = 256          # 256MB cache limit
+ttl_seconds = 3600         # 1 hour TTL for cache entries
+eviction_strategy = "lru"  # Least Recently Used eviction
+
+# Cache warming for performance
+[resource_management.memory.cache.warming]
+enabled = true
+preload_hot_data = true
+schedule_warming = true
+
+# Memory pooling for efficient allocation
+[resource_management.memory.pool]
+enabled = true
+preallocate = true
+
+# Memory pool sizes for different object types
+[resource_management.memory.pool.pool_sizes]
+small = 1024       # 1KB pools
+medium = 8192      # 8KB pools
+large = 65536      # 64KB pools
+
+# Resource limits and throttling
+[resource_management.limits]
+enabled = true
+
+# CPU usage limits
+[resource_management.limits.cpu]
+max_usage = 0.8           # 80% CPU maximum
+throttle_threshold = 0.7  # Start throttling at 70%
+monitoring_interval = 10  # Monitor every 10 seconds
+
+# Memory limits
+[resource_management.limits.memory]
+max_usage_mb = 2048
+pressure_threshold = 0.8    # Memory pressure warning at 80%
+emergency_threshold = 0.95  # Emergency cleanup at 95%
+
+# Request throttling
+[resource_management.limits.throttling]
+enabled = true
+max_requests_per_second = 1000
+burst_size = 100
+
+# Resource quotas
+[resource_management.limits.quotas]
+enabled = true
+
+# Default quotas for new users
+[resource_management.limits.quotas.default_quotas]
+max_nodes = 100
+max_requests_per_hour = 10000
+max_memory_mb = 512
+max_connections = 50
+
+# Graceful degradation configuration
+[resource_management.degradation]
+enabled = true
+
+# Circuit breaker settings
+[resource_management.degradation.circuit_breaker]
+enabled = true
+failure_threshold = 5     # Open circuit after 5 failures
+recovery_timeout = 60     # Wait 60 seconds before testing recovery
+
+# Half-open state testing
+[resource_management.degradation.circuit_breaker.half_open]
+test_requests = 3         # Send 3 test requests
+success_threshold = 2     # Need 2 successes to close circuit
+
+# Fallback mechanisms
+[resource_management.degradation.fallbacks]
+enabled = true
+cache_fallback = true     # Use cached data when services fail
+fallback_timeout = 5      # 5 second timeout for fallback operations
+
+# Emergency mode configuration
+[resource_management.degradation.reduced_modes]
+enabled = true
+
+# Emergency mode definition
+[resource_management.degradation.reduced_modes.modes.emergency]
+name = "emergency"
+
+# Thresholds to activate emergency mode
+[resource_management.degradation.reduced_modes.modes.emergency.activation_threshold]
+cpu_threshold = 0.9       # Activate at 90% CPU
+memory_threshold = 0.9    # Activate at 90% memory
+connection_threshold = 1000
+
+# Features to disable in emergency mode
+disabled_features = [
+    "background_tasks",
+    "detailed_monitoring",
+    "cache_warming"
+]
+
+# Reduced limits in emergency mode
+[resource_management.degradation.reduced_modes.modes.emergency.reduced_limits]
+max_connections = 100
+cache_size_mb = 64
+
+# Resource monitoring and alerting
+[resource_management.monitoring]
+enabled = true
+interval = 30             # Collect metrics every 30 seconds
+
+# Metrics to collect
+[resource_management.monitoring.metrics]
+cpu = true
+memory = true
+disk = true
+network = true
+application = true
+
+# Alert configuration
+[resource_management.monitoring.alerts]
+enabled = true
+
+# CPU alert thresholds
+[resource_management.monitoring.alerts.thresholds.cpu]
+warning = 0.7           # Warning at 70% CPU
+critical = 0.9          # Critical at 90% CPU
+alert_interval = 300    # Alert every 5 minutes
+
+# Memory alert thresholds
+[resource_management.monitoring.alerts.thresholds.memory]
+warning = 0.8           # Warning at 80% memory
+critical = 0.95         # Critical at 95% memory
+alert_interval = 300    # Alert every 5 minutes
+
+# Disk alert thresholds
+[resource_management.monitoring.alerts.thresholds.disk]
+warning = 0.8           # Warning at 80% disk
+critical = 0.95         # Critical at 95% disk
+alert_interval = 600    # Alert every 10 minutes
+
+# Connection alert thresholds
+[resource_management.monitoring.alerts.thresholds.connections]
+warning = 0.8           # Warning at 80% of max connections
+critical = 0.95         # Critical at 95% of max connections
+alert_interval = 300    # Alert every 5 minutes
+
+# Alert escalation
+[resource_management.monitoring.alerts.escalation]
+enabled = true
+
+# Immediate notification level
+[[resource_management.monitoring.alerts.escalation.levels]]
+name = "immediate"
+escalation_time = 0      # Immediate notification
+channels = ["slack"]
+
+# Urgent escalation level
+[[resource_management.monitoring.alerts.escalation.levels]]
+name = "urgent"
+escalation_time = 300    # Escalate after 5 minutes
+channels = ["email", "pagerduty"]
+
+# Capacity planning
+[resource_management.monitoring.capacity_planning]
+enabled = true
+forecast_days = 30              # 30-day forecast horizon
+analysis_window_days = 7        # Analyze last 7 days of data
+
+# Capacity recommendations
+[resource_management.monitoring.capacity_planning.recommendations]
+enabled = true
+frequency_hours = 24           # Generate recommendations daily
+confidence_threshold = 0.8     # Only recommend if 80% confident
+
+# Production Deployment Notes:
+#
+# 1. Memory Management:
+#    - Adjust target_usage_mb based on available system memory
+#    - Set max_usage_mb to leave headroom for OS and other processes
+#    - Cache size should be ~10-25% of target memory usage
+#
+# 2. Resource Limits:
+#    - CPU limits should account for burst capacity needs
+#    - Memory pressure thresholds help prevent OOM conditions
+#    - Request throttling prevents resource exhaustion under load
+#
+# 3. Graceful Degradation:
+#    - Circuit breakers prevent cascading failures
+#    - Emergency mode preserves core functionality under stress
+#    - Fallback mechanisms maintain service availability
+#
+# 4. Monitoring and Alerts:
+#    - Alert thresholds should be tuned based on baseline performance
+#    - Escalation ensures critical issues receive attention
+#    - Capacity planning helps with proactive resource management
+#
+# 5. Tuning Guidelines:
+#    - Start with conservative limits and adjust based on observed behavior
+#    - Monitor alert frequency to avoid alert fatigue
+#    - Regular capacity planning reviews prevent resource exhaustion
+#    - Test emergency mode activation in non-production environments

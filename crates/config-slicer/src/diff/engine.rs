@@ -6,7 +6,10 @@
 
 use crate::diff::algorithms::{HierarchicalDiffer, SemanticDiffer, TextDiffer};
 use crate::diff::conflict::{ConflictResolver, ResolutionStrategy};
-use crate::diff::types::*;
+use crate::diff::types::{
+    ChangeComplexity, DiffOptions, DiffResult, DiffSummary, HierarchicalDiff, RiskLevel,
+    SemanticDiff, TextDiff,
+};
 use crate::parser::{HierarchicalParser, ParserConfig};
 use anyhow::{Context, Result};
 use tracing::{debug, info, warn};
@@ -52,6 +55,7 @@ impl DiffEngine {
     }
 
     /// Set the conflict resolution strategy
+    #[must_use]
     pub fn with_conflict_strategy(mut self, strategy: ResolutionStrategy) -> Self {
         self.conflict_resolver = ConflictResolver::new(strategy);
         self
@@ -152,17 +156,18 @@ impl DiffEngine {
     }
 
     /// Get current diff options
-    pub fn options(&self) -> &DiffOptions {
+    #[must_use]
+    pub const fn options(&self) -> &DiffOptions {
         &self.options
     }
 
-    fn should_perform_hierarchical_diff(&self) -> bool {
+    const fn should_perform_hierarchical_diff(&self) -> bool {
         // For now, always perform hierarchical diff if we have the capability
         // In the future, this could be controlled by options
         true
     }
 
-    fn should_detect_conflicts(&self) -> bool {
+    const fn should_detect_conflicts(&self) -> bool {
         // Enable conflict detection for all diffs by default
         // This could be made configurable in the future
         true
@@ -219,7 +224,7 @@ impl DiffEngine {
         }
     }
 
-    fn assess_complexity(
+    const fn assess_complexity(
         &self,
         total_changes: usize,
         sections_affected: usize,
@@ -269,7 +274,7 @@ impl Default for DiffEngine {
     }
 }
 
-/// Builder for creating a DiffEngine with custom configuration
+/// Builder for creating a `DiffEngine` with custom configuration
 pub struct DiffEngineBuilder {
     options: DiffOptions,
     resolution_strategy: ResolutionStrategy,
@@ -278,6 +283,7 @@ pub struct DiffEngineBuilder {
 
 impl DiffEngineBuilder {
     /// Create a new builder with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self {
             options: DiffOptions::default(),
@@ -287,48 +293,55 @@ impl DiffEngineBuilder {
     }
 
     /// Set diff options
-    pub fn with_options(mut self, options: DiffOptions) -> Self {
+    #[must_use]
+    pub const fn with_options(mut self, options: DiffOptions) -> Self {
         self.options = options;
         self
     }
 
     /// Set conflict resolution strategy
-    pub fn with_resolution_strategy(mut self, strategy: ResolutionStrategy) -> Self {
+    #[must_use]
+    pub const fn with_resolution_strategy(mut self, strategy: ResolutionStrategy) -> Self {
         self.resolution_strategy = strategy;
         self
     }
 
     /// Set parser configuration
-    pub fn with_parser_config(mut self, config: ParserConfig) -> Self {
+    #[must_use]
+    pub const fn with_parser_config(mut self, config: ParserConfig) -> Self {
         self.parser_config = config;
         self
     }
 
     /// Enable semantic analysis
-    pub fn enable_semantic(mut self) -> Self {
+    #[must_use]
+    pub const fn enable_semantic(mut self) -> Self {
         self.options.include_semantic = true;
         self
     }
 
     /// Enable impact analysis
-    pub fn enable_impact_analysis(mut self) -> Self {
+    #[must_use]
+    pub const fn enable_impact_analysis(mut self) -> Self {
         self.options.include_impact = true;
         self
     }
 
     /// Set context lines
-    pub fn with_context_lines(mut self, lines: usize) -> Self {
+    #[must_use]
+    pub const fn with_context_lines(mut self, lines: usize) -> Self {
         self.options.context_lines = lines;
         self
     }
 
     /// Ignore whitespace differences
-    pub fn ignore_whitespace(mut self) -> Self {
+    #[must_use]
+    pub const fn ignore_whitespace(mut self) -> Self {
         self.options.ignore_whitespace = true;
         self
     }
 
-    /// Build the DiffEngine
+    /// Build the `DiffEngine`
     pub fn build(self) -> Result<DiffEngine> {
         let text_differ = TextDiffer::new(self.options.clone());
         let hierarchical_differ = HierarchicalDiffer::new(self.options.clone());

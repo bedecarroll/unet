@@ -1,0 +1,51 @@
+[Unit]
+Description=Redis Cache for μNet
+Documentation=http://redis.io/documentation
+After=network.target
+RequiresMountsFor=/var/lib/redis
+
+[Service]
+Type=notify
+User=redis
+Group=redis
+ExecStart=/usr/bin/redis-server /etc/redis/unet.conf
+ExecReload=/bin/kill -HUP $MAINPID
+TimeoutStopSec=0
+Restart=always
+RestartSec=5
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+
+# Allow writing to Redis data directory
+ReadWritePaths=/var/lib/redis /run/redis
+
+# Working directory
+WorkingDirectory=/var/lib/redis
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# OOM protection
+OOMScoreAdjust=-900
+
+[Install]
+WantedBy=unet.target

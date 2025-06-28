@@ -44,29 +44,33 @@ impl TrackingAllocator {
 
 unsafe impl GlobalAlloc for TrackingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let ptr = System.alloc(layout);
-        if !ptr.is_null() {
-            let current =
-                self.allocated.fetch_add(layout.size(), Ordering::Relaxed) + layout.size();
-            let mut peak = self.peak.load(Ordering::Relaxed);
-            while current > peak {
-                match self.peak.compare_exchange_weak(
-                    peak,
-                    current,
-                    Ordering::Relaxed,
-                    Ordering::Relaxed,
-                ) {
-                    Ok(_) => break,
-                    Err(new_peak) => peak = new_peak,
+        unsafe {
+            let ptr = System.alloc(layout);
+            if !ptr.is_null() {
+                let current =
+                    self.allocated.fetch_add(layout.size(), Ordering::Relaxed) + layout.size();
+                let mut peak = self.peak.load(Ordering::Relaxed);
+                while current > peak {
+                    match self.peak.compare_exchange_weak(
+                        peak,
+                        current,
+                        Ordering::Relaxed,
+                        Ordering::Relaxed,
+                    ) {
+                        Ok(_) => break,
+                        Err(new_peak) => peak = new_peak,
+                    }
                 }
             }
+            ptr
         }
-        ptr
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        System.dealloc(ptr, layout);
-        self.allocated.fetch_sub(layout.size(), Ordering::Relaxed);
+        unsafe {
+            System.dealloc(ptr, layout);
+            self.allocated.fetch_sub(layout.size(), Ordering::Relaxed);
+        }
     }
 }
 
@@ -238,7 +242,7 @@ fn bench_streaming_memory_efficiency(c: &mut Criterion) {
         (
             "small_memory_limit",
             StreamingConfig::new()
-                .with_memory_limit(1 * 1024 * 1024) // 1MB limit
+                .with_memory_limit(1024 * 1024) // 1MB limit
                 .with_chunk_size(100)
                 .with_aggressive_cleanup(true),
         ),

@@ -1,0 +1,81 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: unet-staging
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Base configuration
+bases:
+- ../../base
+
+# Environment-specific namespace
+namespace: unet-staging
+
+# Environment-specific labels
+commonLabels:
+  environment: staging
+  app.kubernetes.io/instance: unet-staging
+
+# Image tag overrides for staging
+images:
+- name: ghcr.io/example/unet-server
+  newTag: staging-latest
+
+# Resource name prefix for staging
+namePrefix: staging-
+
+# Staging-specific resources
+resources:
+- config-staging.yaml
+- hpa-staging.yaml
+- networkpolicy-staging.yaml
+
+# Patches for staging environment
+patches:
+- target:
+    kind: Deployment
+    name: unet-server
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 2
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: "200m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: "512Mi"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: "1000m"
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: "2Gi"
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: DEPLOYMENT_ENVIRONMENT
+        value: "staging"
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: RUST_LOG
+        value: "debug"
+
+# ConfigMap generator for staging-specific config
+configMapGenerator:
+- name: unet-staging-config
+  files:
+  - config.toml=config-staging.toml
+  behavior: merge
+
+# Secret generator for staging secrets
+secretGenerator:
+- name: unet-staging-secrets
+  literals:
+  - jwt-secret-key=staging-jwt-secret-change-in-production
+  - database-url=postgresql://unet:staging-password@postgres:5432/unet_staging
+  - redis-url=redis://redis:6379/1
+  behavior: replace

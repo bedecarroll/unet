@@ -4,9 +4,16 @@
 
 mod api;
 mod background;
+mod cert_manager;
 mod error;
 mod handlers;
+mod middleware;
+mod network_access;
+mod security_audit;
 mod server;
+mod tls;
+mod validation;
+mod vulnerability_scanner;
 
 use anyhow::Result;
 use clap::Parser;

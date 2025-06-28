@@ -1,0 +1,12 @@
+[Unit]
+Description=μNet Health Check Timer
+Documentation=https://github.com/example/unet
+Requires=unet-healthcheck.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

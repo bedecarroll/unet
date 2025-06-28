@@ -145,7 +145,8 @@ impl Error {
     }
 
     /// Create an indentation error
-    pub fn indentation_error(line: usize, expected: usize, found: usize) -> Self {
+    #[must_use]
+    pub const fn indentation_error(line: usize, expected: usize, found: usize) -> Self {
         Self::InvalidIndentation {
             line,
             expected,
@@ -154,7 +155,8 @@ impl Error {
     }
 
     /// Create an unclosed block error
-    pub fn unclosed_block_error(start_line: usize) -> Self {
+    #[must_use]
+    pub const fn unclosed_block_error(start_line: usize) -> Self {
         Self::UnclosedBlock { start_line }
     }
 
@@ -186,17 +188,20 @@ impl Error {
     }
 
     /// Create a timeout error
-    pub fn timeout_error(seconds: u64) -> Self {
+    #[must_use]
+    pub const fn timeout_error(seconds: u64) -> Self {
         Self::Timeout { seconds }
     }
 
     /// Create a size limit error
-    pub fn size_limit_error(size: usize, limit: usize) -> Self {
+    #[must_use]
+    pub const fn size_limit_error(size: usize, limit: usize) -> Self {
         Self::ConfigurationTooLarge { size, limit }
     }
 
     /// Check if this error is recoverable
-    pub fn is_recoverable(&self) -> bool {
+    #[must_use]
+    pub const fn is_recoverable(&self) -> bool {
         matches!(
             self,
             Self::Parse(_)
@@ -208,7 +213,8 @@ impl Error {
     }
 
     /// Get the line number associated with this error, if any
-    pub fn line_number(&self) -> Option<usize> {
+    #[must_use]
+    pub const fn line_number(&self) -> Option<usize> {
         match self {
             Self::ParseWithLine { line, .. }
             | Self::SyntaxError { line, .. }
@@ -220,7 +226,8 @@ impl Error {
     }
 
     /// Get the error category for grouping related errors
-    pub fn category(&self) -> ErrorCategory {
+    #[must_use]
+    pub const fn category(&self) -> ErrorCategory {
         match self {
             Self::Parse(_)
             | Self::ParseWithLine { .. }
@@ -330,7 +337,8 @@ pub struct ErrorContext {
 
 impl ErrorContext {
     /// Create a new error context
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             source: None,
             line: None,
@@ -346,13 +354,15 @@ impl ErrorContext {
     }
 
     /// Set the line number
-    pub fn with_line(mut self, line: usize) -> Self {
+    #[must_use]
+    pub const fn with_line(mut self, line: usize) -> Self {
         self.line = Some(line);
         self
     }
 
     /// Set the column number
-    pub fn with_column(mut self, column: usize) -> Self {
+    #[must_use]
+    pub const fn with_column(mut self, column: usize) -> Self {
         self.column = Some(column);
         self
     }
@@ -364,17 +374,18 @@ impl ErrorContext {
     }
 
     /// Build a formatted error message
+    #[must_use]
     pub fn format_error(&self, message: &str) -> String {
         let mut formatted = String::new();
 
         if let Some(ref source) = self.source {
-            formatted.push_str(&format!("In {}: ", source));
+            formatted.push_str(&format!("In {source}: "));
         }
 
         if let (Some(line), Some(column)) = (self.line, self.column) {
-            formatted.push_str(&format!("at line {}, column {}: ", line, column));
+            formatted.push_str(&format!("at line {line}, column {column}: "));
         } else if let Some(line) = self.line {
-            formatted.push_str(&format!("at line {}: ", line));
+            formatted.push_str(&format!("at line {line}: "));
         }
 
         formatted.push_str(message);

@@ -32,7 +32,7 @@ pub struct ConfigNode {
 }
 
 /// Configuration context types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigContext {
     /// Global configuration context
     Global,
@@ -55,7 +55,7 @@ pub enum ConfigContext {
 }
 
 /// Node types for configuration classification
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NodeType {
     /// Root of the configuration tree
     Root,
@@ -87,7 +87,7 @@ pub struct ParserConfig {
 }
 
 /// Indentation detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndentDetection {
     /// Auto-detect indentation (spaces vs tabs)
     Auto,
@@ -317,8 +317,7 @@ impl HierarchicalParser {
                         .indent_regex
                         .captures(line)
                         .and_then(|cap| cap.get(1))
-                        .map(|m| m.as_str())
-                        .unwrap_or("");
+                        .map_or("", |m| m.as_str());
 
                     if leading_whitespace.contains('\t') {
                         tab_count += 1;
@@ -336,8 +335,7 @@ impl HierarchicalParser {
                     let most_common_size = space_sizes
                         .iter()
                         .max_by_key(|&(_, count)| count)
-                        .map(|(&size, _)| size)
-                        .unwrap_or(2);
+                        .map_or(2, |(&size, _)| size);
                     Ok(IndentDetection::Spaces(most_common_size))
                 } else {
                     Ok(IndentDetection::Spaces(2)) // Default fallback
@@ -353,8 +351,7 @@ impl HierarchicalParser {
             .indent_regex
             .captures(line)
             .and_then(|cap| cap.get(1))
-            .map(|m| m.as_str())
-            .unwrap_or("");
+            .map_or("", |m| m.as_str());
 
         match indent_style {
             IndentDetection::Tabs => leading_whitespace.chars().filter(|&c| c == '\t').count(),
@@ -552,7 +549,7 @@ impl TreeTraversal {
     }
 
     /// Find nodes matching a predicate
-    pub fn find_nodes<'a, F>(root: &'a ConfigNode, predicate: F) -> Result<Vec<&'a ConfigNode>>
+    pub fn find_nodes<F>(root: &ConfigNode, predicate: F) -> Result<Vec<&ConfigNode>>
     where
         F: Fn(&ConfigNode) -> bool,
     {
@@ -598,6 +595,7 @@ impl TreeTraversal {
     }
 
     /// Get the path from root to a specific node
+    #[must_use]
     pub fn get_path_to_node(root: &ConfigNode, target_line: usize) -> Option<Vec<usize>> {
         let mut path = Vec::new();
         if Self::find_path_recursive(root, target_line, &mut path) {
@@ -636,9 +634,16 @@ pub struct ValidationReport {
     pub warnings: Vec<String>,
 }
 
+impl Default for ValidationReport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ValidationReport {
     /// Create a new validation report
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             total_nodes: 0,
             errors: Vec::new(),
@@ -647,6 +652,7 @@ impl ValidationReport {
     }
 
     /// Check if the validation passed without errors
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.errors.is_empty()
     }
@@ -655,15 +661,15 @@ impl ValidationReport {
 impl fmt::Display for ConfigContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConfigContext::Global => write!(f, "global"),
-            ConfigContext::Interface(name) => write!(f, "interface:{}", name),
-            ConfigContext::Routing(protocol) => write!(f, "routing:{}", protocol),
-            ConfigContext::Vlan(id) => write!(f, "vlan:{}", id),
-            ConfigContext::AccessList(name) => write!(f, "acl:{}", name),
-            ConfigContext::Bgp => write!(f, "bgp"),
-            ConfigContext::Ospf => write!(f, "ospf"),
-            ConfigContext::Line(line_type) => write!(f, "line:{}", line_type),
-            ConfigContext::Custom(custom) => write!(f, "custom:{}", custom),
+            Self::Global => write!(f, "global"),
+            Self::Interface(name) => write!(f, "interface:{name}"),
+            Self::Routing(protocol) => write!(f, "routing:{protocol}"),
+            Self::Vlan(id) => write!(f, "vlan:{id}"),
+            Self::AccessList(name) => write!(f, "acl:{name}"),
+            Self::Bgp => write!(f, "bgp"),
+            Self::Ospf => write!(f, "ospf"),
+            Self::Line(line_type) => write!(f, "line:{line_type}"),
+            Self::Custom(custom) => write!(f, "custom:{custom}"),
         }
     }
 }
@@ -671,12 +677,12 @@ impl fmt::Display for ConfigContext {
 impl fmt::Display for NodeType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NodeType::Root => write!(f, "root"),
-            NodeType::Section => write!(f, "section"),
-            NodeType::Command => write!(f, "command"),
-            NodeType::Comment => write!(f, "comment"),
-            NodeType::Empty => write!(f, "empty"),
-            NodeType::Unknown => write!(f, "unknown"),
+            Self::Root => write!(f, "root"),
+            Self::Section => write!(f, "section"),
+            Self::Command => write!(f, "command"),
+            Self::Comment => write!(f, "comment"),
+            Self::Empty => write!(f, "empty"),
+            Self::Unknown => write!(f, "unknown"),
         }
     }
 }
@@ -694,7 +700,7 @@ mod tests {
     #[test]
     fn test_simple_config_parsing() -> Result<()> {
         let parser = HierarchicalParser::new()?;
-        let config = r#"
+        let config = r"
 hostname test-router
 !
 interface GigabitEthernet0/1
@@ -702,7 +708,7 @@ interface GigabitEthernet0/1
  no shutdown
 !
 ip route 0.0.0.0 0.0.0.0 192.168.1.1
-"#;
+";
 
         let tree = parser.parse(config)?;
         assert_eq!(tree.node_type, NodeType::Root);
@@ -713,12 +719,12 @@ ip route 0.0.0.0 0.0.0.0 192.168.1.1
     #[test]
     fn test_hierarchical_structure() -> Result<()> {
         let parser = HierarchicalParser::new()?;
-        let config = r#"
+        let config = r"
 interface GigabitEthernet0/1
  description Test Interface
  ip address 192.168.1.1 255.255.255.0
  no shutdown
-"#;
+";
 
         let tree = parser.parse(config)?;
 
@@ -735,14 +741,14 @@ interface GigabitEthernet0/1
     #[test]
     fn test_context_detection() -> Result<()> {
         let parser = HierarchicalParser::new()?;
-        let config = r#"
+        let config = r"
 interface GigabitEthernet0/1
  description Test
 vlan 100
  name Data_VLAN
 router ospf 1
  network 192.168.1.0 0.0.0.255 area 0
-"#;
+";
 
         let tree = parser.parse(config)?;
 
@@ -769,14 +775,14 @@ router ospf 1
     #[test]
     fn test_tree_traversal() -> Result<()> {
         let parser = HierarchicalParser::new()?;
-        let config = r#"
+        let config = r"
 hostname router
 interface GigabitEthernet0/1
  description Test
  no shutdown
 interface GigabitEthernet0/2
  description Test2
-"#;
+";
 
         let tree = parser.parse(config)?;
 
@@ -800,11 +806,11 @@ interface GigabitEthernet0/2
         let parser = HierarchicalParser::new()?;
 
         // Test space-based indentation
-        let space_config = r#"
+        let space_config = r"
 interface GigabitEthernet0/1
   description Test
   no shutdown
-"#;
+";
         let tree = parser.parse(space_config)?;
         let interface_nodes = TreeTraversal::find_by_command_pattern(&tree, r"interface\s+")?;
         assert!(!interface_nodes.is_empty());
@@ -815,11 +821,11 @@ interface GigabitEthernet0/1
     #[test]
     fn test_validation() -> Result<()> {
         let parser = HierarchicalParser::new()?;
-        let config = r#"
+        let config = r"
 hostname test
 interface GigabitEthernet0/1
  description Test
-"#;
+";
 
         let tree = parser.parse(config)?;
         let report = parser.validate_tree(&tree)?;

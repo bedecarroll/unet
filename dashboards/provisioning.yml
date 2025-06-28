@@ -1,0 +1,35 @@
+# Grafana Dashboard Provisioning Configuration for μNet
+# Place this file in your Grafana provisioning/dashboards directory
+
+apiVersion: 1
+
+providers:
+  - name: 'μNet Dashboards'
+    orgId: 1
+    folder: 'μNet'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/unet
+      foldersFromFilesStructure: true
+
+# Dashboard folder structure:
+# /etc/grafana/provisioning/dashboards/unet/
+# ├── unet-overview.json              # System overview and key metrics
+# ├── unet-business-metrics.json      # Business KPIs and operational metrics  
+# ├── unet-performance.json           # Performance monitoring and optimization
+# ├── unet-system-health.json         # System health and uptime monitoring
+# ├── unet-alerting.json              # Alert status and threshold monitoring
+# └── unet-custom-metrics.json        # Custom metrics visualization and analysis
+
+# Required Grafana plugins:
+# - Prometheus data source
+# - Standard panels (stat, timeseries, bargauge, text)
+
+# Configuration notes:
+# 1. Ensure Prometheus is configured to scrape μNet metrics endpoint (/metrics)
+# 2. Update DS_PROMETHEUS data source variable to match your Prometheus instance
+# 3. Customize alert thresholds based on your environment requirements
+# 4. Modify refresh intervals based on your monitoring needs

@@ -1,0 +1,272 @@
+# Default values for unet Helm chart
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# μNet Server configuration
+unet:
+  image:
+    registry: ghcr.io
+    repository: example/unet-server
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicaCount: 3
+  
+  # Resource requirements
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    readOnlyRootFilesystem: true
+  
+  # Service configuration
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8080
+    httpsPort: 443
+    httpsTargetPort: 8443
+    annotations: {}
+    # AWS Load Balancer annotations
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  
+  # Ingress configuration
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/rate-limit: "100"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: unet.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+      - host: api.unet.example.com
+        paths:
+          - path: /api
+            pathType: Prefix
+    tls:
+      - secretName: unet-tls-cert
+        hosts:
+          - unet.example.com
+          - api.unet.example.com
+  
+  # Persistence
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 10Gi
+    accessMode: ReadWriteOnce
+  
+  # Logging persistence
+  logs:
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 5Gi
+      accessMode: ReadWriteOnce
+  
+  # Environment variables
+  env: {}
+    # RUST_LOG: info
+    # UNET_ENVIRONMENT: production
+  
+  # Configuration
+  config:
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      tls_port: 8443
+    
+    logging:
+      level: "info"
+      format: "json"
+    
+    snmp:
+      timeout: "30s"
+      retries: 3
+    
+    git:
+      sync_interval: "300s"
+    
+    metrics:
+      enabled: true
+      endpoint: "/metrics"
+  
+  # Probes
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# PostgreSQL configuration (using Bitnami chart)
+postgresql:
+  enabled: true
+  auth:
+    username: unet
+    password: password
+    database: unet
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# Redis configuration (using Bitnami chart)
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+# Pod labels
+podLabels: {}
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# Secrets management
+secrets:
+  # JWT secret key
+  jwtSecret: "change-this-in-production"
+  
+  # External secret management
+  external:
+    enabled: false
+    secretStore: ""
+    secrets: []
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+  
+  prometheusRule:
+    enabled: true
+    rules: []
+
+# Environment-specific overrides
+environments:
+  dev:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 512Mi
+    persistence:
+      size: 1Gi
+    autoscaling:
+      enabled: false
+  
+  staging:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+  
+  prod:
+    replicaCount: 5
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    persistence:
+      size: 50Gi

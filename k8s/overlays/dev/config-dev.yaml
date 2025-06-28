@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unet-config
+  namespace: unet-dev
+data:
+  config.toml: |
+    [server]
+    host = "0.0.0.0"
+    port = 8080
+    tls_port = 8443
+    
+    [database]
+    url = "sqlite:///app/data/unet.db"
+    max_connections = 5
+    
+    [logging]
+    level = "debug"
+    format = "pretty"
+    
+    [snmp]
+    timeout = "10s"
+    retries = 2
+    
+    [git]
+    sync_interval = "60s"
+    
+    [security]
+    jwt_secret_key = "dev-secret-key-not-for-production"
+    session_timeout = "8h"
+    
+    [metrics]
+    enabled = true
+    endpoint = "/metrics"
+    
+    [development]
+    enabled = true
+    auto_reload = true
+    debug_endpoints = true

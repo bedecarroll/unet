@@ -114,6 +114,27 @@ pub enum Error {
         source: Box<dyn std::error::Error + Send + Sync>,
     },
 
+    /// Metrics error with operation context
+    #[error("Metrics error during {operation}: {message}")]
+    Metrics {
+        /// The metrics operation that failed
+        operation: String,
+        /// Human-readable error message
+        message: String,
+        /// Optional source error
+        #[source]
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    },
+
+    /// Not implemented error with feature context
+    #[error("Feature not implemented: {feature} - {message}")]
+    NotImplemented {
+        /// The feature that is not implemented
+        feature: String,
+        /// Human-readable error message
+        message: String,
+    },
+
     /// Other error with context
     #[error("Error in {context}: {message}")]
     Other {
@@ -244,6 +265,64 @@ impl Error {
         }
     }
 
+    /// Create a metrics error with operation context
+    pub fn metrics<S1: Into<String>, S2: Into<String>>(operation: S1, message: S2) -> Self {
+        Self::Metrics {
+            operation: operation.into(),
+            message: message.into(),
+            source: None,
+        }
+    }
+
+    /// Create a metrics error with operation context and source
+    pub fn metrics_with_source<S1: Into<String>, S2: Into<String>, E>(
+        operation: S1,
+        message: S2,
+        source: E,
+    ) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::Metrics {
+            operation: operation.into(),
+            message: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
+
+    /// Create a not implemented error with feature context
+    pub fn not_implemented<S1: Into<String>, S2: Into<String>>(feature: S1, message: S2) -> Self {
+        Self::NotImplemented {
+            feature: feature.into(),
+            message: message.into(),
+        }
+    }
+
+    /// Create an other error with context
+    pub fn other<S1: Into<String>, S2: Into<String>>(context: S1, message: S2) -> Self {
+        Self::Other {
+            context: context.into(),
+            message: message.into(),
+            source: None,
+        }
+    }
+
+    /// Create an other error with context and source
+    pub fn other_with_source<S1: Into<String>, S2: Into<String>, E>(
+        context: S1,
+        message: S2,
+        source: E,
+    ) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::Other {
+            context: context.into(),
+            message: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
+
     /// Get the error code for this error type
     pub fn error_code(&self) -> &'static str {
         match self {
@@ -256,6 +335,8 @@ impl Error {
             Error::Network { .. } => "NETWORK_ERROR",
             Error::Io { .. } => "IO_ERROR",
             Error::Serialization { .. } => "SERIALIZATION_ERROR",
+            Error::Metrics { .. } => "METRICS_ERROR",
+            Error::NotImplemented { .. } => "NOT_IMPLEMENTED_ERROR",
             Error::Other { .. } => "OTHER_ERROR",
         }
     }
@@ -307,6 +388,14 @@ impl Error {
                 format, message, ..
             } => {
                 format!("{} format error: {}", format, message)
+            }
+            Error::Metrics {
+                operation, message, ..
+            } => {
+                format!("Metrics problem during {}: {}", operation, message)
+            }
+            Error::NotImplemented { feature, message } => {
+                format!("Feature '{}' is not yet implemented: {}", feature, message)
             }
             Error::Other {
                 context, message, ..
@@ -408,6 +497,24 @@ impl Error {
                     format = %format,
                     message = %message,
                     "Serialization error"
+                );
+            }
+            Error::Metrics {
+                operation, message, ..
+            } => {
+                error!(
+                    error_code = self.error_code(),
+                    operation = %operation,
+                    message = %message,
+                    "Metrics error"
+                );
+            }
+            Error::NotImplemented { feature, message } => {
+                error!(
+                    error_code = self.error_code(),
+                    feature = %feature,
+                    message = %message,
+                    "Not implemented error"
                 );
             }
             Error::Other {

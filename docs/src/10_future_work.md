@@ -208,4 +208,3 @@ title μNet Post‑MVP Roadmap (quarters)
 - Draft RFC–001: *Config Push & Rollback* before 2025‑08‑15.
 
 *End of 10\_future\_work.md.*
-

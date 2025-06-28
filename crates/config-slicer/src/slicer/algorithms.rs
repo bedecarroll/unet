@@ -31,6 +31,7 @@ pub struct SliceResult {
 
 impl SliceResult {
     /// Create a new slice result
+    #[must_use]
     pub fn new(matches: Vec<ConfigNode>, pattern: SlicePattern) -> Self {
         Self {
             matches,
@@ -40,33 +41,39 @@ impl SliceResult {
     }
 
     /// Add metadata to the result
+    #[must_use]
     pub fn with_metadata(mut self, key: String, value: String) -> Self {
         self.metadata.insert(key, value);
         self
     }
 
     /// Get the number of matches
+    #[must_use]
     pub fn match_count(&self) -> usize {
         self.matches.len()
     }
 
     /// Check if any matches were found
+    #[must_use]
     pub fn has_matches(&self) -> bool {
         !self.matches.is_empty()
     }
 
     /// Get matches as a reference
+    #[must_use]
     pub fn matches(&self) -> &[ConfigNode] {
         &self.matches
     }
 
     /// Get pattern as a reference
-    pub fn pattern(&self) -> &SlicePattern {
+    #[must_use]
+    pub const fn pattern(&self) -> &SlicePattern {
         &self.pattern
     }
 
     /// Get metadata as a reference
-    pub fn metadata(&self) -> &HashMap<String, String> {
+    #[must_use]
+    pub const fn metadata(&self) -> &HashMap<String, String> {
         &self.metadata
     }
 }

@@ -1,0 +1,91 @@
+name: Question or Support
+description: Ask a question about using μNet
+title: "[QUESTION] "
+labels: ["question", "support"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about μNet? We're here to help! 
+        
+        **Note:** For urgent issues, consider checking our [Troubleshooting Guide](docs/src/troubleshooting_guide.md) first.
+
+  - type: dropdown
+    id: question-category
+    attributes:
+      label: Question Category
+      description: What area does your question relate to?
+      options:
+        - Installation and Setup
+        - Configuration Management
+        - Policy Creation
+        - Template Usage
+        - CLI Commands
+        - API Usage
+        - Git Integration
+        - Database Setup
+        - Performance and Scaling
+        - Security Configuration
+        - Troubleshooting
+        - Best Practices
+        - Integration with Other Tools
+        - Development and Contributing
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Please be as specific as possible. Include what you're trying to achieve.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and Background
+      description: Provide context about your use case and what you've tried
+      placeholder: |
+        Example:
+        - What you're trying to accomplish
+        - Your current setup/environment
+        - What you've already tried
+        - Any relevant configuration or code snippets
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: If your question is environment-specific, please provide details
+      value: |
+        - OS: 
+        - μNet Version: 
+        - Database: 
+        - Deployment Method: 
+      placeholder: Leave blank if not relevant to your question
+
+  - type: checkboxes
+    id: research-done
+    attributes:
+      label: Research Done
+      description: Have you checked these resources?
+      options:
+        - label: I have checked the documentation
+        - label: I have searched existing issues
+        - label: I have checked the troubleshooting guide
+        - label: I have reviewed example configurations
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-submission checklist
+      description: Please verify these before submitting
+      options:
+        - label: This is a question, not a bug report or feature request
+          required: true
+        - label: I have provided sufficient context for others to understand my question
+          required: true

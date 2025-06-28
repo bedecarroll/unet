@@ -4,7 +4,6 @@
 //! configurations, including syntax validation, semantic validation, and best
 //! practice checking.
 
-use crate::error::Result;
 use crate::parser::{ConfigNode, NodeType, Vendor};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -19,6 +18,7 @@ pub struct ConfigValidator {
 
 impl ConfigValidator {
     /// Create a new validator with default rules
+    #[must_use]
     pub fn new() -> Self {
         let mut validator = Self {
             rules: Vec::new(),
@@ -32,6 +32,7 @@ impl ConfigValidator {
     }
 
     /// Create a validator with custom severity filter
+    #[must_use]
     pub fn with_severity_filter(severity: ValidationSeverity) -> Self {
         let mut validator = Self::new();
         validator.severity_filter = severity;
@@ -47,7 +48,7 @@ impl ConfigValidator {
     pub fn register_vendor_rule(&mut self, vendor: Vendor, rule: Box<dyn ValidationRule>) {
         self.vendor_specific_rules
             .entry(vendor)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(rule);
     }
 
@@ -173,6 +174,7 @@ pub struct ValidationReport {
 
 impl ValidationReport {
     /// Create a new empty validation report
+    #[must_use]
     pub fn new() -> Self {
         Self {
             violations: Vec::new(),
@@ -194,11 +196,13 @@ impl ValidationReport {
     }
 
     /// Check if the configuration is considered valid
-    pub fn is_valid(&self) -> bool {
+    #[must_use]
+    pub const fn is_valid(&self) -> bool {
         self.summary.error_count == 0
     }
 
     /// Get violations of a specific severity
+    #[must_use]
     pub fn violations_by_severity(
         &self,
         severity: ValidationSeverity,
@@ -210,6 +214,7 @@ impl ValidationReport {
     }
 
     /// Get violations by rule name
+    #[must_use]
     pub fn violations_by_rule(&self, rule_name: &str) -> Vec<&ValidationViolation> {
         self.violations
             .iter()
@@ -218,6 +223,7 @@ impl ValidationReport {
     }
 
     /// Generate a human-readable summary
+    #[must_use]
     pub fn summary_text(&self) -> String {
         if self.is_valid() && self.violations.is_empty() {
             "Configuration is valid with no issues".to_string()
@@ -269,6 +275,7 @@ pub struct ValidationViolation {
 
 impl ValidationViolation {
     /// Create a new validation violation
+    #[must_use]
     pub fn new(
         severity: ValidationSeverity,
         rule_name: String,
@@ -288,24 +295,28 @@ impl ValidationViolation {
     }
 
     /// Set the column number
-    pub fn with_column(mut self, column: usize) -> Self {
+    #[must_use]
+    pub const fn with_column(mut self, column: usize) -> Self {
         self.column_number = Some(column);
         self
     }
 
     /// Set the node path
+    #[must_use]
     pub fn with_node_path(mut self, path: String) -> Self {
         self.node_path = path;
         self
     }
 
     /// Set the suggested fix
+    #[must_use]
     pub fn with_suggested_fix(mut self, fix: String) -> Self {
         self.suggested_fix = Some(fix);
         self
     }
 
     /// Add context information
+    #[must_use]
     pub fn with_context(mut self, key: String, value: String) -> Self {
         self.context.insert(key, value);
         self
@@ -432,7 +443,7 @@ impl StructureValidator {
 struct IndentationRule;
 
 impl IndentationRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -444,11 +455,11 @@ impl ValidationRule for IndentationRule {
         violations
     }
 
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "IndentationRule"
     }
 
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for consistent indentation throughout the configuration"
     }
 }
@@ -482,7 +493,7 @@ impl IndentationRule {
 struct EmptyLineRule;
 
 impl EmptyLineRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -494,11 +505,11 @@ impl ValidationRule for EmptyLineRule {
         violations
     }
 
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "EmptyLineRule"
     }
 
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for excessive empty lines in configuration"
     }
 }
@@ -527,7 +538,7 @@ impl EmptyLineRule {
 // Additional rule stubs for completeness
 struct CommentRule;
 impl CommentRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -535,17 +546,17 @@ impl ValidationRule for CommentRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "CommentRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates comment formatting"
     }
 }
 
 struct DuplicateConfigRule;
 impl DuplicateConfigRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -553,17 +564,17 @@ impl ValidationRule for DuplicateConfigRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "DuplicateConfigRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for duplicate configuration entries"
     }
 }
 
 struct InconsistentConfigRule;
 impl InconsistentConfigRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -571,17 +582,17 @@ impl ValidationRule for InconsistentConfigRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "InconsistentConfigRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for inconsistent configuration"
     }
 }
 
 struct DescriptionRule;
 impl DescriptionRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -589,17 +600,17 @@ impl ValidationRule for DescriptionRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "DescriptionRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for missing interface descriptions"
     }
 }
 
 struct NamingConventionRule;
 impl NamingConventionRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -607,17 +618,17 @@ impl ValidationRule for NamingConventionRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "NamingConventionRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates naming conventions"
     }
 }
 
 struct PlaintextPasswordRule;
 impl PlaintextPasswordRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -625,17 +636,17 @@ impl ValidationRule for PlaintextPasswordRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "PlaintextPasswordRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for plaintext passwords"
     }
 }
 
 struct WeakSecurityRule;
 impl WeakSecurityRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -643,10 +654,10 @@ impl ValidationRule for WeakSecurityRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "WeakSecurityRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Checks for weak security configurations"
     }
 }
@@ -654,7 +665,7 @@ impl ValidationRule for WeakSecurityRule {
 // Vendor-specific rule stubs
 struct CiscoInterfaceRule;
 impl CiscoInterfaceRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -662,17 +673,17 @@ impl ValidationRule for CiscoInterfaceRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "CiscoInterfaceRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Cisco interface configuration"
     }
 }
 
 struct CiscoVlanRule;
 impl CiscoVlanRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -680,17 +691,17 @@ impl ValidationRule for CiscoVlanRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "CiscoVlanRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Cisco VLAN configuration"
     }
 }
 
 struct CiscoBgpRule;
 impl CiscoBgpRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -698,17 +709,17 @@ impl ValidationRule for CiscoBgpRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "CiscoBgpRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Cisco BGP configuration"
     }
 }
 
 struct JuniperInterfaceRule;
 impl JuniperInterfaceRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -716,17 +727,17 @@ impl ValidationRule for JuniperInterfaceRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "JuniperInterfaceRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Juniper interface configuration"
     }
 }
 
 struct JuniperPolicyRule;
 impl JuniperPolicyRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -734,17 +745,17 @@ impl ValidationRule for JuniperPolicyRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "JuniperPolicyRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Juniper policy configuration"
     }
 }
 
 struct AristaInterfaceRule;
 impl AristaInterfaceRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -752,17 +763,17 @@ impl ValidationRule for AristaInterfaceRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "AristaInterfaceRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Arista interface configuration"
     }
 }
 
 struct AristaMlagRule;
 impl AristaMlagRule {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -770,10 +781,10 @@ impl ValidationRule for AristaMlagRule {
     fn validate(&self, _config: &ConfigNode) -> Vec<ValidationViolation> {
         Vec::new()
     }
-    fn rule_name(&self) -> &str {
+    fn rule_name(&self) -> &'static str {
         "AristaMlagRule"
     }
-    fn rule_description(&self) -> &str {
+    fn rule_description(&self) -> &'static str {
         "Validates Arista MLAG configuration"
     }
 }

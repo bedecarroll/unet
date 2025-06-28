@@ -67,12 +67,13 @@ impl GlobPattern {
         let regex_pattern = glob_to_regex(&self.pattern, self.case_sensitive)?;
         self.regex = Some(
             Regex::new(&regex_pattern)
-                .map_err(|e| Error::InvalidPattern(format!("Invalid glob pattern: {}", e)))?,
+                .map_err(|e| Error::InvalidPattern(format!("Invalid glob pattern: {e}")))?,
         );
         Ok(())
     }
 
     /// Check if the pattern matches the given text
+    #[must_use]
     pub fn matches(&self, text: &str) -> bool {
         if let Some(ref regex) = self.regex {
             regex.is_match(text)
@@ -82,12 +83,14 @@ impl GlobPattern {
     }
 
     /// Get the original pattern string
+    #[must_use]
     pub fn pattern(&self) -> &str {
         &self.pattern
     }
 
     /// Check if the pattern is case-sensitive
-    pub fn is_case_sensitive(&self) -> bool {
+    #[must_use]
+    pub const fn is_case_sensitive(&self) -> bool {
         self.case_sensitive
     }
 }
@@ -111,7 +114,7 @@ impl RegexPattern {
     /// Create a new regex pattern
     pub fn new(pattern: &str) -> Result<Self> {
         let regex = Regex::new(pattern)
-            .map_err(|e| Error::InvalidPattern(format!("Invalid regex pattern: {}", e)))?;
+            .map_err(|e| Error::InvalidPattern(format!("Invalid regex pattern: {e}")))?;
 
         Ok(Self {
             pattern: pattern.to_string(),
@@ -120,21 +123,25 @@ impl RegexPattern {
     }
 
     /// Check if the pattern matches the given text
+    #[must_use]
     pub fn matches(&self, text: &str) -> bool {
         self.regex.is_match(text)
     }
 
     /// Get the original pattern string
+    #[must_use]
     pub fn pattern(&self) -> &str {
         &self.pattern
     }
 
     /// Get capture groups from a match
+    #[must_use]
     pub fn captures<'a>(&self, text: &'a str) -> Option<regex::Captures<'a>> {
         self.regex.captures(text)
     }
 
     /// Find all matches in the text
+    #[must_use]
     pub fn find_all(&self, text: &str) -> Vec<String> {
         self.regex
             .find_iter(text)
@@ -192,7 +199,7 @@ fn glob_to_regex(pattern: &str, case_sensitive: bool) -> Result<String> {
             '[' => {
                 // Character class - copy until closing bracket
                 regex_pattern.push('[');
-                while let Some(class_ch) = chars.next() {
+                for class_ch in chars.by_ref() {
                     regex_pattern.push(class_ch);
                     if class_ch == ']' {
                         break;
@@ -222,7 +229,7 @@ fn glob_to_regex(pattern: &str, case_sensitive: bool) -> Result<String> {
     regex_pattern.push('$');
 
     if !case_sensitive {
-        regex_pattern = format!("(?i){}", regex_pattern);
+        regex_pattern = format!("(?i){regex_pattern}");
     }
 
     Ok(regex_pattern)
@@ -242,6 +249,7 @@ enum PatternType {
 
 impl PatternBuilder {
     /// Start building a glob pattern
+    #[must_use]
     pub fn glob(pattern: &str) -> Self {
         Self {
             pattern_type: PatternType::Glob,
@@ -251,6 +259,7 @@ impl PatternBuilder {
     }
 
     /// Start building a regex pattern
+    #[must_use]
     pub fn regex(pattern: &str) -> Self {
         Self {
             pattern_type: PatternType::Regex,
@@ -260,7 +269,8 @@ impl PatternBuilder {
     }
 
     /// Set case sensitivity
-    pub fn case_sensitive(mut self, sensitive: bool) -> Self {
+    #[must_use]
+    pub const fn case_sensitive(mut self, sensitive: bool) -> Self {
         self.case_sensitive = sensitive;
         self
     }
@@ -279,7 +289,7 @@ impl PatternBuilder {
             PatternType::Regex => {
                 let mut pattern_str = self.pattern_string;
                 if !self.case_sensitive {
-                    pattern_str = format!("(?i){}", pattern_str);
+                    pattern_str = format!("(?i){pattern_str}");
                 }
                 let pattern = RegexPattern::new(&pattern_str)?;
                 Ok(SlicePattern::Regex(pattern))

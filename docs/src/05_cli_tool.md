@@ -322,4 +322,3 @@ Release workflow tags commit, builds **musl‑static** binaries for `x86_64`+`aa
 4. Generate shell completion scripts in CI.
 
 *Proceed to *[*06\_server\_backend.md*](06_server_backend.md)*.*
-

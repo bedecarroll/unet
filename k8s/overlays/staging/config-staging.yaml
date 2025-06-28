@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unet-staging-config
+  namespace: unet-staging
+  labels:
+    app.kubernetes.io/name: unet-config
+    app.kubernetes.io/component: configuration
+    app.kubernetes.io/part-of: unet
+    environment: staging
+data:
+  config.toml: |
+    # μNet Staging Configuration
+    [server]
+    host = "0.0.0.0"
+    port = 8080
+    tls_port = 8443
+    workers = 4
+    
+    [database]
+    connection_pool_size = 10
+    query_timeout_seconds = 30
+    migration_timeout_seconds = 60
+    
+    [logging]
+    level = "debug"
+    format = "json"
+    file_rotation = true
+    max_file_size = "100MB"
+    max_files = 10
+    
+    [security]
+    jwt_expiration_hours = 24
+    bcrypt_cost = 10
+    rate_limit_requests_per_minute = 1000
+    rate_limit_burst = 200
+    
+    [monitoring]
+    metrics_enabled = true
+    metrics_path = "/metrics"
+    health_check_path = "/health"
+    readiness_check_path = "/ready"
+    
+    [features]
+    git_integration_enabled = true
+    policy_engine_enabled = true
+    template_engine_enabled = true
+    change_tracking_enabled = true
+    vulnerability_scanning_enabled = true
+    
+    [snmp]
+    default_timeout = 5
+    default_retries = 3
+    max_concurrent_requests = 100
+    
+    [performance]
+    cache_ttl_seconds = 300
+    request_timeout_seconds = 30
+    background_task_interval_seconds = 60

@@ -139,7 +139,7 @@ Examples:
 
 1. Read first 20 lines.
 2. If any `{`/`}` braces – assume JunOS.
-3. Else if any lines start with `hostname ` – assume IOS.
+3. Else if any lines start with `hostname` – assume IOS.
 4. Fallback to `flat`.
 
 Autodetect can be wrong ❗: CLI prints warning and suggests `--vendor` override.
@@ -214,7 +214,7 @@ Complexity: **O(n)** lines, O(1) state.
 
 1. Trim leading spaces; compute `depth = indent / 4`.
 2. Treat `!` sentinel as “end of section” → reduce depth by 1.
-3. Lines starting with ` interface`, `router bgp` raise depth one.
+3. Lines starting with `interface`, `router bgp` raise depth one.
 4. Comments starting `!` outside section are depth 0 tokens.
 
 ### 9.3 Slice Engine
@@ -338,4 +338,3 @@ Criterion benchmark on 1.5 MB JunOS config (\~25 k lines):
 5. Integrate into μNet `unet template diff` (Milestone 5).
 
 *End of 09\_config\_match\_tool.md – proceed to* **10\_future\_work.md** *once this tool lands.*
-

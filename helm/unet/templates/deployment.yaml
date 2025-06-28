@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "unet.fullname" . }}
+  labels:
+    {{- include "unet.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.unet.autoscaling.enabled }}
+  replicas: {{ .Values.unet.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "unet.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "unet.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "unet.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.unet.securityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.unet.image.registry }}/{{ .Values.unet.image.repository }}:{{ .Values.unet.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.unet.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+          env:
+            - name: RUST_LOG
+              value: {{ .Values.unet.config.logging.level | quote }}
+            - name: UNET_CONFIG_PATH
+              value: "/app/config"
+            - name: UNET_DATA_PATH
+              value: "/app/data"
+            - name: UNET_LOG_PATH
+              value: "/app/logs"
+            {{- if .Values.postgresql.enabled }}
+            - name: UNET_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "unet.secretName" . }}
+                  key: database-url
+            {{- end }}
+            - name: UNET_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "unet.secretName" . }}
+                  key: jwt-secret-key
+            {{- if .Values.redis.enabled }}
+            - name: UNET_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "unet.secretName" . }}
+                  key: redis-url
+            {{- end }}
+            {{- range $key, $value := .Values.unet.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            {{- if .Values.unet.persistence.enabled }}
+            - name: data
+              mountPath: /app/data
+            {{- end }}
+            {{- if .Values.unet.logs.persistence.enabled }}
+            - name: logs
+              mountPath: /app/logs
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.unet.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.unet.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.unet.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "unet.fullname" . }}-config
+        {{- if .Values.unet.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "unet.fullname" . }}-data
+        {{- end }}
+        {{- if .Values.unet.logs.persistence.enabled }}
+        - name: logs
+          persistentVolumeClaim:
+            claimName: {{ include "unet.fullname" . }}-logs
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

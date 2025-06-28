@@ -1,0 +1,53 @@
+Source: unet
+Section: net
+Priority: optional
+Maintainer: μNet Development Team <dev@unet.example.com>
+Build-Depends: debhelper-compat (= 13),
+               cargo (>= 1.85),
+               rustc (>= 1.85),
+               pkg-config,
+               libssl-dev,
+               libsqlite3-dev,
+               libpq-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/example/unet
+Vcs-Git: https://github.com/example/unet.git
+Vcs-Browser: https://github.com/example/unet
+Rules-Requires-Root: no
+
+Package: unet
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Suggests: sqlite3, postgresql-client
+Description: Network configuration management and automation tool
+ μNet is a comprehensive network configuration management and automation
+ tool designed for modern network infrastructure. It provides:
+ .
+  * Declarative configuration management using templates and policies
+  * Real-time network state monitoring via SNMP
+  * Git-based version control for network configurations
+  * REST API for programmatic access
+  * Command-line interface for operators
+  * Policy-driven configuration validation
+  * Template-based configuration generation
+ .
+ This package includes both the server component (unet-server) and
+ the command-line interface (unet).
+
+Package: unet-server
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, unet (= ${binary:Version})
+Suggests: nginx, systemd
+Description: μNet HTTP server for network configuration management
+ HTTP server component of μNet that provides REST API endpoints for
+ network configuration management. Features include:
+ .
+  * RESTful API for configuration management
+  * JWT-based authentication and RBAC authorization
+  * TLS/HTTPS support with certificate management
+  * Prometheus metrics and monitoring
+  * Background tasks for SNMP polling
+  * Database support (SQLite and PostgreSQL)
+ .
+ This is the server daemon that should be deployed on infrastructure
+ management servers.

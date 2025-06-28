@@ -36,7 +36,8 @@ pub struct ConfigSlicerApi {
 }
 
 impl ConfigSlicerApi {
-    /// Create a new ConfigSlicerApi with default configuration
+    /// Create a new `ConfigSlicerApi` with default configuration
+    #[must_use]
     pub fn new() -> Self {
         let parser_registry = PluginRegistryBuilder::new()
             .with_default_plugins()
@@ -51,7 +52,8 @@ impl ConfigSlicerApi {
         }
     }
 
-    /// Create a new ConfigSlicerApi with custom parser plugins
+    /// Create a new `ConfigSlicerApi` with custom parser plugins
+    #[must_use]
     pub fn with_parser_registry(parser_registry: PluginRegistry) -> Self {
         let slicer = ConfigSlicer::new();
 
@@ -123,7 +125,7 @@ impl ConfigSlicerApi {
         let path = file_path.as_ref();
         debug!("Parsing configuration file: {}", path.display());
 
-        let config_text = fs::read_to_string(path).map_err(|e| Error::Io(e))?;
+        let config_text = fs::read_to_string(path).map_err(Error::Io)?;
 
         self.parse_config(&config_text, vendor)
     }
@@ -230,6 +232,7 @@ impl ConfigSlicerApi {
     ///     .include_context_type(ConfigContext::Interface)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn context_builder(&self) -> SliceContextBuilder {
         SliceContextBuilder::new()
     }
@@ -244,6 +247,7 @@ impl ConfigSlicerApi {
     ///     .case_sensitive(false)
     ///     .build()?;
     /// ```
+    #[must_use]
     pub fn pattern_builder(&self) -> PatternBuilder {
         PatternBuilder::glob("")
     }
@@ -280,6 +284,7 @@ impl ConfigSlicerApi {
     }
 
     /// Get information about available parsers
+    #[must_use]
     pub fn available_parsers(&self) -> Vec<Vendor> {
         vec![
             Vendor::Cisco,
@@ -290,6 +295,7 @@ impl ConfigSlicerApi {
     }
 
     /// Get information about available slice extractors
+    #[must_use]
     pub fn available_extractors(&self) -> Vec<String> {
         self.slicer.available_extractors()
     }
@@ -317,7 +323,7 @@ impl ConfigSlicerApi {
         // Create a simple root node with basic structure
         let mut root = ConfigNode {
             command: "root".to_string(),
-            raw_line: "".to_string(),
+            raw_line: String::new(),
             line_number: 0,
             indent_level: 0,
             children: Vec::new(),
@@ -374,6 +380,7 @@ pub struct ValidationReport {
 
 impl ValidationReport {
     /// Create a new validation report for valid configuration
+    #[must_use]
     pub fn new_valid(config_tree: ConfigNode) -> Self {
         Self {
             is_valid: true,
@@ -385,6 +392,7 @@ impl ValidationReport {
     }
 
     /// Create a new validation report for invalid configuration
+    #[must_use]
     pub fn new_invalid(error: Error) -> Self {
         Self {
             is_valid: false,
@@ -407,11 +415,13 @@ impl ValidationReport {
     }
 
     /// Check if the configuration has any issues
+    #[must_use]
     pub fn has_issues(&self) -> bool {
         !self.errors.is_empty() || !self.warnings.is_empty()
     }
 
     /// Get a summary of validation results
+    #[must_use]
     pub fn summary(&self) -> String {
         if self.is_valid && !self.has_issues() {
             "Configuration is valid with no issues".to_string()
@@ -443,6 +453,7 @@ pub struct ValidationError {
 
 impl ValidationError {
     /// Create validation error from config-slicer error
+    #[must_use]
     pub fn from_error(error: Error) -> Self {
         Self {
             message: error.to_string(),
@@ -452,7 +463,8 @@ impl ValidationError {
     }
 
     /// Create a new validation error
-    pub fn new(message: String, line_number: Option<usize>) -> Self {
+    #[must_use]
+    pub const fn new(message: String, line_number: Option<usize>) -> Self {
         Self {
             message,
             line_number,
@@ -474,7 +486,12 @@ pub struct ValidationWarning {
 
 impl ValidationWarning {
     /// Create a new validation warning
-    pub fn new(message: String, line_number: Option<usize>, warning_type: WarningType) -> Self {
+    #[must_use]
+    pub const fn new(
+        message: String,
+        line_number: Option<usize>,
+        warning_type: WarningType,
+    ) -> Self {
         Self {
             message,
             line_number,
@@ -484,7 +501,7 @@ impl ValidationWarning {
 }
 
 /// Error severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorSeverity {
     /// Critical error that prevents parsing
     Error,
@@ -495,7 +512,7 @@ pub enum ErrorSeverity {
 }
 
 /// Warning types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WarningType {
     /// Deprecated syntax
     Deprecated,
@@ -516,7 +533,8 @@ pub struct StreamingConfigProcessor {
 
 impl StreamingConfigProcessor {
     /// Create a new streaming processor
-    pub fn new(api: ConfigSlicerApi) -> Self {
+    #[must_use]
+    pub const fn new(api: ConfigSlicerApi) -> Self {
         Self {
             api,
             buffer_size: 8192,
@@ -525,13 +543,15 @@ impl StreamingConfigProcessor {
     }
 
     /// Set the buffer size for reading
-    pub fn with_buffer_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn with_buffer_size(mut self, size: usize) -> Self {
         self.buffer_size = size;
         self
     }
 
     /// Set the chunk size for processing
-    pub fn with_chunk_size(mut self, size: usize) -> Self {
+    #[must_use]
+    pub const fn with_chunk_size(mut self, size: usize) -> Self {
         self.chunk_size = size;
         self
     }

@@ -102,22 +102,19 @@ impl ColoredTerminalFormatter {
         let mut unchanged_count = 0;
 
         for change in changes {
-            match change.change_type {
-                DiffType::Unchanged => {
-                    if options.compact_unchanged {
-                        unchanged_count += 1;
-                        continue;
-                    }
-                    self.format_unchanged_line(change, options, output);
+            if change.change_type == DiffType::Unchanged {
+                if options.compact_unchanged {
+                    unchanged_count += 1;
+                    continue;
                 }
-                _ => {
-                    // Show compacted unchanged lines if any
-                    if unchanged_count > 0 {
-                        self.format_unchanged_separator(unchanged_count, options, output);
-                        unchanged_count = 0;
-                    }
-                    self.format_changed_line(change, options, output);
+                self.format_unchanged_line(change, options, output);
+            } else {
+                // Show compacted unchanged lines if any
+                if unchanged_count > 0 {
+                    self.format_unchanged_separator(unchanged_count, options, output);
+                    unchanged_count = 0;
                 }
+                self.format_changed_line(change, options, output);
             }
         }
 
@@ -152,10 +149,10 @@ impl ColoredTerminalFormatter {
         if options.show_line_numbers {
             let old_num = change
                 .old_line_number
-                .map_or("   ".to_string(), |n| format!("{:3}", n));
+                .map_or("   ".to_string(), |n| format!("{n:3}"));
             let new_num = change
                 .new_line_number
-                .map_or("   ".to_string(), |n| format!("{:3}", n));
+                .map_or("   ".to_string(), |n| format!("{n:3}"));
 
             if options.use_colors {
                 writeln!(
@@ -189,35 +186,33 @@ impl ColoredTerminalFormatter {
                 )
                 .unwrap();
             }
+        } else if options.use_colors {
+            writeln!(
+                output,
+                "{}{} {}{}{}",
+                color,
+                prefix,
+                change
+                    .new_line
+                    .as_ref()
+                    .or(change.old_line.as_ref())
+                    .unwrap_or(&String::new()),
+                colors::RESET,
+                colors::RESET
+            )
+            .unwrap();
         } else {
-            if options.use_colors {
-                writeln!(
-                    output,
-                    "{}{} {}{}{}",
-                    color,
-                    prefix,
-                    change
-                        .new_line
-                        .as_ref()
-                        .or(change.old_line.as_ref())
-                        .unwrap_or(&String::new()),
-                    colors::RESET,
-                    colors::RESET
-                )
-                .unwrap();
-            } else {
-                writeln!(
-                    output,
-                    "{} {}",
-                    prefix,
-                    change
-                        .new_line
-                        .as_ref()
-                        .or(change.old_line.as_ref())
-                        .unwrap_or(&String::new())
-                )
-                .unwrap();
-            }
+            writeln!(
+                output,
+                "{} {}",
+                prefix,
+                change
+                    .new_line
+                    .as_ref()
+                    .or(change.old_line.as_ref())
+                    .unwrap_or(&String::new())
+            )
+            .unwrap();
         }
     }
 
@@ -234,10 +229,10 @@ impl ColoredTerminalFormatter {
         if options.show_line_numbers {
             let old_num = change
                 .old_line_number
-                .map_or("   ".to_string(), |n| format!("{:3}", n));
+                .map_or("   ".to_string(), |n| format!("{n:3}"));
             let new_num = change
                 .new_line_number
-                .map_or("   ".to_string(), |n| format!("{:3}", n));
+                .map_or("   ".to_string(), |n| format!("{n:3}"));
 
             if options.use_colors {
                 writeln!(
@@ -260,24 +255,22 @@ impl ColoredTerminalFormatter {
                 )
                 .unwrap();
             }
+        } else if options.use_colors {
+            writeln!(
+                output,
+                "{}  {}{}",
+                colors::DIM,
+                change.old_line.as_ref().unwrap_or(&String::new()),
+                colors::RESET
+            )
+            .unwrap();
         } else {
-            if options.use_colors {
-                writeln!(
-                    output,
-                    "{}  {}{}",
-                    colors::DIM,
-                    change.old_line.as_ref().unwrap_or(&String::new()),
-                    colors::RESET
-                )
-                .unwrap();
-            } else {
-                writeln!(
-                    output,
-                    "  {}",
-                    change.old_line.as_ref().unwrap_or(&String::new())
-                )
-                .unwrap();
-            }
+            writeln!(
+                output,
+                "  {}",
+                change.old_line.as_ref().unwrap_or(&String::new())
+            )
+            .unwrap();
         }
     }
 
@@ -297,7 +290,7 @@ impl ColoredTerminalFormatter {
             )
             .unwrap();
         } else {
-            writeln!(output, "... {} unchanged lines ...", count).unwrap();
+            writeln!(output, "... {count} unchanged lines ...").unwrap();
         }
     }
 }
@@ -387,11 +380,7 @@ impl SideBySideFormatter {
         } else {
             writeln!(
                 output,
-                "{:<width$} {} {:<width$}",
-                old_display,
-                separator,
-                new_display,
-                width = half_width
+                "{old_display:<half_width$} {separator} {new_display:<half_width$}"
             )
             .unwrap();
         }
@@ -434,11 +423,12 @@ impl UnifiedFormatter {
         for (i, change) in changes.iter().enumerate() {
             if let Some(last_idx) = last_change_index {
                 // If there's a gap larger than context_lines * 2, start a new chunk
-                if i - last_idx > context_lines * 2 && change.change_type == DiffType::Unchanged {
-                    if !current_chunk.is_empty() {
-                        chunks.push(current_chunk);
-                        current_chunk = Vec::new();
-                    }
+                if i - last_idx > context_lines * 2
+                    && change.change_type == DiffType::Unchanged
+                    && !current_chunk.is_empty()
+                {
+                    chunks.push(current_chunk);
+                    current_chunk = Vec::new();
                 }
             }
 
@@ -469,8 +459,7 @@ impl UnifiedFormatter {
 
         writeln!(
             output,
-            "@@ -{},{} +{},{} @@",
-            first_old, old_count, first_new, new_count
+            "@@ -{first_old},{old_count} +{first_new},{new_count} @@"
         )
         .unwrap();
 
@@ -607,44 +596,38 @@ impl DiffFormatter for HtmlFormatter {
         let mut unchanged_count = 0;
 
         for change in &diff.text_diff.changes {
-            match change.change_type {
-                DiffType::Unchanged => {
-                    unchanged_count += 1;
-                    continue;
-                }
-                _ => {
-                    if unchanged_count > 0 {
-                        writeln!(
-                            output,
-                            r#"        <div class="diff-line compact-separator">
-            ... {} unchanged lines ...
-        </div>"#,
-                            unchanged_count
-                        )
-                        .unwrap();
-                        unchanged_count = 0;
-                    }
-                    self.format_html_line(change, &mut output);
-                }
+            if change.change_type == DiffType::Unchanged {
+                unchanged_count += 1;
+                continue;
             }
+            if unchanged_count > 0 {
+                writeln!(
+                    output,
+                    r#"        <div class="diff-line compact-separator">
+                ... {unchanged_count} unchanged lines ...
+            </div>"#
+                )
+                .unwrap();
+                unchanged_count = 0;
+            }
+            self.format_html_line(change, &mut output);
         }
 
         if unchanged_count > 0 {
             writeln!(
                 output,
                 r#"        <div class="diff-line compact-separator">
-            ... {} unchanged lines ...
-        </div>"#,
-                unchanged_count
+            ... {unchanged_count} unchanged lines ...
+        </div>"#
             )
             .unwrap();
         }
 
         writeln!(
             output,
-            r#"    </div>
+            r"    </div>
 </body>
-</html>"#
+</html>"
         )
         .unwrap();
 
@@ -663,10 +646,10 @@ impl HtmlFormatter {
 
         let old_num = change
             .old_line_number
-            .map_or("   ".to_string(), |n| format!("{:3}", n));
+            .map_or("   ".to_string(), |n| format!("{n:3}"));
         let new_num = change
             .new_line_number
-            .map_or("   ".to_string(), |n| format!("{:3}", n));
+            .map_or("   ".to_string(), |n| format!("{n:3}"));
         let content = change
             .new_line
             .as_ref()
@@ -678,10 +661,9 @@ impl HtmlFormatter {
 
         writeln!(
             output,
-            r#"        <div class="diff-line {}">
-            <span class="line-number">{}:{}</span>{}
-        </div>"#,
-            class, old_num, new_num, content
+            r#"        <div class="diff-line {class}">
+            <span class="line-number">{old_num}:{new_num}</span>{content}
+        </div>"#
         )
         .unwrap();
     }
@@ -697,7 +679,8 @@ pub struct DiffDisplay {
 
 impl DiffDisplay {
     /// Create a new diff display instance
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             colored_formatter: ColoredTerminalFormatter,
             side_by_side_formatter: SideBySideFormatter,
@@ -707,21 +690,25 @@ impl DiffDisplay {
     }
 
     /// Format diff with colored terminal output
+    #[must_use]
     pub fn format_colored(&self, diff: &DiffResult, options: &DisplayOptions) -> String {
         self.colored_formatter.format(diff, options)
     }
 
     /// Format diff with side-by-side layout
+    #[must_use]
     pub fn format_side_by_side(&self, diff: &DiffResult, options: &DisplayOptions) -> String {
         self.side_by_side_formatter.format(diff, options)
     }
 
     /// Format diff in unified format (Git-style)
+    #[must_use]
     pub fn format_unified(&self, diff: &DiffResult, options: &DisplayOptions) -> String {
         self.unified_formatter.format(diff, options)
     }
 
     /// Format diff as HTML report
+    #[must_use]
     pub fn format_html(&self, diff: &DiffResult, options: &DisplayOptions) -> String {
         self.html_formatter.format(diff, options)
     }
@@ -842,8 +829,8 @@ mod tests {
         assert!(output.contains("--- old"));
         assert!(output.contains("+++ new"));
         assert!(output.contains("@@"));
-        assert!(output.contains("-"));
-        assert!(output.contains("+"));
+        assert!(output.contains('-'));
+        assert!(output.contains('+'));
     }
 
     #[test]

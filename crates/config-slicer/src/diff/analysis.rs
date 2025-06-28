@@ -4,7 +4,10 @@
 //! including detailed statistics, impact analysis, change categorization, and
 //! summarization utilities.
 
-use crate::diff::types::*;
+use crate::diff::types::{
+    ChangeComplexity, ChangeSeverity, DiffResult, DiffType, FunctionalChangeType, HierarchicalDiff,
+    ImpactAnalysis, RiskLevel,
+};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -43,7 +46,7 @@ pub struct DiffStatistics {
 }
 
 /// Basic change counts
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChangeCounts {
     /// Total number of changes
     pub total: usize,
@@ -92,7 +95,7 @@ pub struct SectionStatistics {
 }
 
 /// Change categorization by different dimensions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ChangeCategorization {
     /// Changes by network function
     pub by_function: HashMap<NetworkFunction, Vec<String>>,
@@ -169,7 +172,7 @@ pub enum OperationalImpact {
 }
 
 /// Analysis summary with recommendations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AnalysisSummary {
     /// Overall assessment of the changes
     pub overall_assessment: OverallAssessment,
@@ -184,7 +187,7 @@ pub struct AnalysisSummary {
 }
 
 /// Overall assessment of changes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OverallAssessment {
     /// Low-risk, routine changes
     Routine,
@@ -197,7 +200,7 @@ pub enum OverallAssessment {
 }
 
 /// Deployment recommendation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Recommendation {
     /// Recommendation category
     pub category: RecommendationCategory,
@@ -210,7 +213,7 @@ pub struct Recommendation {
 }
 
 /// Recommendation categories
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecommendationCategory {
     /// Testing recommendations
     Testing,
@@ -238,7 +241,7 @@ pub enum Priority {
 }
 
 /// Validation step
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidationStep {
     /// Step description
     pub description: String,
@@ -251,7 +254,7 @@ pub struct ValidationStep {
 }
 
 /// Types of validation steps
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationStepType {
     /// Pre-deployment validation
     PreDeployment,
@@ -264,7 +267,7 @@ pub enum ValidationStepType {
 }
 
 /// Deployment time estimation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeploymentTime {
     /// Estimated preparation time
     pub preparation: String,
@@ -288,7 +291,8 @@ pub struct DiffAnalyzer {
 
 impl DiffAnalyzer {
     /// Create a new analyzer with default settings
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             enable_detailed: true,
             enable_impact: true,
@@ -297,7 +301,8 @@ impl DiffAnalyzer {
     }
 
     /// Create a new analyzer with minimal analysis
-    pub fn minimal() -> Self {
+    #[must_use]
+    pub const fn minimal() -> Self {
         Self {
             enable_detailed: false,
             enable_impact: false,
@@ -306,19 +311,22 @@ impl DiffAnalyzer {
     }
 
     /// Enable or disable detailed analysis
-    pub fn with_detailed_analysis(mut self, enable: bool) -> Self {
+    #[must_use]
+    pub const fn with_detailed_analysis(mut self, enable: bool) -> Self {
         self.enable_detailed = enable;
         self
     }
 
     /// Enable or disable impact analysis
-    pub fn with_impact_analysis(mut self, enable: bool) -> Self {
+    #[must_use]
+    pub const fn with_impact_analysis(mut self, enable: bool) -> Self {
         self.enable_impact = enable;
         self
     }
 
     /// Enable or disable categorization
-    pub fn with_categorization(mut self, enable: bool) -> Self {
+    #[must_use]
+    pub const fn with_categorization(mut self, enable: bool) -> Self {
         self.enable_categorization = enable;
         self
     }
@@ -722,7 +730,7 @@ impl DiffAnalyzer {
         }
     }
 
-    fn assess_overall_risk(
+    const fn assess_overall_risk(
         &self,
         diff_result: &DiffResult,
         statistics: &DiffStatistics,
@@ -947,17 +955,17 @@ impl DiffAnalyzer {
 
         // Adjust based on change volume
         let change_factor = (statistics.change_counts.total as f64 / 10.0).max(1.0);
-        let adjusted_deployment = (base_deployment_minutes as f64 * change_factor) as u32;
+        let adjusted_deployment = (f64::from(base_deployment_minutes) * change_factor) as u32;
 
         let preparation_time = adjusted_deployment / 2;
         let validation_time = adjusted_deployment;
         let total_time = preparation_time + adjusted_deployment + validation_time;
 
         DeploymentTime {
-            preparation: format!("{} minutes", preparation_time),
-            deployment: format!("{} minutes", adjusted_deployment),
-            validation: format!("{} minutes", validation_time),
-            total: format!("{} minutes", total_time),
+            preparation: format!("{preparation_time} minutes"),
+            deployment: format!("{adjusted_deployment} minutes"),
+            validation: format!("{validation_time} minutes"),
+            total: format!("{total_time} minutes"),
         }
     }
 }
@@ -965,17 +973,6 @@ impl DiffAnalyzer {
 impl Default for DiffAnalyzer {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Default for ChangeCategorization {
-    fn default() -> Self {
-        Self {
-            by_function: HashMap::new(),
-            by_section: HashMap::new(),
-            by_vendor_feature: HashMap::new(),
-            by_impact: HashMap::new(),
-        }
     }
 }
 

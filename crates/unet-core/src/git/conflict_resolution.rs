@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use tracing::{info, warn};
+use tracing::info;
 
 /// Types of merge conflicts that can occur
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

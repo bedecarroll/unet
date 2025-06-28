@@ -1,0 +1,205 @@
+# μNet Cluster Coordination Configuration Example
+# This configuration demonstrates horizontal scaling and cluster coordination capabilities
+
+[cluster]
+enabled = true
+cluster_id = "unet-production-cluster"
+
+[cluster.node]
+name = "unet-node-01"
+roles = ["primary", "worker"]
+priority = 200
+advertise_addr = "10.0.1.100:8080"
+
+[cluster.node.metadata]
+zone = "us-west-2a"
+instance_type = "m5.large"
+version = "0.1.0"
+
+[cluster.node.capacity]
+max_connections = 2000
+max_cpu = 0.85
+max_memory_mb = 3072
+
+[cluster.service_discovery]
+method = "static"  # Options: "static", "dns", "consul", "etcd", "kubernetes"
+discovery_interval = 30
+service_ttl = 60
+
+# Static node configuration for demonstration
+[[cluster.service_discovery.static_nodes]]
+node_id = "unet-node-02"
+address = "10.0.1.101:8080"
+roles = ["worker"]
+
+[[cluster.service_discovery.static_nodes]]
+node_id = "unet-node-03"
+address = "10.0.1.102:8080"
+roles = ["worker"]
+
+[cluster.health_monitoring]
+check_interval = 10
+check_timeout = 5
+failure_threshold = 3
+success_threshold = 2
+enable_deep_checks = true
+
+# Custom health check for database connectivity
+[[cluster.health_monitoring.custom_checks]]
+name = "database_connectivity"
+check_type = "tcp"
+target = "postgres://localhost:5432"
+interval = 30
+timeout = 5
+criticality = "critical"
+
+# Custom health check for Redis cache
+[[cluster.health_monitoring.custom_checks]]
+name = "redis_cache"
+check_type = "tcp"
+target = "redis://localhost:6379"
+interval = 15
+timeout = 3
+criticality = "warning"
+
+[cluster.config_sync]
+enabled = true
+sync_interval = 300
+sync_timeout = 30
+propagation_method = "immediate"
+validate_before_sync = true
+rollback_on_failure = true
+
+[cluster.failover]
+enabled = true
+detection_timeout = 30
+execution_timeout = 60
+
+[cluster.failover.leader_election]
+key_prefix = "unet:cluster:leader"
+lease_duration = 30
+renew_deadline = 20
+retry_period = 5
+
+[cluster.failover.load_redistribution]
+strategy = "least_connections"
+threshold = 0.2
+cooldown_period = 300
+max_redistribution_percent = 0.3
+
+[cluster.scaling]
+enabled = true
+evaluation_interval = 60
+cooldown_period = 300
+
+[cluster.scaling.thresholds]
+cpu_scale_up = 0.75
+cpu_scale_down = 0.25
+memory_scale_up = 0.80
+memory_scale_down = 0.30
+connections_scale_up = 1500
+connections_scale_down = 300
+
+[cluster.scaling.notifications]
+enabled = true
+channels = ["slack", "email"]
+severity_levels = ["warning", "critical"]
+
+# Example: AWS Load Balancer integration
+[load_balancer]
+enabled = true
+load_balancer_type = "aws_alb"
+health_check_path = "/health/lb"
+health_check_interval = 30
+health_check_timeout = 5
+healthy_threshold = 2
+unhealthy_threshold = 3
+
+[load_balancer.proxy_config]
+enable_proxy_protocol = true
+trusted_proxies = ["10.0.0.0/8", "172.16.0.0/12"]
+
+# Example: Shared state configuration for cluster coordination
+[shared_state]
+backend = "redis"
+redis_url = "redis://redis-cluster.internal:6379"
+default_expiry_seconds = 3600
+key_prefix = "unet:cluster"
+
+# Example: Stateless operation configuration
+[stateless]
+enabled = true
+
+[stateless.session_management]
+type = "jwt"
+jwt_secret_source = "file:///etc/unet/jwt-secret"
+
+[stateless.background_tasks]
+coordination_method = "leader_election"
+task_distribution = "round_robin"
+
+[stateless.distributed_locking]
+provider = "redis"
+default_timeout = 30
+retry_attempts = 3
+
+[stateless.rate_limiting]
+type = "sliding_window"
+window_size = 60
+shared_counters = true
+
+# Network configuration for cluster environments
+[network]
+enabled = true
+allowed_ranges = [
+    "10.0.0.0/8",      # Private network
+    "172.16.0.0/12",   # Docker networks
+    "192.168.0.0/16"   # Local networks
+]
+enable_geolocation = false
+enable_network_rate_limits = true
+bind_interfaces = ["0.0.0.0"]  # Listen on all interfaces for cluster communication
+
+# Metrics configuration for cluster monitoring
+[metrics]
+enabled = true
+endpoint = "/metrics"
+collection_interval = 15
+enable_performance_metrics = true
+enable_business_metrics = true
+enable_system_metrics = true
+retention_days = 30
+
+[metrics.labels]
+cluster_id = "unet-production-cluster"
+service = "unet"
+version = "0.1.0"
+environment = "production"
+
+# Enhanced logging for cluster operations
+[logging]
+level = "info"
+format = "json"
+
+[logging.aggregation]
+enabled = true
+syslog_endpoint = "syslog://log-aggregator.internal:514"
+
+[logging.alerting]
+enabled = true
+
+[[logging.alerting.rules]]
+name = "cluster_node_failure"
+level = "error"
+pattern = "node.*unhealthy"
+window_minutes = 5
+threshold = 1
+severity = "critical"
+
+[[logging.alerting.rules]]
+name = "scaling_events"
+level = "warn"
+pattern = "scaling.*cluster"
+window_minutes = 1
+threshold = 1
+severity = "high"

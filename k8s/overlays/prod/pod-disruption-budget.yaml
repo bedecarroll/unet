@@ -1,0 +1,52 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prod-unet-server-pdb
+  namespace: unet-prod
+  labels:
+    app.kubernetes.io/name: unet-server
+    app.kubernetes.io/component: availability
+    app.kubernetes.io/part-of: unet
+    environment: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: unet-server
+      environment: production
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prod-postgres-pdb
+  namespace: unet-prod
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: availability
+    app.kubernetes.io/part-of: unet
+    environment: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      environment: production
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: prod-redis-pdb
+  namespace: unet-prod
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: availability
+    app.kubernetes.io/part-of: unet
+    environment: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      environment: production

@@ -1,0 +1,52 @@
+[Unit]
+Description=μNet Network Configuration Management Server
+Documentation=https://github.com/example/unet
+After=network.target
+Wants=network.target
+
+[Service]
+Type=exec
+User=unet
+Group=unet
+ExecStart=/usr/bin/unet-server --config /etc/unet/config.toml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+
+# Allow writing to configuration and data directories
+ReadWritePaths=/var/lib/unet /var/log/unet /etc/unet
+
+# Environment
+Environment=RUST_LOG=info
+Environment=UNET_CONFIG_DIR=/etc/unet
+Environment=UNET_DATA_DIR=/var/lib/unet
+Environment=UNET_LOG_DIR=/var/log/unet
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
