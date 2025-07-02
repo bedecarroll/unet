@@ -72,3 +72,5 @@
 - [Milestone 6 Completion - 2025-06-27](reports/2025-06-27_22-05-38.md)
 - [Milestone 7.2.3 Completion - 2025-06-29](reports/2025-06-29_03-35-16.md)
 - [Milestone 7 Complete Production System - 2025-06-30](reports/2025-06-30_12-21-38.md)
+- [Documentation Quality Review - 2025-07-02](reports/2025-07-02_docs_review.md)
+- [Repository Structure Review - 2025-07-02](reports/2025-07-02_repo_structure_review.md)
