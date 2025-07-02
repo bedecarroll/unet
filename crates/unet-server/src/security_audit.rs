@@ -562,12 +562,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_event_creation() {
-        let event =
-            SecurityEvent::new(Self::AuthenticationFailure, "User login failed".to_string())
-                .with_user(Uuid::new_v4(), "testuser".to_string())
-                .with_source_ip("192.168.1.1".parse().unwrap())
-                .with_risk_level(RiskLevel::Medium)
-                .requires_investigation();
+        let event = SecurityEvent::new(
+            SecurityEventType::AuthenticationFailure,
+            "User login failed".to_string(),
+        )
+        .with_user(Uuid::new_v4(), "testuser".to_string())
+        .with_source_ip("192.168.1.1".parse().unwrap())
+        .with_risk_level(RiskLevel::Medium)
+        .requires_investigation();
 
         assert_eq!(event.risk_level, RiskLevel::Medium);
         assert!(event.requires_investigation);
@@ -581,7 +583,7 @@ mod tests {
         let logger = SecurityAuditLogger::new(config);
 
         let event = SecurityEvent::new(
-            Self::AuthenticationSuccess,
+            SecurityEventType::AuthenticationSuccess,
             "User login successful".to_string(),
         );
 
@@ -589,7 +591,10 @@ mod tests {
 
         let events = logger.get_recent_events(10).await;
         assert_eq!(events.len(), 1);
-        assert!(matches!(events[0].event_type, Self::AuthenticationSuccess));
+        assert!(matches!(
+            events[0].event_type,
+            SecurityEventType::AuthenticationSuccess
+        ));
     }
 
     #[tokio::test]
@@ -603,17 +608,23 @@ mod tests {
         // Add various events
         logger
             .log_event(
-                SecurityEvent::new(Self::AuthenticationSuccess, "User login".to_string())
-                    .with_user(user_id, "testuser".to_string())
-                    .with_source_ip(ip),
+                SecurityEvent::new(
+                    SecurityEventType::AuthenticationSuccess,
+                    "User login".to_string(),
+                )
+                .with_user(user_id, "testuser".to_string())
+                .with_source_ip(ip),
             )
             .await
             .unwrap();
 
         logger
             .log_event(
-                SecurityEvent::new(Self::PermissionDenied, "Access denied".to_string())
-                    .with_source_ip(ip),
+                SecurityEvent::new(
+                    SecurityEventType::PermissionDenied,
+                    "Access denied".to_string(),
+                )
+                .with_source_ip(ip),
             )
             .await
             .unwrap();

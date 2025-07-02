@@ -49,10 +49,22 @@ unet/                       # ← you are here
 │   └── schemas/            # JSON schemas for validation
 ├── policies/               # Sample *.rules checked into Git (optional)
 ├── templates/              # Sample *.jinja templates (optional)
+├── deploy/                 # Deployment assets and container configs
+│   ├── ansible/            # Ansible playbooks for bare‑metal installs
+│   ├── helm/               # Helm charts for Kubernetes
+│   ├── k8s/                # Raw Kubernetes manifests
+│   ├── packaging/          # DEB/RPM packaging scripts
+│   ├── systemd/            # Service unit files
+│   ├── docker-compose.yml  # PoC stack (server + Caddy TLS)
+│   └── docker-compose.prod.yml
+├── configs/                # Runtime configuration templates and examples
+│   ├── examples/           # Sample config.toml variants
+│   ├── templates/          # Environment templates
+│   └── environments/       # Per-environment configs
+├── tests/                  # Integration helpers and smoke tests
 ├── docker/                 # Container build context
 │   ├── Dockerfile.server
-│   ├── Dockerfile.cli
-│   └── docker-compose.yml  # PoC stack (server + Caddy TLS)
+│   └── Dockerfile.cli
 ├── scripts/                # Helper scripts (pre‑commit, release)
 └── .github/
     └── workflows/          # GitHub Actions CI/CD
@@ -60,7 +72,9 @@ unet/                       # ← you are here
 
 - Every Rust crate lives under `crates/` → one `cargo check` covers all.
 - Docs are **outside** source tree so we can publish via GitHub Pages or Netlify with mdBook.
-- Sample `policies/` & `templates/` folders let new users try μNet without creating repos.
+- Sample `policies/`, `templates/` and `fixtures/` directories provide demo data so you can try μNet without authoring anything from scratch.
+
+These sample directories are referenced throughout the docs and tests. They allow you to spin up a demo environment or run the integration helpers in `tests/` without building your own dataset first.
 
 ---
 
