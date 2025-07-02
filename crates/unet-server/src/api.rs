@@ -22,7 +22,7 @@ pub struct ApiResponse<T> {
 
 impl<T> ApiResponse<T> {
     /// Create a successful response
-    pub fn success(data: T) -> Self {
+    pub const fn success(data: T) -> Self {
         Self {
             data,
             success: true,
@@ -31,7 +31,7 @@ impl<T> ApiResponse<T> {
     }
 
     /// Create a successful response with message
-    pub fn success_with_message(data: T, message: String) -> Self {
+    pub const fn success_with_message(data: T, message: String) -> Self {
         Self {
             data,
             success: true,
@@ -53,7 +53,7 @@ pub struct ApiError {
 
 impl ApiError {
     /// Create a new API error
-    pub fn new(error: String, code: String) -> Self {
+    pub const fn new(error: String, code: String) -> Self {
         Self {
             error,
             code,
@@ -68,7 +68,7 @@ impl ApiError {
 
     /// Create a not found error
     pub fn not_found(resource: &str) -> Self {
-        Self::new(format!("{} not found", resource), "NOT_FOUND".to_string())
+        Self::new(format!("{resource} not found"), "NOT_FOUND".to_string())
     }
 
     /// Create a bad request error
@@ -91,8 +91,7 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let status = match self.code.as_str() {
             "NOT_FOUND" => StatusCode::NOT_FOUND,
-            "BAD_REQUEST" => StatusCode::BAD_REQUEST,
-            "VALIDATION_ERROR" => StatusCode::BAD_REQUEST,
+            "BAD_REQUEST" | "VALIDATION_ERROR" => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
@@ -112,12 +111,12 @@ pub struct NodeResponse {
 
 impl NodeResponse {
     /// Create from node and optional status
-    pub fn new(node: Node, status: Option<NodeStatus>) -> Self {
+    pub const fn new(node: Node, status: Option<NodeStatus>) -> Self {
         Self { node, status }
     }
 
     /// Create from node only
-    pub fn from_node(node: Node) -> Self {
+    pub const fn from_node(node: Node) -> Self {
         Self { node, status: None }
     }
 }
@@ -349,7 +348,7 @@ pub struct PaginatedResponse<T> {
 }
 
 impl<T> PaginatedResponse<T> {
-    /// Create from PagedResult
+    /// Create from `PagedResult`
     pub fn from_paged_result(result: PagedResult<T>) -> Self {
         Self {
             data: result.items,

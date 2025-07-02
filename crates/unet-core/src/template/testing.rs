@@ -541,7 +541,7 @@ impl TemplateTestFramework {
         // Run multiple iterations to get reliable performance data
         for _ in 0..test.iterations {
             let start_time = Instant::now();
-            let _result = self
+            let result = self
                 .renderer
                 .render_template(&test.template_name, context.clone())
                 .await?;

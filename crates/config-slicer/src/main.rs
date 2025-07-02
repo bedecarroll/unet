@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use config_slicer::{
     ApprovalPriority, ConfigSlicerApi, DiffDisplay, DiffEngine, DiffOptions,
-    DiffWorkflowOrchestrator, DisplayOptions,
+    DiffWorkflowOrchestrator, DisplayOptions, ValidationReport, diff::types::DiffResult,
 };
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
@@ -14,7 +14,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -407,7 +406,7 @@ enum ApprovalPriorityArg {
     Emergency,
 }
 
-#[derive(Clone, ValueEnum)]
+#[derive(Clone, Copy, ValueEnum)]
 enum OutputFormat {
     /// Plain text output
     Text,
@@ -417,7 +416,7 @@ enum OutputFormat {
     Yaml,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum)]
 enum PatternType {
     /// Glob pattern (e.g., "interface*")
     Glob,
@@ -427,11 +426,11 @@ enum PatternType {
     Path,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum)]
 enum Vendor {
     /// Cisco IOS/IOS-XE
     Cisco,
-    /// Juniper JunOS
+    /// Juniper `JunOS`
     Juniper,
     /// Arista EOS
     Arista,
@@ -453,7 +452,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize logging
-    initialize_logging(cli.verbose || cli.debug, cli.debug)?;
+    initialize_logging(cli.verbose || cli.debug, cli.debug);
 
     debug!(
         "Starting config-slicer CLI with args: {:?}",
@@ -482,24 +481,21 @@ fn main() -> Result<()> {
         Commands::Diff {
             old_file,
             new_file,
-            algorithm,
+            algorithm: _algorithm, // Unused until implementation
             output,
             color,
-            context,
+            context: _context, // Unused until implementation
             side_by_side,
             html,
             stats,
         } => handle_diff_command(
             old_file,
             new_file,
-            algorithm,
             output,
             color,
-            context,
             side_by_side,
             html,
             stats,
-            cli.output_format,
         ),
         Commands::Validate {
             file,
@@ -507,11 +503,17 @@ fn main() -> Result<()> {
             output,
         } => handle_validate_command(file, vendor, output, cli.output_format),
         Commands::Batch { batch_command } => handle_batch_command(batch_command, cli.output_format),
-        Commands::Info { detailed } => handle_info_command(detailed),
+        Commands::Info { detailed } => {
+            handle_info_command(detailed);
+            Ok(())
+        }
         Commands::Workflow { workflow_command } => {
             handle_workflow_command(workflow_command, cli.output_format)
         }
-        Commands::Completions { shell } => handle_completions_command(shell),
+        Commands::Completions { shell } => {
+            handle_completions_command(shell);
+            Ok(())
+        }
     };
 
     if let Err(e) = result {
@@ -523,7 +525,7 @@ fn main() -> Result<()> {
 }
 
 /// Initialize logging based on verbosity level
-fn initialize_logging(verbose: bool, debug: bool) -> Result<()> {
+fn initialize_logging(verbose: bool, debug: bool) {
     let filter = if debug {
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"))
     } else if verbose {
@@ -537,7 +539,66 @@ fn initialize_logging(verbose: bool, debug: bool) -> Result<()> {
         .with_target(false)
         .with_level(true)
         .init();
+}
 
+/// Parse configuration file with API
+fn parse_config_file_with_api(
+    api: &ConfigSlicerApi,
+    file: &PathBuf,
+    vendor: Option<Vendor>,
+) -> Result<config_slicer::parser::ConfigNode> {
+    let config_tree = api
+        .parse_config_file(file, vendor.map(convert_vendor))
+        .context("Failed to parse configuration file")?;
+
+    info!(
+        "Configuration parsed successfully, found {} top-level sections",
+        config_tree.children.len()
+    );
+
+    Ok(config_tree)
+}
+
+/// Extract slices using the specified pattern type
+fn extract_slices_by_pattern(
+    api: &ConfigSlicerApi,
+    config_tree: &config_slicer::parser::ConfigNode,
+    pattern: &str,
+    pattern_type: PatternType,
+) -> Result<config_slicer::slicer::SliceResult> {
+    let slice_result = match pattern_type {
+        PatternType::Glob => {
+            debug!("Using glob pattern matching");
+            api.slice_by_glob(config_tree, pattern)
+        }
+        PatternType::Regex => {
+            debug!("Using regex pattern matching");
+            api.slice_by_regex(config_tree, pattern)
+        }
+        PatternType::Path => {
+            debug!("Using hierarchical path matching");
+            api.slice_by_path(config_tree, pattern)
+        }
+    }
+    .context("Failed to extract configuration slices")?;
+
+    info!("Found {} matching slices", slice_result.matches.len());
+
+    Ok(slice_result)
+}
+
+/// Write output to file or stdout
+fn write_output(output: Option<PathBuf>, content: String) -> Result<()> {
+    match output {
+        Some(output_path) => {
+            fs::write(&output_path, content)
+                .with_context(|| format!("Failed to write output to {}", output_path.display()))?;
+            info!("Output written to {}", output_path.display());
+        }
+        None => {
+            print!("{content}");
+        }
+    }
     Ok(())
 }
 
@@ -562,48 +623,16 @@ fn handle_slice_command(
     let api = ConfigSlicerApi::new();
 
     // Parse the configuration file
-    let config_tree = api
-        .parse_config_file(&file, vendor.map(convert_vendor))
-        .context("Failed to parse configuration file")?;
-
-    info!(
-        "Configuration parsed successfully, found {} top-level sections",
-        config_tree.children.len()
-    );
+    let config_tree = parse_config_file_with_api(&api, &file, vendor)?;
 
     // Extract slices based on pattern type
-    let slice_result = match pattern_type {
-        PatternType::Glob => {
-            debug!("Using glob pattern matching");
-            api.slice_by_glob(&config_tree, &pattern)
-        }
-        PatternType::Regex => {
-            debug!("Using regex pattern matching");
-            api.slice_by_regex(&config_tree, &pattern)
-        }
-        PatternType::Path => {
-            debug!("Using hierarchical path matching");
-            api.slice_by_path(&config_tree, &pattern)
-        }
-    }
-    .context("Failed to extract configuration slices")?;
-
-    info!("Found {} matching slices", slice_result.matches.len());
+    let slice_result = extract_slices_by_pattern(&api, &config_tree, &pattern, pattern_type)?;
 
     // Format and output the results
     let formatted_output = format_slice_output(&slice_result, output_format, line_numbers)?;
 
     // Write to file or stdout
-    match output {
-        Some(output_path) => {
-            fs::write(&output_path, formatted_output)
-                .with_context(|| format!("Failed to write output to {}", output_path.display()))?;
-            info!("Output written to {}", output_path.display());
-        }
-        None => {
-            print!("{}", formatted_output);
-        }
-    }
+    write_output(output, formatted_output)?;
 
     Ok(())
 }
@@ -612,15 +641,13 @@ fn handle_slice_command(
 fn handle_diff_command(
     old_file: PathBuf,
     new_file: PathBuf,
-    _algorithm: DiffAlgorithm, // Currently unused - engine provides comprehensive diff
     output: Option<PathBuf>,
     color: bool,
-    _context: usize, // Context is handled by display options
     side_by_side: bool,
     html: bool,
     stats: bool,
-    _output_format: OutputFormat, // Currently unused for diff output
 ) -> Result<()> {
+    // Additional parameters (algorithm, context, output_format) will be added when needed
     info!(
         "Diffing configurations: {} vs {}",
         old_file.display(),
@@ -631,71 +658,91 @@ fn handle_diff_command(
         color, side_by_side, html, stats
     );
 
-    // Read the configuration files
-    let old_config = fs::read_to_string(&old_file)
+    let (old_config, new_config) = read_config_files(&old_file, &new_file)?;
+    let diff_result = compute_diff(&old_config, &new_config)?;
+    let final_output = format_diff_output(&diff_result, color, side_by_side, html, stats);
+    write_output(output, final_output)?;
+
+    Ok(())
+}
+
+fn read_config_files(old_file: &PathBuf, new_file: &PathBuf) -> Result<(String, String)> {
+    let old_config = fs::read_to_string(old_file)
         .with_context(|| format!("Failed to read {}", old_file.display()))?;
-    let new_config = fs::read_to_string(&new_file)
+    let new_config = fs::read_to_string(new_file)
         .with_context(|| format!("Failed to read {}", new_file.display()))?;
+    Ok((old_config, new_config))
+}
 
-    // Initialize diff engine
+fn compute_diff(old_config: &str, new_config: &str) -> Result<DiffResult> {
     let diff_engine = DiffEngine::new().context("Failed to create diff engine")?;
-
-    // Perform the diff - the engine provides a comprehensive diff
     let diff_result = diff_engine
-        .diff(&old_config, &new_config)
+        .diff(old_config, new_config)
         .context("Failed to compute diff")?;
 
     info!(
         "Diff computed: {} changes found",
         diff_result.text_diff.changes.len()
     );
+    Ok(diff_result)
+}
 
-    // Format the diff output
-    let display_options = DisplayOptions {
+fn format_diff_output(
+    diff_result: &DiffResult,
+    color: bool,
+    side_by_side: bool,
+    html: bool,
+    stats: bool,
+) -> String {
+    let display_options = create_display_options(color);
+    let formatted_output =
+        format_diff_content(diff_result, &display_options, html, side_by_side, color);
+
+    if stats {
+        let stats_output = format_diff_stats(diff_result);
+        format!("{formatted_output}\n\n{stats_output}")
+    } else {
+        formatted_output
+    }
+}
+
+const fn create_display_options(color: bool) -> DisplayOptions {
+    DisplayOptions {
         use_colors: color,
         show_line_numbers: true,
         show_context: true,
         terminal_width: 120,
         max_lines: 0,
         compact_unchanged: true,
-    };
+    }
+}
 
+fn format_diff_content(
+    diff_result: &DiffResult,
+    display_options: &DisplayOptions,
+    html: bool,
+    side_by_side: bool,
+    color: bool,
+) -> String {
     let diff_display = DiffDisplay::new();
-    let formatted_output = if html {
-        debug!("Generating HTML diff output");
-        diff_display.format_html(&diff_result, &display_options)
-    } else if side_by_side {
-        debug!("Generating side-by-side diff output");
-        diff_display.format_side_by_side(&diff_result, &display_options)
-    } else if color {
-        debug!("Generating colored terminal diff output");
-        diff_display.format_colored(&diff_result, &display_options)
-    } else {
-        debug!("Generating unified diff output");
-        diff_display.format_unified(&diff_result, &display_options)
-    };
-
-    // Add statistics if requested
-    let final_output = if stats {
-        let stats_output = format_diff_stats(&diff_result);
-        format!("{}\n\n{}", formatted_output, stats_output)
-    } else {
-        formatted_output
-    };
-
-    // Write to file or stdout
-    match output {
-        Some(output_path) => {
-            fs::write(&output_path, final_output)
-                .with_context(|| format!("Failed to write output to {}", output_path.display()))?;
-            info!("Diff output written to {}", output_path.display());
+    match (html, side_by_side, color) {
+        (true, _, _) => {
+            debug!("Generating HTML diff output");
+            diff_display.format_html(diff_result, display_options)
         }
-        None => {
-            print!("{}", final_output);
+        (false, true, _) => {
+            debug!("Generating side-by-side diff output");
+            diff_display.format_side_by_side(diff_result, display_options)
+        }
+        (false, false, true) => {
+            debug!("Generating colored terminal diff output");
+            diff_display.format_colored(diff_result, display_options)
+        }
+        (false, false, false) => {
+            debug!("Generating unified diff output");
+            diff_display.format_unified(diff_result, display_options)
         }
     }
-
-    Ok(())
 }
 
 /// Handle the validate command
@@ -707,45 +754,50 @@ fn handle_validate_command(
 ) -> Result<()> {
     info!("Validating configuration file: {}", file.display());
 
-    // Initialize the API
-    let api = ConfigSlicerApi::new();
+    let validation_report = perform_validation(&file, vendor)?;
+    let formatted_output = format_validation_output(&validation_report, &output_format)?;
+    write_validation_output(output, formatted_output)?;
+    handle_validation_result(&validation_report);
 
-    // Read and validate the configuration
+    Ok(())
+}
+
+fn perform_validation(file: &PathBuf, vendor: Option<Vendor>) -> Result<ValidationReport> {
+    let api = ConfigSlicerApi::new();
     let config_text =
-        fs::read_to_string(&file).with_context(|| format!("Failed to read {}", file.display()))?;
+        fs::read_to_string(file).with_context(|| format!("Failed to read {}", file.display()))?;
 
     let validation_report = api
         .validate_config(&config_text, vendor.map(convert_vendor))
         .context("Failed to validate configuration")?;
 
     info!("Validation completed: {}", validation_report.summary());
+    Ok(validation_report)
+}
 
-    // Format the validation output
-    let formatted_output = format_validation_output(&validation_report, output_format.clone())?;
-
-    // Write to file or stdout
+fn write_validation_output(output: Option<PathBuf>, content: String) -> Result<()> {
     match output {
         Some(output_path) => {
-            fs::write(&output_path, formatted_output)
+            fs::write(&output_path, content)
                 .with_context(|| format!("Failed to write output to {}", output_path.display()))?;
             info!("Validation report written to {}", output_path.display());
         }
         None => {
-            print!("{}", formatted_output);
+            print!("{content}");
         }
     }
+    Ok(())
+}
 
-    // Set exit code based on validation result
+fn handle_validation_result(validation_report: &ValidationReport) {
     if !validation_report.is_valid {
         warn!("Configuration validation failed");
         std::process::exit(2);
     }
-
-    Ok(())
 }
 
 /// Handle the info command
-fn handle_info_command(detailed: bool) -> Result<()> {
+fn handle_info_command(detailed: bool) {
     let api = ConfigSlicerApi::new();
 
     println!("config-slicer - Network Configuration Slicing and Diffing Tool");
@@ -755,7 +807,7 @@ fn handle_info_command(detailed: bool) -> Result<()> {
     println!("Available Parsers:");
     for parser in api.available_parsers() {
         if detailed {
-            println!("  {:?} - {}", parser, get_vendor_description(&parser));
+            println!("  {parser:?} - {}", get_vendor_description(&parser));
         } else {
             println!("  {:?}", parser);
         }
@@ -764,7 +816,7 @@ fn handle_info_command(detailed: bool) -> Result<()> {
 
     println!("Available Extractors:");
     for extractor in api.available_extractors() {
-        println!("  {}", extractor);
+        println!("  {extractor}");
     }
     println!();
 
@@ -786,19 +838,15 @@ fn handle_info_command(detailed: bool) -> Result<()> {
         println!("  json - JSON structured output");
         println!("  yaml - YAML structured output");
     }
-
-    Ok(())
 }
 
 /// Handle the completions command
-fn handle_completions_command(shell: clap_complete::Shell) -> Result<()> {
+fn handle_completions_command(shell: clap_complete::Shell) {
     use clap_complete::generate;
     use std::io;
 
     let mut app = Cli::command();
     generate(shell, &mut app, "config-slicer", &mut io::stdout());
-
-    Ok(())
 }
 
 /// Handle batch processing commands
@@ -828,7 +876,7 @@ fn handle_batch_command(batch_command: BatchCommands, output_format: OutputForma
             old_dir,
             new_dir,
             output_dir,
-            algorithm,
+            algorithm: _algorithm, // Unused until implementation
             html,
             stats,
             jobs,
@@ -838,7 +886,6 @@ fn handle_batch_command(batch_command: BatchCommands, output_format: OutputForma
             old_dir,
             new_dir,
             output_dir,
-            algorithm,
             html,
             stats,
             jobs,
@@ -886,34 +933,54 @@ fn handle_batch_slice(
         output_dir.display()
     );
 
-    // Create output directory if it doesn't exist
-    fs::create_dir_all(&output_dir).with_context(|| {
+    let input_files = setup_batch_slice(&input, &output_dir)?;
+    if input_files.is_empty() {
+        warn!("No input files found matching pattern: {}", input);
+        return Ok(());
+    }
+
+    configure_parallelism(jobs)?;
+    let progress_bar = setup_progress_bar(progress, input_files.len());
+    let (success_count, error_count) = process_slice_files(
+        &input_files,
+        &pattern,
+        pattern_type,
+        vendor,
+        &output_dir,
+        output_format,
+        &progress_bar,
+        continue_on_error,
+    )?;
+
+    finish_batch_operation(&progress_bar, success_count, error_count, continue_on_error)
+}
+
+fn setup_batch_slice(input: &str, output_dir: &PathBuf) -> Result<Vec<PathBuf>> {
+    fs::create_dir_all(output_dir).with_context(|| {
         format!(
             "Failed to create output directory: {}",
             output_dir.display()
         )
     })?;
 
-    // Find input files using glob or directory walking
-    let input_files = find_input_files(&input)?;
+    let input_files = find_input_files(input)?;
     info!("Found {} files to process", input_files.len());
+    Ok(input_files)
+}
 
-    if input_files.is_empty() {
-        warn!("No input files found matching pattern: {}", input);
-        return Ok(());
-    }
-
-    // Set up parallelism
+fn configure_parallelism(jobs: Option<usize>) -> Result<()> {
     if let Some(num_jobs) = jobs {
         rayon::ThreadPoolBuilder::new()
             .num_threads(num_jobs)
             .build_global()
             .context("Failed to configure thread pool")?;
     }
+    Ok(())
+}
 
-    // Set up progress bar
-    let progress_bar = if progress {
-        let pb = ProgressBar::new(input_files.len() as u64);
+fn setup_progress_bar(progress: bool, file_count: usize) -> Option<ProgressBar> {
+    if progress {
+        let pb = ProgressBar::new(file_count as u64);
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
@@ -924,41 +991,43 @@ fn handle_batch_slice(
         Some(pb)
     } else {
         None
-    };
+    }
+}
 
-    let start_time = Instant::now();
+fn process_slice_files(
+    input_files: &[PathBuf],
+    pattern: &str,
+    pattern_type: PatternType,
+    vendor: Option<Vendor>,
+    output_dir: &Path,
+    output_format: OutputFormat,
+    progress_bar: &Option<ProgressBar>,
+    continue_on_error: bool,
+) -> Result<(usize, usize)> {
     let error_count = Arc::new(AtomicUsize::new(0));
     let success_count = Arc::new(AtomicUsize::new(0));
 
-    // Process files in parallel
     let _results: Vec<Result<()>> = input_files
         .par_iter()
         .map(|input_file| {
             let result = process_slice_file(
                 input_file,
-                &pattern,
-                pattern_type.clone(),
-                vendor.clone(),
-                &output_dir,
-                output_format.clone(),
+                pattern,
+                pattern_type,
+                vendor,
+                output_dir,
+                output_format,
             );
 
-            match &result {
-                Ok(_) => {
-                    success_count.fetch_add(1, Ordering::SeqCst);
-                    debug!("Successfully processed: {}", input_file.display());
-                }
-                Err(e) => {
-                    error_count.fetch_add(1, Ordering::SeqCst);
-                    if continue_on_error {
-                        warn!("Error processing {}: {}", input_file.display(), e);
-                    } else {
-                        error!("Error processing {}: {}", input_file.display(), e);
-                    }
-                }
-            }
+            handle_slice_result(
+                &result,
+                input_file,
+                &success_count,
+                &error_count,
+                continue_on_error,
+            );
 
-            if let Some(ref pb) = progress_bar {
+            if let Some(pb) = progress_bar {
                 pb.inc(1);
             }
 
@@ -966,26 +1035,54 @@ fn handle_batch_slice(
         })
         .collect();
 
-    if let Some(ref pb) = progress_bar {
+    Ok((
+        success_count.load(Ordering::SeqCst),
+        error_count.load(Ordering::SeqCst),
+    ))
+}
+
+fn handle_slice_result(
+    result: &Result<()>,
+    input_file: &Path,
+    success_count: &Arc<AtomicUsize>,
+    error_count: &Arc<AtomicUsize>,
+    continue_on_error: bool,
+) {
+    match result {
+        Ok(_) => {
+            success_count.fetch_add(1, Ordering::SeqCst);
+            debug!("Successfully processed: {}", input_file.display());
+        }
+        Err(e) => {
+            error_count.fetch_add(1, Ordering::SeqCst);
+            if continue_on_error {
+                warn!("Error processing {}: {}", input_file.display(), e);
+            } else {
+                error!("Error processing {}: {}", input_file.display(), e);
+            }
+        }
+    }
+}
+
+fn finish_batch_operation(
+    progress_bar: &Option<ProgressBar>,
+    success_count: usize,
+    error_count: usize,
+    continue_on_error: bool,
+) -> Result<()> {
+    if let Some(pb) = progress_bar {
         pb.finish_with_message("Batch slice complete");
     }
 
-    let elapsed = start_time.elapsed();
-    let success = success_count.load(Ordering::SeqCst);
-    let errors = error_count.load(Ordering::SeqCst);
-
     info!(
-        "Batch slice completed in {:.2}s: {} successful, {} errors",
-        elapsed.as_secs_f64(),
-        success,
-        errors
+        "Batch slice completed: {} successful, {} errors",
+        success_count, error_count
     );
 
-    // Handle errors
-    if !continue_on_error && errors > 0 {
+    if !continue_on_error && error_count > 0 {
         return Err(anyhow::anyhow!(
             "Batch operation failed with {} errors",
-            errors
+            error_count
         ));
     }
 
@@ -997,13 +1094,13 @@ fn handle_batch_diff(
     old_dir: String,
     new_dir: String,
     output_dir: PathBuf,
-    _algorithm: DiffAlgorithm,
     html: bool,
     stats: bool,
     jobs: Option<usize>,
     progress: bool,
     continue_on_error: bool,
 ) -> Result<()> {
+    // Algorithm parameter will be added when implementation supports it
     info!("Starting batch diff operation");
     info!(
         "Old: {}, New: {}, Output: {}",
@@ -1012,37 +1109,49 @@ fn handle_batch_diff(
         output_dir.display()
     );
 
-    // Create output directory if it doesn't exist
-    fs::create_dir_all(&output_dir).with_context(|| {
+    let file_pairs = setup_batch_diff(&old_dir, &new_dir, &output_dir)?;
+    if file_pairs.is_empty() {
+        warn!("No matching file pairs found for diffing");
+        return Ok(());
+    }
+
+    configure_parallelism(jobs)?;
+    let progress_bar = setup_diff_progress_bar(progress, file_pairs.len());
+    let (success_count, error_count) = process_diff_pairs(
+        &file_pairs,
+        &output_dir,
+        html,
+        stats,
+        &progress_bar,
+        continue_on_error,
+    )?;
+
+    finish_batch_diff_operation(&progress_bar, success_count, error_count, continue_on_error)
+}
+
+fn setup_batch_diff(
+    old_dir: &str,
+    new_dir: &str,
+    output_dir: &Path,
+) -> Result<Vec<(PathBuf, PathBuf)>> {
+    fs::create_dir_all(output_dir).with_context(|| {
         format!(
             "Failed to create output directory: {}",
             output_dir.display()
         )
     })?;
 
-    // Find matching file pairs
-    let old_files = find_input_files(&old_dir)?;
-    let new_files = find_input_files(&new_dir)?;
-
+    let old_files = find_input_files(old_dir)?;
+    let new_files = find_input_files(new_dir)?;
     let file_pairs = match_file_pairs(&old_files, &new_files)?;
+
     info!("Found {} file pairs to diff", file_pairs.len());
+    Ok(file_pairs)
+}
 
-    if file_pairs.is_empty() {
-        warn!("No matching file pairs found for diffing");
-        return Ok(());
-    }
-
-    // Set up parallelism
-    if let Some(num_jobs) = jobs {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(num_jobs)
-            .build_global()
-            .context("Failed to configure thread pool")?;
-    }
-
-    // Set up progress bar
-    let progress_bar = if progress {
-        let pb = ProgressBar::new(file_pairs.len() as u64);
+fn setup_diff_progress_bar(progress: bool, file_count: usize) -> Option<ProgressBar> {
+    if progress {
+        let pb = ProgressBar::new(file_count as u64);
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
@@ -1053,48 +1162,34 @@ fn handle_batch_diff(
         Some(pb)
     } else {
         None
-    };
+    }
+}
 
-    let start_time = Instant::now();
+fn process_diff_pairs(
+    file_pairs: &[(PathBuf, PathBuf)],
+    output_dir: &Path,
+    html: bool,
+    stats: bool,
+    progress_bar: &Option<ProgressBar>,
+    continue_on_error: bool,
+) -> Result<(usize, usize)> {
     let error_count = Arc::new(AtomicUsize::new(0));
     let success_count = Arc::new(AtomicUsize::new(0));
 
-    // Process file pairs in parallel
     let _results: Vec<Result<()>> = file_pairs
         .par_iter()
         .map(|(old_file, new_file)| {
-            let result = process_diff_pair(old_file, new_file, &output_dir, html, stats);
+            let result = process_diff_pair(old_file, new_file, output_dir, html, stats);
+            handle_diff_result(
+                &result,
+                old_file,
+                new_file,
+                &success_count,
+                &error_count,
+                continue_on_error,
+            );
 
-            match &result {
-                Ok(_) => {
-                    success_count.fetch_add(1, Ordering::SeqCst);
-                    debug!(
-                        "Successfully diffed: {} vs {}",
-                        old_file.display(),
-                        new_file.display()
-                    );
-                }
-                Err(e) => {
-                    error_count.fetch_add(1, Ordering::SeqCst);
-                    if continue_on_error {
-                        warn!(
-                            "Error diffing {} vs {}: {}",
-                            old_file.display(),
-                            new_file.display(),
-                            e
-                        );
-                    } else {
-                        error!(
-                            "Error diffing {} vs {}: {}",
-                            old_file.display(),
-                            new_file.display(),
-                            e
-                        );
-                    }
-                }
-            }
-
-            if let Some(ref pb) = progress_bar {
+            if let Some(pb) = progress_bar {
                 pb.inc(1);
             }
 
@@ -1102,26 +1197,65 @@ fn handle_batch_diff(
         })
         .collect();
 
-    if let Some(ref pb) = progress_bar {
+    Ok((
+        success_count.load(Ordering::SeqCst),
+        error_count.load(Ordering::SeqCst),
+    ))
+}
+
+fn handle_diff_result(
+    result: &Result<()>,
+    old_file: &Path,
+    new_file: &Path,
+    success_count: &Arc<AtomicUsize>,
+    error_count: &Arc<AtomicUsize>,
+    continue_on_error: bool,
+) {
+    match result {
+        Ok(_) => {
+            success_count.fetch_add(1, Ordering::SeqCst);
+            debug!(
+                "Successfully diffed: {} vs {}",
+                old_file.display(),
+                new_file.display()
+            );
+        }
+        Err(e) => {
+            error_count.fetch_add(1, Ordering::SeqCst);
+            let msg = format!(
+                "Error diffing {} vs {}: {}",
+                old_file.display(),
+                new_file.display(),
+                e
+            );
+            if continue_on_error {
+                warn!("{}", msg);
+            } else {
+                error!("{}", msg);
+            }
+        }
+    }
+}
+
+fn finish_batch_diff_operation(
+    progress_bar: &Option<ProgressBar>,
+    success_count: usize,
+    error_count: usize,
+    continue_on_error: bool,
+) -> Result<()> {
+    if let Some(pb) = progress_bar {
         pb.finish_with_message("Batch diff complete");
     }
 
-    let elapsed = start_time.elapsed();
-    let success = success_count.load(Ordering::SeqCst);
-    let errors = error_count.load(Ordering::SeqCst);
-
     info!(
-        "Batch diff completed in {:.2}s: {} successful, {} errors",
-        elapsed.as_secs_f64(),
-        success,
-        errors
+        "Batch diff completed: {} successful, {} errors",
+        success_count, error_count
     );
 
-    // Handle errors
-    if !continue_on_error && errors > 0 {
+    if !continue_on_error && error_count > 0 {
         return Err(anyhow::anyhow!(
             "Batch operation failed with {} errors",
-            errors
+            error_count
         ));
     }
 
@@ -1142,34 +1276,49 @@ fn handle_batch_validate(
     info!("Starting batch validate operation");
     info!("Input: {}, Output: {}", input, output_dir.display());
 
-    // Create output directory if it doesn't exist
-    fs::create_dir_all(&output_dir).with_context(|| {
+    let input_files = setup_batch_validate(&input, &output_dir)?;
+    if input_files.is_empty() {
+        warn!("No input files found matching pattern: {}", input);
+        return Ok(());
+    }
+
+    configure_parallelism(jobs)?;
+    let progress_bar = setup_validate_progress_bar(progress, input_files.len());
+    let results = process_validate_files(
+        &input_files,
+        vendor,
+        &output_dir,
+        output_format,
+        &progress_bar,
+        continue_on_error,
+    )?;
+
+    finish_batch_validate_operation(
+        &progress_bar,
+        &results,
+        &output_dir,
+        summary,
+        output_format,
+        continue_on_error,
+    )
+}
+
+fn setup_batch_validate(input: &str, output_dir: &PathBuf) -> Result<Vec<PathBuf>> {
+    fs::create_dir_all(output_dir).with_context(|| {
         format!(
             "Failed to create output directory: {}",
             output_dir.display()
         )
     })?;
 
-    // Find input files
-    let input_files = find_input_files(&input)?;
+    let input_files = find_input_files(input)?;
     info!("Found {} files to validate", input_files.len());
+    Ok(input_files)
+}
 
-    if input_files.is_empty() {
-        warn!("No input files found matching pattern: {}", input);
-        return Ok(());
-    }
-
-    // Set up parallelism
-    if let Some(num_jobs) = jobs {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(num_jobs)
-            .build_global()
-            .context("Failed to configure thread pool")?;
-    }
-
-    // Set up progress bar
-    let progress_bar = if progress {
-        let pb = ProgressBar::new(input_files.len() as u64);
+fn setup_validate_progress_bar(progress: bool, file_count: usize) -> Option<ProgressBar> {
+    if progress {
+        let pb = ProgressBar::new(file_count as u64);
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
@@ -1180,47 +1329,35 @@ fn handle_batch_validate(
         Some(pb)
     } else {
         None
-    };
+    }
+}
 
-    let start_time = Instant::now();
+fn process_validate_files(
+    input_files: &[PathBuf],
+    vendor: Option<Vendor>,
+    output_dir: &Path,
+    output_format: OutputFormat,
+    progress_bar: &Option<ProgressBar>,
+    continue_on_error: bool,
+) -> Result<Vec<Result<bool>>> {
     let error_count = Arc::new(AtomicUsize::new(0));
     let success_count = Arc::new(AtomicUsize::new(0));
     let validation_error_count = Arc::new(AtomicUsize::new(0));
 
-    // Process files in parallel
     let results: Vec<Result<bool>> = input_files
         .par_iter()
         .map(|input_file| {
-            let result = process_validate_file(
+            let result = process_validate_file(input_file, vendor, output_dir, output_format);
+            handle_validate_result(
+                &result,
                 input_file,
-                vendor.clone(),
-                &output_dir,
-                output_format.clone(),
+                &success_count,
+                &error_count,
+                &validation_error_count,
+                continue_on_error,
             );
 
-            match &result {
-                Ok(is_valid) => {
-                    success_count.fetch_add(1, Ordering::SeqCst);
-                    if !is_valid {
-                        validation_error_count.fetch_add(1, Ordering::SeqCst);
-                    }
-                    debug!(
-                        "Successfully validated: {} (valid: {})",
-                        input_file.display(),
-                        is_valid
-                    );
-                }
-                Err(e) => {
-                    error_count.fetch_add(1, Ordering::SeqCst);
-                    if continue_on_error {
-                        warn!("Error validating {}: {}", input_file.display(), e);
-                    } else {
-                        error!("Error validating {}: {}", input_file.display(), e);
-                    }
-                }
-            }
-
-            if let Some(ref pb) = progress_bar {
+            if let Some(pb) = progress_bar {
                 pb.inc(1);
             }
 
@@ -1228,41 +1365,97 @@ fn handle_batch_validate(
         })
         .collect();
 
-    if let Some(ref pb) = progress_bar {
+    Ok(results)
+}
+
+fn handle_validate_result(
+    result: &Result<bool>,
+    input_file: &Path,
+    success_count: &Arc<AtomicUsize>,
+    error_count: &Arc<AtomicUsize>,
+    validation_error_count: &Arc<AtomicUsize>,
+    continue_on_error: bool,
+) {
+    match result {
+        Ok(is_valid) => {
+            success_count.fetch_add(1, Ordering::SeqCst);
+            if !*is_valid {
+                validation_error_count.fetch_add(1, Ordering::SeqCst);
+            }
+            debug!(
+                "Successfully validated: {} (valid: {})",
+                input_file.display(),
+                is_valid
+            );
+        }
+        Err(e) => {
+            error_count.fetch_add(1, Ordering::SeqCst);
+            if continue_on_error {
+                warn!("Error validating {}: {}", input_file.display(), e);
+            } else {
+                error!("Error validating {}: {}", input_file.display(), e);
+            }
+        }
+    }
+}
+
+fn finish_batch_validate_operation(
+    progress_bar: &Option<ProgressBar>,
+    results: &[Result<bool>],
+    output_dir: &Path,
+    summary: bool,
+    output_format: OutputFormat,
+    continue_on_error: bool,
+) -> Result<()> {
+    if let Some(pb) = progress_bar {
         pb.finish_with_message("Batch validation complete");
     }
 
-    let elapsed = start_time.elapsed();
-    let success = success_count.load(Ordering::SeqCst);
-    let errors = error_count.load(Ordering::SeqCst);
-    let validation_errors = validation_error_count.load(Ordering::SeqCst);
+    let (success_count, error_count, validation_error_count) = count_validation_results(results);
 
     info!(
-        "Batch validation completed in {:.2}s: {} processed, {} errors, {} validation failures",
-        elapsed.as_secs_f64(),
-        success,
-        errors,
-        validation_errors
+        "Batch validation completed: {} processed, {} errors, {} validation failures",
+        success_count, error_count, validation_error_count
     );
 
-    // Generate summary report if requested
     if summary {
-        generate_validation_summary(&output_dir, &results, output_format)?;
+        generate_validation_summary(output_dir, results, output_format)?;
     }
 
-    // Handle errors
-    if !continue_on_error && errors > 0 {
+    if !continue_on_error && error_count > 0 {
         return Err(anyhow::anyhow!(
             "Batch operation failed with {} errors",
-            errors
+            error_count
         ));
     }
 
     Ok(())
 }
 
+fn count_validation_results(results: &[Result<bool>]) -> (usize, usize, usize) {
+    let mut success_count = 0;
+    let mut error_count = 0;
+    let mut validation_error_count = 0;
+
+    for result in results {
+        match result {
+            Ok(is_valid) => {
+                success_count += 1;
+                if !*is_valid {
+                    validation_error_count += 1;
+                }
+            }
+            Err(_) => {
+                error_count += 1;
+            }
+        }
+    }
+
+    (success_count, error_count, validation_error_count)
+}
+
 /// Convert CLI vendor enum to library vendor enum
-fn convert_vendor(vendor: Vendor) -> config_slicer::parser::Vendor {
+const fn convert_vendor(vendor: Vendor) -> config_slicer::parser::Vendor {
     match vendor {
         Vendor::Cisco => config_slicer::parser::Vendor::Cisco,
         Vendor::Juniper => config_slicer::parser::Vendor::Juniper,
@@ -1272,7 +1465,7 @@ fn convert_vendor(vendor: Vendor) -> config_slicer::parser::Vendor {
 }
 
 /// Get vendor description for detailed info output
-fn get_vendor_description(vendor: &config_slicer::parser::Vendor) -> &'static str {
+const fn get_vendor_description(vendor: &config_slicer::parser::Vendor) -> &'static str {
     match vendor {
         config_slicer::parser::Vendor::Cisco => "Cisco IOS/IOS-XE configurations",
         config_slicer::parser::Vendor::Juniper => "Juniper JunOS configurations",
@@ -1378,8 +1571,8 @@ fn format_slice_output(
 
 /// Format validation output based on output format
 fn format_validation_output(
-    validation_report: &config_slicer::ValidationReport,
-    output_format: OutputFormat,
+    validation_report: &ValidationReport,
+    output_format: &OutputFormat,
 ) -> Result<String> {
     use serde_json;
     use serde_yaml;
@@ -1542,10 +1735,7 @@ fn find_input_files(input: &str) -> Result<Vec<PathBuf>> {
                         if entry.file_type().is_file() {
                             // Filter for likely config files
                             if let Some(ext) = entry.path().extension() {
-                                if matches!(
-                                    ext.to_str(),
-                                    Some("conf") | Some("cfg") | Some("txt") | Some("config")
-                                ) {
+                                if matches!(ext.to_str(), Some("conf" | "cfg" | "txt" | "config")) {
                                     files.push(entry.path().to_path_buf());
                                 }
                             } else {
@@ -1627,7 +1817,7 @@ fn process_slice_file(
     .with_context(|| format!("Failed to extract slices from {}", input_file.display()))?;
 
     // Format and write output
-    let formatted_output = format_slice_output(&slice_result, output_format.clone(), false)?;
+    let formatted_output = format_slice_output(&slice_result, output_format, false)?;
 
     // Generate output filename
     let output_filename = input_file
@@ -1746,7 +1936,7 @@ fn process_validate_file(
         .with_context(|| format!("Failed to validate configuration: {}", input_file.display()))?;
 
     // Format the validation output
-    let formatted_output = format_validation_output(&validation_report, output_format.clone())?;
+    let formatted_output = format_validation_output(&validation_report, &output_format)?;
 
     // Generate output filename
     let output_filename = input_file
@@ -1897,13 +2087,16 @@ fn handle_workflow_command(command: WorkflowCommands, output_format: OutputForma
             )
             .await
         }),
-        WorkflowCommands::List { status, detailed } => {
-            handle_workflow_list(status, detailed, output_format)
+        WorkflowCommands::List { 
+            status: _status, // Unused until implementation 
+            detailed: _detailed // Unused until implementation
+        } => {
+            handle_workflow_list(output_format)
         }
         WorkflowCommands::Show {
             workflow_id,
-            history,
-        } => handle_workflow_show(workflow_id, history, output_format),
+            history: _history, // Unused until implementation
+        } => handle_workflow_show(workflow_id, output_format),
         WorkflowCommands::Approve {
             workflow_id,
             reviewer,
@@ -1995,16 +2188,13 @@ async fn handle_workflow_execute(
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
 /// List active workflows
-fn handle_workflow_list(
-    _status_filter: Option<WorkflowStatusArg>,
-    _detailed: bool,
-    output_format: OutputFormat,
-) -> Result<()> {
+fn handle_workflow_list(output_format: OutputFormat) -> Result<()> {
+    // Parameters (status_filter, detailed) will be added when implementation supports them
     // For now, return a placeholder since we'd need persistent storage
     // In a real implementation, this would connect to a persistent orchestrator
     let workflows: Vec<String> = Vec::new(); // Placeholder
@@ -2021,16 +2211,13 @@ fn handle_workflow_list(
         OutputFormat::Yaml => serde_yaml::to_string(&workflows)?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
 /// Show workflow details
-fn handle_workflow_show(
-    workflow_id: String,
-    _show_history: bool,
-    output_format: OutputFormat,
-) -> Result<()> {
+fn handle_workflow_show(workflow_id: String, output_format: OutputFormat) -> Result<()> {
+    // Parameter (show_history) will be added when implementation supports it
     // Placeholder implementation
     let output = match output_format {
         OutputFormat::Text => format!("Workflow details for {} would be shown here", workflow_id),
@@ -2044,7 +2231,7 @@ fn handle_workflow_show(
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
@@ -2072,7 +2259,7 @@ fn handle_workflow_approve(
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
@@ -2100,7 +2287,7 @@ fn handle_workflow_reject(
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
@@ -2119,7 +2306,7 @@ fn handle_workflow_archive(workflow_id: String, output_format: OutputFormat) -> 
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
@@ -2131,19 +2318,20 @@ fn handle_workflow_history(
 ) -> Result<()> {
     // Placeholder implementation
     let output = match output_format {
-        OutputFormat::Text => {
-            if let Some(id) = workflow_id {
-                format!(
-                    "History for workflow {} (limit: {}) would be shown here",
-                    id, limit
-                )
-            } else {
+        OutputFormat::Text => workflow_id.map_or_else(
+            || {
                 format!(
                     "All workflow history (limit: {}) would be shown here",
                     limit
                 )
-            }
-        }
+            },
+            |id| {
+                format!(
+                    "History for workflow {} (limit: {}) would be shown here",
+                    id, limit
+                )
+            },
+        ),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id,
             "limit": limit,
@@ -2156,7 +2344,7 @@ fn handle_workflow_history(
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }
 
@@ -2181,6 +2369,6 @@ fn handle_workflow_cache(cleanup: bool, output_format: OutputFormat) -> Result<(
         }))?,
     };
 
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }

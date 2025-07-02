@@ -6,8 +6,6 @@
 
 use crate::change_tracking::ChangeTrackingService;
 use crate::datastore::DataStore;
-use crate::git::environment::EnvironmentManager;
-use crate::git::repository::GitRepository;
 use crate::git::types::{GitError, GitResult};
 use crate::models::change_tracking::{ChangeSource, ChangeStatus, ChangeType, ConfigurationChange};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
@@ -287,22 +285,14 @@ pub struct EmergencySnapshot {
 /// Emergency override manager
 pub struct EmergencyOverrideManager<D: DataStore + Clone> {
     change_tracking: ChangeTrackingService<D>,
-    environment_manager: EnvironmentManager,
-    git_repository: GitRepository,
     active_emergencies: HashMap<String, EmergencyOverrideConfig>,
 }
 
 impl<D: DataStore + Clone> EmergencyOverrideManager<D> {
     /// Create a new emergency override manager
-    pub fn new(
-        change_tracking: ChangeTrackingService<D>,
-        environment_manager: EnvironmentManager,
-        git_repository: GitRepository,
-    ) -> Self {
+    pub fn new(change_tracking: ChangeTrackingService<D>) -> Self {
         Self {
             change_tracking,
-            environment_manager,
-            git_repository,
             active_emergencies: HashMap::new(),
         }
     }

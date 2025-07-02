@@ -47,28 +47,26 @@ pub enum ServerError {
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
         let (status, error_code) = match &self {
-            ServerError::DataStore(DataStoreError::NotFound { .. }) => {
+            Self::DataStore(DataStoreError::NotFound { .. }) => {
                 (StatusCode::NOT_FOUND, "NOT_FOUND")
             }
-            ServerError::DataStore(DataStoreError::ValidationError { .. }) => {
+            Self::DataStore(DataStoreError::ValidationError { .. }) => {
                 (StatusCode::BAD_REQUEST, "VALIDATION_ERROR")
             }
-            ServerError::DataStore(DataStoreError::ConstraintViolation { .. }) => {
+            Self::DataStore(DataStoreError::ConstraintViolation { .. }) => {
                 (StatusCode::CONFLICT, "CONSTRAINT_VIOLATION")
             }
-            ServerError::DataStore(DataStoreError::ConnectionError { .. }) => {
+            Self::DataStore(DataStoreError::ConnectionError { .. }) => {
                 (StatusCode::SERVICE_UNAVAILABLE, "CONNECTION_ERROR")
             }
-            ServerError::DataStore(DataStoreError::Timeout { .. }) => {
+            Self::DataStore(DataStoreError::Timeout { .. }) => {
                 (StatusCode::REQUEST_TIMEOUT, "TIMEOUT")
             }
-            ServerError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
-            ServerError::Validation(_) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR"),
-            ServerError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
-            ServerError::Serialization(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "SERIALIZATION_ERROR")
-            }
-            ServerError::Other(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
+            Self::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
+            Self::Validation(_) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR"),
+            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
+            Self::Serialization(_) => (StatusCode::INTERNAL_SERVER_ERROR, "SERIALIZATION_ERROR"),
+            Self::Other(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
         };
 

@@ -1177,16 +1177,16 @@ impl OutputFormatter {
             .get(&vendor.to_lowercase())
             .unwrap_or_else(|| self.vendor_formatters.get("generic").unwrap());
 
-        let formatted = formatter.format(output, context)?;
+        let result = formatter.format(output, context)?;
 
         debug!(
             vendor = vendor,
             original_size = output.len(),
-            formatted_size = formatted.len(),
+            formatted_size = result.len(),
             "Output formatting completed"
         );
 
-        Ok(formatted)
+        Ok(result)
     }
 
     /// Get available vendor formatters
@@ -1651,9 +1651,8 @@ impl OutputCache {
             if entry.is_valid(self.ttl_seconds) {
                 debug!(cache_key = key, "Cache hit for template output");
                 return Some(entry.output.clone());
-            } else {
-                debug!(cache_key = key, "Cache entry expired");
             }
+            debug!(cache_key = key, "Cache entry expired");
         }
 
         debug!(cache_key = key, "Cache miss for template output");

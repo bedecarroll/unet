@@ -827,7 +827,7 @@ impl TemplateQualityAnalyzer {
         // Usage examples
         if !documentation.usage_examples.is_empty() {
             markdown.push_str("## Usage Examples\n\n");
-            for (i, example) in documentation.usage_examples.iter().enumerate() {
+            for (_i, example) in documentation.usage_examples.iter().enumerate() {
                 markdown.push_str(&format!("### {}\n\n", example.title));
                 if !example.description.is_empty() {
                     markdown.push_str(&format!("{}\n\n", example.description));

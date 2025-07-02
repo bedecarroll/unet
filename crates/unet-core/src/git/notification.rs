@@ -161,15 +161,11 @@ impl NotificationHandler for LoggingHandler {
 
 /// Webhook notification handler
 #[derive(Debug)]
-pub struct WebhookHandler {
-    client: reqwest::Client,
-}
+pub struct WebhookHandler {}
 
 impl WebhookHandler {
     pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+        Self {}
     }
 }
 

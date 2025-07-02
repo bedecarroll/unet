@@ -196,7 +196,7 @@ impl StreamingProcessor {
                     // Clean up memory if needed
                     if self.config.aggressive_cleanup {
                         // Force garbage collection hint
-                        drop(pattern);
+                        let _ = pattern;
                     }
                 }
                 Err(e) => {

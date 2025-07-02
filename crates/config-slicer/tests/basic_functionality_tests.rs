@@ -247,7 +247,7 @@ interface GigabitEthernet0/2
     let match_count = slice_result.match_count();
     let has_matches = slice_result.has_matches();
     let matches = slice_result.matches();
-    let pattern = slice_result.pattern();
+    let _pattern = slice_result.pattern();
     let metadata = slice_result.metadata();
 
     println!(

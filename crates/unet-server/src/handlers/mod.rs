@@ -17,7 +17,6 @@ pub mod performance;
 pub mod policies;
 pub mod resource_management;
 pub mod templates;
-pub mod vulnerability;
 
 // Re-export server error types for handlers
 pub use crate::error::{ServerError, ServerResult};

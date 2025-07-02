@@ -71,7 +71,7 @@ impl Default for NetworkAccessConfig {
 }
 
 /// Network access actions
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NetworkAction {
     /// Allow the request
     Allow,
@@ -357,7 +357,7 @@ impl NetworkAccessControl {
     }
 
     /// Get current configuration
-    pub fn get_config(&self) -> &NetworkAccessConfig {
+    pub const fn get_config(&self) -> &NetworkAccessConfig {
         &self.config
     }
 
@@ -386,7 +386,7 @@ pub struct NetworkAccessResult {
 }
 
 impl NetworkAccessResult {
-    fn new(
+    const fn new(
         action: NetworkAction,
         reason: Option<String>,
         segment_policy: Option<NetworkSegmentPolicy>,

@@ -61,7 +61,7 @@ pub mod validators {
 
     /// Validate port number range
     pub fn validate_port(port: u16) -> bool {
-        port > 0 && port <= 65535
+        port > 0
     }
 
     /// Validate VLAN ID range

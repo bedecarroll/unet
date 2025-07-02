@@ -446,7 +446,7 @@ pub trait DataStore: Send + Sync {
     /// Gets interface status for a specific node
     async fn get_node_interfaces(
         &self,
-        _node_id: &Uuid,
+        _node_id: &Uuid, // Trait method signature requires this parameter
     ) -> DataStoreResult<Vec<crate::models::derived::InterfaceStatus>> {
         // Default implementation returns empty list
         Ok(Vec::new())
@@ -455,7 +455,7 @@ pub trait DataStore: Send + Sync {
     /// Gets performance metrics for a specific node
     async fn get_node_metrics(
         &self,
-        _node_id: &Uuid,
+        _node_id: &Uuid, // Trait method signature requires this parameter
     ) -> DataStoreResult<Option<crate::models::derived::PerformanceMetrics>> {
         // Default implementation returns None
         Ok(None)
@@ -532,7 +532,7 @@ pub trait DataStore: Send + Sync {
 
     // Template operations
     /// Creates a new template
-    async fn create_template(&self, template: &Template) -> DataStoreResult<Template> {
+    async fn create_template(&self, _template: &Template) -> DataStoreResult<Template> {
         Err(DataStoreError::UnsupportedOperation {
             operation: "create_template not implemented".to_string(),
         })
@@ -1727,7 +1727,7 @@ pub mod sqlite {
                     message: format!("Invalid node A UUID: {}", e),
                 })?;
 
-        let node_z_id =
+        let node_b_id =
             if let Some(node_b_id_str) = entity.node_b_id {
                 Some(node_b_id_str.parse::<Uuid>().map_err(|e| {
                     DataStoreError::ValidationError {
@@ -1749,7 +1749,7 @@ pub mod sqlite {
             name: entity.name,
             node_a_id,
             node_a_interface: entity.interface_a,
-            node_z_id,
+            node_z_id: node_b_id,
             node_z_interface: entity.interface_b,
             description: entity.description,
             bandwidth: entity.capacity.map(|c| c as u64),
@@ -2744,7 +2744,7 @@ pub mod sqlite {
 
         async fn batch_nodes(
             &self,
-            _operations: &[BatchOperation<Node>],
+            _operations: &[BatchOperation<Node>], // Trait method signature requires this parameter
         ) -> DataStoreResult<BatchResult> {
             Err(DataStoreError::UnsupportedOperation {
                 operation: "batch_nodes not yet implemented - awaiting migrations".to_string(),
@@ -2753,7 +2753,7 @@ pub mod sqlite {
 
         async fn batch_links(
             &self,
-            _operations: &[BatchOperation<Link>],
+            _operations: &[BatchOperation<Link>], // Trait method signature requires this parameter
         ) -> DataStoreResult<BatchResult> {
             Err(DataStoreError::UnsupportedOperation {
                 operation: "batch_links not yet implemented - awaiting migrations".to_string(),
@@ -2762,7 +2762,7 @@ pub mod sqlite {
 
         async fn batch_locations(
             &self,
-            _operations: &[BatchOperation<Location>],
+            _operations: &[BatchOperation<Location>], // Trait method signature requires this parameter
         ) -> DataStoreResult<BatchResult> {
             Err(DataStoreError::UnsupportedOperation {
                 operation: "batch_locations not yet implemented - awaiting migrations".to_string(),

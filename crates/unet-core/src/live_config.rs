@@ -7,16 +7,14 @@
 use crate::error::{Error, Result};
 use crate::models::{Node, Vendor};
 use crate::snmp::{SnmpClient, SnmpClientConfig};
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use tokio::process::Command;
 use tokio::sync::{RwLock, Semaphore};
 use tokio::time::timeout;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 /// Live configuration fetcher with connection management and caching
@@ -250,8 +248,6 @@ pub struct ConfigCache {
     entries: HashMap<Uuid, CachedConfig>,
     /// Access order for LRU eviction
     access_order: Vec<Uuid>,
-    /// Current cache size
-    current_size: usize,
     /// Maximum cache size
     max_size: usize,
     /// Cache TTL
@@ -301,7 +297,6 @@ impl LiveConfigManager {
         let config_cache = Arc::new(RwLock::new(ConfigCache {
             entries: HashMap::new(),
             access_order: Vec::new(),
-            current_size: 0,
             max_size: config.max_cache_size,
             ttl: config.cache_ttl,
         }));
@@ -331,29 +326,21 @@ impl LiveConfigManager {
         }
 
         // Acquire connection permit
-        let _permit = self.connection_manager.acquire_permit(node_id).await?;
+        let permit = self.connection_manager.acquire_permit(node_id).await?;
 
-        // Retrieve configuration based on protocol
-        let result = match request.protocol {
-            ConfigProtocol::Ssh => self.get_config_via_ssh(&request).await,
-            ConfigProtocol::Snmp => self.get_config_via_snmp(&request).await,
-            ConfigProtocol::RestApi => self.get_config_via_api(&request).await,
-            ConfigProtocol::Netconf => self.get_config_via_netconf(&request).await,
-        }?;
-
-        // Cache the result
-        self.cache_config(result.clone()).await;
-
-        info!(
-            node_id = %node_id,
-            node_name = %request.node.name,
-            protocol = ?request.protocol,
-            size = result.size,
-            duration_ms = result.duration.as_millis(),
-            "Successfully retrieved configuration"
-        );
-
-        Ok(result)
+        // Live configuration retrieval not implemented - protocols are placeholders
+        match request.protocol {
+            ConfigProtocol::Ssh => Err(Error::config(
+                "SSH client implementation pending - requires ssh2 or russh crate integration",
+            )),
+            ConfigProtocol::Snmp => Err(Error::config("SNMP response parsing not yet implemented")),
+            ConfigProtocol::RestApi => Err(Error::config(
+                "Vendor-specific API endpoints not yet implemented",
+            )),
+            ConfigProtocol::Netconf => Err(Error::config(
+                "NETCONF protocol not yet implemented. Use SSH, SNMP, or REST API instead.",
+            )),
+        }
     }
 
     /// Get multiple configurations concurrently
@@ -401,7 +388,7 @@ impl LiveConfigManager {
             result.from_cache = true;
 
             // Update LRU order separately to avoid borrow conflict
-            drop(cached); // Release the mutable borrow
+            let _ = cached; // Release the mutable borrow
             cache.access_order.retain(|&id| id != node_id);
             cache.access_order.push(node_id);
 
@@ -436,193 +423,9 @@ impl LiveConfigManager {
         cache.access_order.push(node_id);
     }
 
-    /// Retrieve configuration via SSH
-    async fn get_config_via_ssh(&self, request: &ConfigRequest) -> Result<ConfigResult> {
-        let start_time = SystemTime::now();
 
-        debug!(
-            node_id = %request.node.id,
-            node_name = %request.node.name,
-            "Retrieving configuration via SSH"
-        );
 
-        let timeout_duration = request.timeout.unwrap_or(self.config.ssh.timeout);
 
-        let (username, auth_method) = match &request.credentials {
-            DeviceCredentials::SshPassword { username, password } => {
-                (username.clone(), SshAuthMethod::Password(password.clone()))
-            }
-            DeviceCredentials::SshKey {
-                username,
-                private_key_path,
-                passphrase,
-            } => (
-                username.clone(),
-                SshAuthMethod::Key {
-                    path: private_key_path.clone(),
-                    passphrase: passphrase.clone(),
-                },
-            ),
-            _ => {
-                return Err(Error::validation(
-                    "credentials",
-                    "SSH protocol requires SSH credentials",
-                ));
-            }
-        };
-
-        // Get management IP from node
-        let management_ip = self.get_management_ip(&request.node)?;
-
-        // Execute SSH command to get configuration
-        let config_content = self
-            .execute_ssh_command(
-                management_ip,
-                self.config.ssh.port,
-                &username,
-                &auth_method,
-                &self.get_config_command(&request.node.vendor),
-                timeout_duration,
-            )
-            .await?;
-
-        let duration = start_time.elapsed().unwrap_or(Duration::ZERO);
-        let format = self.detect_config_format(&config_content, &request.node.vendor);
-        let size = config_content.len();
-
-        Ok(ConfigResult {
-            node_id: request.node.id,
-            config_content,
-            retrieved_at: start_time,
-            protocol: ConfigProtocol::Ssh,
-            format,
-            size,
-            duration,
-            from_cache: false,
-        })
-    }
-
-    /// Retrieve configuration via SNMP
-    async fn get_config_via_snmp(&self, request: &ConfigRequest) -> Result<ConfigResult> {
-        let start_time = SystemTime::now();
-
-        debug!(
-            node_id = %request.node.id,
-            node_name = %request.node.name,
-            "Retrieving configuration via SNMP"
-        );
-
-        // Get management IP from node
-        let management_ip = self.get_management_ip(&request.node)?;
-        let snmp_address = SocketAddr::new(management_ip, self.config.snmp.port);
-
-        // Build SNMP session config from credentials
-        let session_config = self.build_snmp_session_config(snmp_address, &request.credentials)?;
-
-        // Get configuration via SNMP (vendor-specific OIDs)
-        let config_oids = self.get_config_oids(&request.node.vendor);
-        let snmp_result = self
-            .snmp_client
-            .get(snmp_address, &config_oids, Some(session_config))
-            .await
-            .map_err(|e| {
-                Error::snmp(
-                    snmp_address.to_string(),
-                    format!("SNMP configuration retrieval failed: {}", e),
-                )
-            })?;
-
-        // Convert SNMP response to configuration text
-        let config_content = self.snmp_response_to_config(snmp_result, &request.node.vendor)?;
-
-        let duration = start_time.elapsed().unwrap_or(Duration::ZERO);
-        let format = self.detect_config_format(&config_content, &request.node.vendor);
-
-        let size = config_content.len();
-        Ok(ConfigResult {
-            node_id: request.node.id,
-            config_content,
-            retrieved_at: start_time,
-            protocol: ConfigProtocol::Snmp,
-            format,
-            size,
-            duration,
-            from_cache: false,
-        })
-    }
-
-    /// Retrieve configuration via REST API
-    async fn get_config_via_api(&self, request: &ConfigRequest) -> Result<ConfigResult> {
-        let start_time = SystemTime::now();
-
-        debug!(
-            node_id = %request.node.id,
-            node_name = %request.node.name,
-            "Retrieving configuration via REST API"
-        );
-
-        // Get management IP from node
-        let management_ip = self.get_management_ip(&request.node)?;
-
-        // Build API client with appropriate authentication
-        let client = self.build_api_client(&request.credentials)?;
-
-        // Get vendor-specific API endpoint
-        let api_url =
-            self.get_config_api_url(management_ip, self.config.api.port, &request.node.vendor)?;
-
-        let timeout_duration = request.timeout.unwrap_or(self.config.api.timeout);
-
-        // Make API request
-        let response = timeout(timeout_duration, client.get(&api_url).send())
-            .await
-            .map_err(|_| Error::network(&api_url, "API request timeout"))?
-            .map_err(|e| Error::network(&api_url, format!("API request failed: {}", e)))?;
-
-        if !response.status().is_success() {
-            return Err(Error::network(
-                &api_url,
-                format!("API request failed with status: {}", response.status()),
-            ));
-        }
-
-        let config_content = response
-            .text()
-            .await
-            .map_err(|e| Error::network(&api_url, format!("Failed to read API response: {}", e)))?;
-
-        let duration = start_time.elapsed().unwrap_or(Duration::ZERO);
-        let format = self.detect_config_format(&config_content, &request.node.vendor);
-        let size = config_content.len();
-
-        Ok(ConfigResult {
-            node_id: request.node.id,
-            config_content,
-            retrieved_at: start_time,
-            protocol: ConfigProtocol::RestApi,
-            format,
-            size,
-            duration,
-            from_cache: false,
-        })
-    }
-
-    /// Retrieve configuration via NETCONF
-    async fn get_config_via_netconf(&self, request: &ConfigRequest) -> Result<ConfigResult> {
-        let start_time = SystemTime::now();
-
-        debug!(
-            node_id = %request.node.id,
-            node_name = %request.node.name,
-            "Retrieving configuration via NETCONF"
-        );
-
-        // TODO: Implement NETCONF client
-        // For now, return a placeholder error
-        Err(Error::config(
-            "NETCONF protocol not yet implemented. Use SSH, SNMP, or REST API instead.",
-        ))
-    }
 
     /// Get cache statistics
     pub async fn cache_stats(&self) -> CacheStats {
@@ -630,7 +433,7 @@ impl LiveConfigManager {
         CacheStats {
             total_entries: cache.entries.len(),
             max_size: cache.max_size,
-            hit_ratio: self.calculate_hit_ratio(&cache).await,
+            hit_ratio: 0.0, // Hit ratio calculation not yet implemented
             oldest_entry_age: self.get_oldest_entry_age(&cache).await,
             total_size_bytes: cache.entries.values().map(|entry| entry.result.size).sum(),
         }
@@ -652,7 +455,7 @@ impl LiveConfigManager {
     }
 
     /// Helper methods for protocol-specific operations
-
+    ///
     /// Get management IP address from node
     fn get_management_ip(&self, node: &Node) -> Result<IpAddr> {
         // Check if node has a management IP already set
@@ -743,7 +546,7 @@ impl LiveConfigManager {
     // (SSH execution, SNMP session building, API client building, etc.)
 }
 
-// SSH authentication method
+/// SSH authentication method
 #[derive(Debug, Clone)]
 enum SshAuthMethod {
     Password(String),
@@ -770,20 +573,6 @@ pub struct CacheStats {
 
 // Placeholder implementations for helper methods that would require additional dependencies
 impl LiveConfigManager {
-    async fn execute_ssh_command(
-        &self,
-        _host: IpAddr,
-        _port: u16,
-        _username: &str,
-        _auth_method: &SshAuthMethod,
-        _command: &str,
-        _timeout: Duration,
-    ) -> Result<String> {
-        // TODO: Implement actual SSH client using a crate like tokio-ssh2 or russh
-        Err(Error::config(
-            "SSH client implementation pending - requires ssh2 or russh crate integration",
-        ))
-    }
 
     fn build_snmp_session_config(
         &self,
@@ -840,26 +629,8 @@ impl LiveConfigManager {
         ))
     }
 
-    fn get_config_api_url(&self, _host: IpAddr, _port: u16, _vendor: &Vendor) -> Result<String> {
-        // TODO: Implement vendor-specific API endpoints
-        Err(Error::config(
-            "Vendor-specific API endpoints not yet implemented",
-        ))
-    }
 
-    fn snmp_response_to_config(
-        &self,
-        _response: HashMap<String, crate::snmp::SnmpValue>,
-        _vendor: &Vendor,
-    ) -> Result<String> {
-        // TODO: Convert SNMP response to configuration text
-        Err(Error::config("SNMP response parsing not yet implemented"))
-    }
 
-    async fn calculate_hit_ratio(&self, _cache: &ConfigCache) -> f64 {
-        // TODO: Implement hit ratio calculation based on access statistics
-        0.0
-    }
 
     async fn get_oldest_entry_age(&self, cache: &ConfigCache) -> Option<u64> {
         cache
@@ -891,7 +662,7 @@ impl ConnectionManager {
     /// Acquire connection permit for a device
     async fn acquire_permit(&self, node_id: Uuid) -> Result<ConnectionPermit> {
         // For now, just use a simple permit tracking without complex lifetime management
-        let _global_permit =
+        let global_permit =
             self.global_semaphore.acquire().await.map_err(|_| {
                 Error::network("connection_pool", "Global connection pool exhausted")
             })?;
@@ -910,7 +681,7 @@ impl ConnectionManager {
         };
 
         // Acquire device-specific permit
-        let _device_permit = device_pool.semaphore.acquire().await.map_err(|_| {
+        let device_permit = device_pool.semaphore.acquire().await.map_err(|_| {
             Error::network(&node_id.to_string(), "Device connection pool exhausted")
         })?;
 
@@ -927,10 +698,7 @@ impl ConnectionManager {
         // Clone the pool to avoid the move issue with the permit
         let pool_clone = device_pool.clone();
 
-        Ok(ConnectionPermit {
-            node_id,
-            pool: pool_clone,
-        })
+        Ok(ConnectionPermit { pool: pool_clone })
     }
 }
 
@@ -946,7 +714,6 @@ impl Clone for DeviceConnectionPool {
 
 /// Connection permit that manages resource cleanup
 pub struct ConnectionPermit {
-    node_id: Uuid,
     pool: DeviceConnectionPool,
 }
 

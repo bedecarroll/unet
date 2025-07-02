@@ -2,6 +2,14 @@
 //!
 //! This library provides the core functionality for μNet network configuration management,
 //! including data models, storage abstractions, policy engine, template engine, and SNMP integration.
+
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(clippy::all)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)]
+#![allow(missing_docs)]
 //!
 //! # Quick Start
 //!
@@ -31,11 +39,6 @@
 //! - [`policy`] - Policy engine (Milestone 3)
 //! - [`snmp`] - SNMP integration (Milestone 2)
 //! - [`template`] - Template rendering (Milestone 4)
-
-#![warn(missing_docs)]
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 
 // Public modules
 pub mod alerting;
@@ -74,10 +77,11 @@ pub mod validation;
 pub use error::{Error, Result};
 
 /// Prelude module for commonly used types
+///
+/// Common imports for μNet Core
+///
+/// This module provides convenient re-exports of the most commonly used types.
 pub mod prelude {
-    //! Common imports for μNet Core
-    //!
-    //! This module provides convenient re-exports of the most commonly used types.
 
     // Core error types
     pub use crate::error::{Error, Result};

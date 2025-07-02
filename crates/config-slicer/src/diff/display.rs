@@ -391,7 +391,7 @@ impl SideBySideFormatter {
 pub struct UnifiedFormatter;
 
 impl DiffFormatter for UnifiedFormatter {
-    fn format(&self, diff: &DiffResult, options: &DisplayOptions) -> String {
+    fn format(&self, diff: &DiffResult, _options: &DisplayOptions) -> String {
         let mut output = String::new();
 
         // Unified diff header

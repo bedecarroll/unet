@@ -126,7 +126,7 @@ impl SecurityEvent {
     }
 
     /// Set source IP
-    pub fn with_source_ip(mut self, ip: IpAddr) -> Self {
+    pub const fn with_source_ip(mut self, ip: IpAddr) -> Self {
         self.source_ip = Some(ip);
         self
     }
@@ -145,13 +145,13 @@ impl SecurityEvent {
     }
 
     /// Set risk level
-    pub fn with_risk_level(mut self, risk_level: RiskLevel) -> Self {
+    pub const fn with_risk_level(mut self, risk_level: RiskLevel) -> Self {
         self.risk_level = risk_level;
         self
     }
 
     /// Mark as requiring investigation
-    pub fn requires_investigation(mut self) -> Self {
+    pub const fn requires_investigation(mut self) -> Self {
         self.requires_investigation = true;
         self
     }
@@ -220,7 +220,7 @@ pub struct EmailAlertHandler {
 }
 
 impl EmailAlertHandler {
-    pub fn new(recipients: Vec<String>) -> Self {
+    pub const fn new(recipients: Vec<String>) -> Self {
         Self { recipients }
     }
 }
@@ -448,17 +448,16 @@ impl SecurityAuditLogger {
             events.iter().filter(|e| e.requires_investigation).count();
 
         let mut event_type_counts = HashMap::new();
+        let mut top_source_ips = HashMap::new();
         for event in events.iter() {
             let key = format!("{:?}", event.event_type);
             *event_type_counts.entry(key).or_insert(0) += 1;
-        }
 
-        let mut top_source_ips = HashMap::new();
-        for event in events.iter() {
             if let Some(ip) = event.source_ip {
                 *top_source_ips.entry(ip).or_insert(0) += 1;
             }
         }
+        drop(events);
 
         SecuritySummaryReport {
             total_events,
@@ -488,35 +487,35 @@ pub struct SecuritySummaryReport {
 impl AsRef<str> for SecurityEventType {
     fn as_ref(&self) -> &str {
         match self {
-            SecurityEventType::AuthenticationSuccess => "authentication_success",
-            SecurityEventType::AuthenticationFailure => "authentication_failure",
-            SecurityEventType::TokenValidationFailure => "token_validation_failure",
-            SecurityEventType::ApiKeyUsage => "api_key_usage",
-            SecurityEventType::ApiKeyCreated => "api_key_created",
-            SecurityEventType::ApiKeyDeleted => "api_key_deleted",
-            SecurityEventType::PasswordChanged => "password_changed",
-            SecurityEventType::PermissionDenied => "permission_denied",
-            SecurityEventType::RoleAssigned => "role_assigned",
-            SecurityEventType::RoleRevoked => "role_revoked",
-            SecurityEventType::PrivilegeEscalationAttempt => "privilege_escalation_attempt",
-            SecurityEventType::ResourceAccessed => "resource_accessed",
-            SecurityEventType::ResourceModified => "resource_modified",
-            SecurityEventType::ResourceDeleted => "resource_deleted",
-            SecurityEventType::UnauthorizedAccess => "unauthorized_access",
-            SecurityEventType::SuspiciousActivity => "suspicious_activity",
-            SecurityEventType::RateLimitExceeded => "rate_limit_exceeded",
-            SecurityEventType::DosAttackDetected => "dos_attack_detected",
-            SecurityEventType::IpBlocked => "ip_blocked",
-            SecurityEventType::IpUnblocked => "ip_unblocked",
-            SecurityEventType::ConfigurationChanged => "configuration_changed",
-            SecurityEventType::SecurityPolicyUpdated => "security_policy_updated",
-            SecurityEventType::TlsCertificateIssue => "tls_certificate_issue",
-            SecurityEventType::SecurityScanDetected => "security_scan_detected",
-            SecurityEventType::AdminActionPerformed => "admin_action_performed",
-            SecurityEventType::UserCreated => "user_created",
-            SecurityEventType::UserDeleted => "user_deleted",
-            SecurityEventType::UserStatusChanged => "user_status_changed",
-            SecurityEventType::SystemMaintenance => "system_maintenance",
+            Self::AuthenticationSuccess => "authentication_success",
+            Self::AuthenticationFailure => "authentication_failure",
+            Self::TokenValidationFailure => "token_validation_failure",
+            Self::ApiKeyUsage => "api_key_usage",
+            Self::ApiKeyCreated => "api_key_created",
+            Self::ApiKeyDeleted => "api_key_deleted",
+            Self::PasswordChanged => "password_changed",
+            Self::PermissionDenied => "permission_denied",
+            Self::RoleAssigned => "role_assigned",
+            Self::RoleRevoked => "role_revoked",
+            Self::PrivilegeEscalationAttempt => "privilege_escalation_attempt",
+            Self::ResourceAccessed => "resource_accessed",
+            Self::ResourceModified => "resource_modified",
+            Self::ResourceDeleted => "resource_deleted",
+            Self::UnauthorizedAccess => "unauthorized_access",
+            Self::SuspiciousActivity => "suspicious_activity",
+            Self::RateLimitExceeded => "rate_limit_exceeded",
+            Self::DosAttackDetected => "dos_attack_detected",
+            Self::IpBlocked => "ip_blocked",
+            Self::IpUnblocked => "ip_unblocked",
+            Self::ConfigurationChanged => "configuration_changed",
+            Self::SecurityPolicyUpdated => "security_policy_updated",
+            Self::TlsCertificateIssue => "tls_certificate_issue",
+            Self::SecurityScanDetected => "security_scan_detected",
+            Self::AdminActionPerformed => "admin_action_performed",
+            Self::UserCreated => "user_created",
+            Self::UserDeleted => "user_deleted",
+            Self::UserStatusChanged => "user_status_changed",
+            Self::SystemMaintenance => "system_maintenance",
         }
     }
 }
@@ -563,14 +562,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_security_event_creation() {
-        let event = SecurityEvent::new(
-            SecurityEventType::AuthenticationFailure,
-            "User login failed".to_string(),
-        )
-        .with_user(Uuid::new_v4(), "testuser".to_string())
-        .with_source_ip("192.168.1.1".parse().unwrap())
-        .with_risk_level(RiskLevel::Medium)
-        .requires_investigation();
+        let event =
+            SecurityEvent::new(Self::AuthenticationFailure, "User login failed".to_string())
+                .with_user(Uuid::new_v4(), "testuser".to_string())
+                .with_source_ip("192.168.1.1".parse().unwrap())
+                .with_risk_level(RiskLevel::Medium)
+                .requires_investigation();
 
         assert_eq!(event.risk_level, RiskLevel::Medium);
         assert!(event.requires_investigation);
@@ -584,7 +581,7 @@ mod tests {
         let logger = SecurityAuditLogger::new(config);
 
         let event = SecurityEvent::new(
-            SecurityEventType::AuthenticationSuccess,
+            Self::AuthenticationSuccess,
             "User login successful".to_string(),
         );
 
@@ -592,10 +589,7 @@ mod tests {
 
         let events = logger.get_recent_events(10).await;
         assert_eq!(events.len(), 1);
-        assert!(matches!(
-            events[0].event_type,
-            SecurityEventType::AuthenticationSuccess
-        ));
+        assert!(matches!(events[0].event_type, Self::AuthenticationSuccess));
     }
 
     #[tokio::test]
@@ -609,23 +603,17 @@ mod tests {
         // Add various events
         logger
             .log_event(
-                SecurityEvent::new(
-                    SecurityEventType::AuthenticationSuccess,
-                    "User login".to_string(),
-                )
-                .with_user(user_id, "testuser".to_string())
-                .with_source_ip(ip),
+                SecurityEvent::new(Self::AuthenticationSuccess, "User login".to_string())
+                    .with_user(user_id, "testuser".to_string())
+                    .with_source_ip(ip),
             )
             .await
             .unwrap();
 
         logger
             .log_event(
-                SecurityEvent::new(
-                    SecurityEventType::PermissionDenied,
-                    "Access denied".to_string(),
-                )
-                .with_source_ip(ip),
+                SecurityEvent::new(Self::PermissionDenied, "Access denied".to_string())
+                    .with_source_ip(ip),
             )
             .await
             .unwrap();

@@ -285,9 +285,3 @@ enum PollingTasks {
     LastError,
     ConsecutiveFailures,
 }
-
-#[derive(DeriveIden)]
-enum Nodes {
-    Table,
-    Id,
-}

@@ -780,7 +780,7 @@ mod tests {
         let loader = TemplateLoader::with_directories(vec![template_dir]);
 
         // Load template (should cache it)
-        let _content = loader.load_template("test").await.unwrap();
+        let content = loader.load_template("test").await.unwrap();
 
         let (count, templates) = loader.cache_stats().await;
         assert_eq!(count, 1);

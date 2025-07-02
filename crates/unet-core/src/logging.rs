@@ -39,13 +39,6 @@ impl TracingSystem {
         let mut log_aggregation = None;
         let mut log_alerting = None;
 
-        // Create environment filter with fallback to config level
-        let env_filter = EnvFilter::try_from_default_env()
-            .or_else(|_| EnvFilter::try_new(&config.level))
-            .map_err(|e| {
-                Error::config_with_source(format!("Invalid log level '{}'", config.level), e)
-            })?;
-
         // Initialize log aggregation if enabled
         if let Some(agg_config) = &config.aggregation {
             if agg_config.enabled {
@@ -236,9 +229,7 @@ fn create_file_appender(file_path: &str) -> Result<tracing_appender::rolling::Ro
 }
 
 /// Log aggregation manager for centralized log collection
-pub struct LogAggregationManager {
-    config: LogAggregationConfig,
-}
+pub struct LogAggregationManager {}
 
 impl LogAggregationManager {
     fn new(config: &LogAggregationConfig) -> Result<Self> {
@@ -256,9 +247,7 @@ impl LogAggregationManager {
             "Log aggregation manager initialized"
         );
 
-        Ok(LogAggregationManager {
-            config: config.clone(),
-        })
+        Ok(LogAggregationManager {})
     }
 
     async fn shutdown(self) -> Result<()> {

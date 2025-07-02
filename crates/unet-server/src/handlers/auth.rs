@@ -72,7 +72,7 @@ pub async fn change_password(
     }
 
     // Hash new password (for demonstration)
-    let _new_password_hash = auth_service
+    let new_password_hash = auth_service
         .hash_password(&request.new_password)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

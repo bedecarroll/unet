@@ -155,7 +155,7 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
     // Initialize security audit logger
     info!("Initializing security audit logger");
     let audit_config = SecurityAuditConfig::default();
-    let _audit_logger = init_security_audit_logger(audit_config).await;
+    let audit_logger = init_security_audit_logger(audit_config).await;
 
     // Initialize authentication service
     info!("Initializing authentication service");
@@ -919,12 +919,14 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
                             )
                         })
                         .on_request(|_request: &axum::http::Request<_>, _span: &tracing::Span| {
+                            // Callback signature required by tower-http TraceLayer
                             tracing::info!("Processing request");
                         })
                         .on_response(
                             |response: &axum::http::Response<_>,
                              latency: std::time::Duration,
                              _span: &tracing::Span| {
+                                // Callback signature required by tower-http TraceLayer
                                 tracing::info!(
                                     status = response.status().as_u16(),
                                     latency_ms = latency.as_millis(),
@@ -936,6 +938,7 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
                             |error: tower_http::classify::ServerErrorsFailureClass,
                              latency: std::time::Duration,
                              _span: &tracing::Span| {
+                                // Callback signature required by tower-http TraceLayer
                                 tracing::error!(
                                     error = %error,
                                     latency_ms = latency.as_millis(),

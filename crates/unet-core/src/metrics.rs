@@ -7,12 +7,12 @@ use crate::config::MetricsConfig;
 use crate::error::{Error, Result};
 use prometheus::{
     Counter as PrometheusCounter, Encoder, Gauge as PrometheusGauge,
-    Histogram as PrometheusHistogram, HistogramOpts, Opts, Registry, TextEncoder, default_registry,
+    Histogram as PrometheusHistogram, HistogramOpts, Registry, TextEncoder,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use sysinfo::System;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};

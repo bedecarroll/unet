@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::{RwLock, Semaphore};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Performance metrics for critical operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,7 +224,7 @@ where
 
     /// Get a connection from the pool
     pub async fn get_connection(&self) -> Result<PooledConnection<T>> {
-        let _permit = self
+        let permit = self
             .semaphore
             .acquire()
             .await

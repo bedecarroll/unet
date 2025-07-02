@@ -2,19 +2,18 @@
 //!
 //! This module provides comprehensive alerting capabilities including:
 //! - Configurable alerting rules and thresholds
-//! - Multiple notification channels (email, Slack, webhook, PagerDuty)
+//! - Multiple notification channels (email, Slack, webhook, `PagerDuty`)
 //! - Escalation procedures for unacknowledged alerts
 //! - Alert management and tracking
 
-use crate::config::{AlertChannel, LogAlertRule};
 use crate::error::{Error, Result};
 use crate::metrics::MetricsSnapshot;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 /// Alert severity levels
@@ -279,7 +278,6 @@ struct AlertManagerState {
 }
 
 const METRIC_HISTORY_RETENTION: usize = 1000;
-const RATE_LIMIT_CLEANUP_INTERVAL: Duration = Duration::from_secs(300); // 5 minutes
 
 /// Comprehensive alerting manager
 #[derive(Clone)]

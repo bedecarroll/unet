@@ -182,11 +182,7 @@ impl SuspiciousActivity {
 
     async fn is_blocked(&self) -> bool {
         let blocked_until = self.blocked_until.lock().await;
-        if let Some(until) = *blocked_until {
-            Instant::now() < until
-        } else {
-            false
-        }
+        blocked_until.map_or(false, |until| Instant::now() < until)
     }
 }
 
@@ -249,11 +245,11 @@ impl EnhancedRateLimiter {
 
             if !bucket.try_consume(1).await {
                 // Record violation for suspicious activity tracking
-                let activity = self
-                    .suspicious_ips
+                self.suspicious_ips
                     .entry(ip)
-                    .or_insert_with(|| SuspiciousActivity::new());
-                activity.record_violation().await;
+                    .or_insert_with(|| SuspiciousActivity::new())
+                    .record_violation()
+                    .await;
 
                 debug!("IP rate limit exceeded for {}", ip);
                 return RateLimitResult::RateLimited("IP rate limit exceeded");
@@ -305,11 +301,9 @@ impl EnhancedRateLimiter {
                 self.suspicious_ips.retain(|_, activity| {
                     // Keep records for recent violations (last 24 hours)
                     let last_violation = activity.last_violation.try_lock();
-                    if let Ok(last) = last_violation {
+                    last_violation.map_or(true, |last| {
                         now.duration_since(*last) < Duration::from_secs(86400)
-                    } else {
-                        true // Keep if we can't acquire lock
-                    }
+                    })
                 });
 
                 debug!("Rate limiter cleanup completed");
@@ -319,21 +313,16 @@ impl EnhancedRateLimiter {
 
     /// Get rate limit status for debugging
     pub async fn get_status(&self, ip: std::net::IpAddr, user_id: Option<&str>) -> RateLimitStatus {
-        let ip_tokens = if let Some(bucket) = self.ip_buckets.get(&ip) {
-            Some(bucket.remaining_tokens())
-        } else {
-            None
-        };
+        let ip_tokens = self
+            .ip_buckets
+            .get(&ip)
+            .map(|bucket| bucket.remaining_tokens());
 
-        let user_tokens = if let Some(user_id) = user_id {
-            if let Some(bucket) = self.user_buckets.get(user_id) {
-                Some(bucket.remaining_tokens())
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        let user_tokens = user_id.and_then(|user_id| {
+            self.user_buckets
+                .get(user_id)
+                .map(|bucket| bucket.remaining_tokens())
+        });
 
         let global_tokens = self.global_bucket.remaining_tokens();
 
@@ -414,7 +403,7 @@ pub async fn rate_limit_middleware(
 }
 
 /// Extract user ID from request headers (if authenticated)
-fn extract_user_id_from_headers(headers: &HeaderMap) -> Option<String> {
+const fn extract_user_id_from_headers(_headers: &HeaderMap) -> Option<String> {
     // In a real implementation, you would decode the JWT token or check session
     // For now, return None to indicate no user authentication
     None

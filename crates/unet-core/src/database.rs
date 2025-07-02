@@ -6,8 +6,7 @@
 use crate::config::{DatabaseConfig, MigrationConfig, PoolConfig, PostgresConfig};
 use crate::error::{Error, Result};
 use sea_orm::{
-    ConnectionTrait, Database, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr,
-    SqlxPostgresConnector, SqlxSqliteConnector, TransactionTrait,
+    ConnectionTrait, Database, DatabaseConnection, DatabaseTransaction, TransactionTrait,
 };
 use std::time::Duration;
 use tokio::time::timeout;

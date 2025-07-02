@@ -318,7 +318,7 @@ pub async fn reject_change(
     // Placeholder implementation
     let change = ConfigurationChangeBuilder::new()
         .change_type(ChangeType::Update)
-        .entity("placeholder".to_string(), change_id.clone())
+        .entity("placeholder".to_string(), change_id)
         .source(ChangeSource::Api)
         .description(format!("Rejected: {}", request.reason))
         .approval_required(true)
@@ -339,7 +339,7 @@ pub async fn apply_change(
     // Placeholder implementation
     let change = ConfigurationChangeBuilder::new()
         .change_type(ChangeType::Update)
-        .entity("placeholder".to_string(), change_id.clone())
+        .entity("placeholder".to_string(), change_id)
         .source(ChangeSource::Api)
         .description("Applied change".to_string())
         .approval_required(false)
@@ -361,7 +361,7 @@ pub async fn rollback_change(
     // Placeholder implementation
     let change = ConfigurationChangeBuilder::new()
         .change_type(ChangeType::Update)
-        .entity("placeholder".to_string(), change_id.clone())
+        .entity("placeholder".to_string(), change_id)
         .source(ChangeSource::Api)
         .description(format!("Rolled back by {}", request.user_id))
         .approval_required(false)
@@ -381,7 +381,7 @@ pub async fn get_change_audit_trail(
 ) -> ServerResult<Json<AuditTrailReport>> {
     // Placeholder implementation
     let audit_report = AuditTrailReport {
-        change_id: change_id.clone(),
+        change_id,
         entity_type: "placeholder".to_string(),
         entity_id: "placeholder".to_string(),
         total_actions: 0,
@@ -568,7 +568,7 @@ pub async fn get_notification_config(
     // Placeholder implementation
     let config = NotificationConfig {
         id: uuid::Uuid::new_v4().to_string(),
-        user_id: user_id.clone(),
+        user_id,
         event_types: vec![
             "change_created".to_string(),
             "change_approved".to_string(),
@@ -596,7 +596,7 @@ pub async fn update_notification_config(
     // Placeholder implementation
     let config = NotificationConfig {
         id: uuid::Uuid::new_v4().to_string(),
-        user_id: user_id.clone(),
+        user_id,
         event_types: request.event_types,
         channels: request.channels,
         filters: request.filters.unwrap_or_default(),

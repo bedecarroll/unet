@@ -18,7 +18,7 @@ pub struct TlsManager {
 
 impl TlsManager {
     /// Create a new TLS manager with the given configuration
-    pub fn new(config: TlsConfig) -> Self {
+    pub const fn new(config: TlsConfig) -> Self {
         Self { config }
     }
 
@@ -124,12 +124,12 @@ impl TlsManager {
         }
 
         // Try to load certificates to validate format
-        let _certs = self
+        let certs = self
             .load_certificates(&self.config.cert_file)
             .with_context(|| "Certificate file validation failed")?;
 
         // Try to load private key to validate format
-        let _key = self
+        let key = self
             .load_private_key(&self.config.key_file)
             .with_context(|| "Private key file validation failed")?;
 

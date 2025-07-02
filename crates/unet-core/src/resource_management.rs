@@ -4,14 +4,14 @@
 //! memory optimization, resource limits, throttling, graceful degradation,
 //! and resource monitoring with alerting.
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 use tokio::sync::Semaphore;
-use tokio::time::{Instant, interval};
+use tokio::time::Instant;
 
 /// Resource management configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

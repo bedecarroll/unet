@@ -4,7 +4,6 @@
 //! like HashiCorp Vault, AWS Secrets Manager, and Azure Key Vault.
 
 use crate::error::{Error, Result};
-use crate::secrets::EncryptedSecret;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -209,7 +208,7 @@ pub struct AwsSecretsManagerProvider {
 impl AwsSecretsManagerProvider {
     /// Create a new AWS Secrets Manager provider
     pub async fn new(region: Option<String>, prefix: Option<String>) -> Result<Self> {
-        let config = aws_config::load_from_env().await;
+        let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
         let client = aws_sdk_secretsmanager::Client::new(&config);
 
         Ok(Self {
@@ -240,7 +239,7 @@ impl AwsSecretsManagerProvider {
         );
 
         let region_str = region.unwrap_or_else(|| "us-east-1".to_string());
-        let config = aws_config::from_env()
+        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
             .region(aws_config::Region::new(region_str.clone()))
             .credentials_provider(credentials)
             .load()

@@ -356,19 +356,17 @@ impl Node {
                 if let Value::Object(obj) = current {
                     obj.insert(part.to_string(), value);
                     return Ok(());
-                } else {
-                    return Err("Cannot set value on non-object".to_string());
                 }
+                return Err("Cannot set value on non-object".to_string());
+            }
+            // Navigate deeper, creating objects as needed
+            if let Value::Object(obj) = current {
+                let entry = obj
+                    .entry(part.to_string())
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                current = entry;
             } else {
-                // Navigate deeper, creating objects as needed
-                if let Value::Object(obj) = current {
-                    let entry = obj
-                        .entry(part.to_string())
-                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
-                    current = entry;
-                } else {
-                    return Err("Cannot navigate through non-object".to_string());
-                }
+                return Err("Cannot navigate through non-object".to_string());
             }
         }
 
@@ -540,7 +538,6 @@ impl NodeBuilder {
 
 /// Network link/connection between nodes
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[allow(clippy::similar_names)]
 pub struct Link {
     /// Unique identifier for the link
     pub id: Uuid,
@@ -572,16 +569,16 @@ impl Link {
         name: String,
         node_a_id: Uuid,
         node_a_interface: String,
-        node_z_id: Uuid,
-        node_z_interface: String,
+        node_b_id: Uuid,
+        node_b_interface: String,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
             name,
             node_a_id,
             node_a_interface,
-            node_z_id: Some(node_z_id),
-            node_z_interface: Some(node_z_interface),
+            node_z_id: Some(node_b_id),
+            node_z_interface: Some(node_b_interface),
             description: None,
             bandwidth: None,
             link_type: None,
@@ -730,19 +727,17 @@ impl Link {
                 if let Value::Object(obj) = current {
                     obj.insert(part.to_string(), value);
                     return Ok(());
-                } else {
-                    return Err("Cannot set value on non-object".to_string());
                 }
+                return Err("Cannot set value on non-object".to_string());
+            }
+            // Navigate deeper, creating objects as needed
+            if let Value::Object(obj) = current {
+                let entry = obj
+                    .entry(part.to_string())
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                current = entry;
             } else {
-                // Navigate deeper, creating objects as needed
-                if let Value::Object(obj) = current {
-                    let entry = obj
-                        .entry(part.to_string())
-                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
-                    current = entry;
-                } else {
-                    return Err("Cannot navigate through non-object".to_string());
-                }
+                return Err("Cannot navigate through non-object".to_string());
             }
         }
 
@@ -1042,19 +1037,17 @@ impl Location {
                 if let Value::Object(obj) = current {
                     obj.insert(part.to_string(), value);
                     return Ok(());
-                } else {
-                    return Err("Cannot set value on non-object".to_string());
                 }
+                return Err("Cannot set value on non-object".to_string());
+            }
+            // Navigate deeper, creating objects as needed
+            if let Value::Object(obj) = current {
+                let entry = obj
+                    .entry(part.to_string())
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                current = entry;
             } else {
-                // Navigate deeper, creating objects as needed
-                if let Value::Object(obj) = current {
-                    let entry = obj
-                        .entry(part.to_string())
-                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
-                    current = entry;
-                } else {
-                    return Err("Cannot navigate through non-object".to_string());
-                }
+                return Err("Cannot navigate through non-object".to_string());
             }
         }
 

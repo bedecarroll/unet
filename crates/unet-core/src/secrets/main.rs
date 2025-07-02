@@ -19,16 +19,13 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
 use tokio::fs;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::ZeroizeOnDrop;
 
 /// Maximum size for secrets (1MB)
 const MAX_SECRET_SIZE: usize = 1024 * 1024;
 
 /// Service name for system keyring
 const KEYRING_SERVICE: &str = "unet-secrets";
-
-/// Default master key name in keyring
-const MASTER_KEY_NAME: &str = "master-key";
 
 /// Encrypted secret data
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,7 +60,7 @@ impl MasterKey {
 
     /// Create master key from password using Argon2
     pub fn from_password(password: &str, salt: &[u8]) -> Result<Self> {
-        use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
+        use argon2::password_hash::{PasswordHasher, SaltString};
 
         let argon2 = Argon2::default();
         let salt_string = SaltString::encode_b64(salt)
@@ -313,9 +310,8 @@ impl SecretManager {
                 let mut metadata = HashMap::new();
                 metadata.insert("source".to_string(), "external".to_string());
                 return Ok(Some(metadata));
-            } else {
-                return Ok(None);
             }
+            return Ok(None);
         }
 
         // Try cache first
@@ -700,7 +696,7 @@ mod tests {
     #[tokio::test]
     async fn test_secret_encryption_decryption() {
         let master_key = MasterKey::generate();
-        let mut manager = SecretManager::new(SecretBackend::File {
+        let manager = SecretManager::new(SecretBackend::File {
             path: "test.json".to_string(),
         });
 

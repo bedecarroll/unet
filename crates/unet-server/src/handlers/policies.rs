@@ -103,7 +103,6 @@ pub async fn evaluate_policies(
                 Ok(Some(node)) => nodes.push(node),
                 Ok(None) => {
                     warn!("Node {} not found for policy evaluation", node_id);
-                    continue;
                 }
                 Err(e) => {
                     error!("Failed to get node {}: {}", node_id, e);
