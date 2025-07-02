@@ -276,13 +276,10 @@ async fn eval_policy(
                         match evaluation_result {
                             unet_core::policy::EvaluationResult::Satisfied { action } => {
                                 println!("  ✅ Rule {} condition matched", rule_idx + 1);
-
-                                if args.dry_run {
-                                    println!("  🔍 Would execute: {}", action);
-                                } else {
+                                println!("  🔍 Would execute: {}", action);
+                                if !args.dry_run {
                                     // Note: For now, we'll just show what would be executed
                                     // Full action execution requires additional integration
-                                    println!("  🔍 Would execute: {}", action);
                                 }
                             }
                             unet_core::policy::EvaluationResult::NotSatisfied => {
@@ -454,21 +451,15 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     }
 
     for policy_file in load_result.loaded {
+        println!(
+            "📄 {} ({} rules)",
+            policy_file.path.display(),
+            policy_file.rules.len()
+        );
         if args.verbose {
-            println!(
-                "📄 {} ({} rules)",
-                policy_file.path.display(),
-                policy_file.rules.len()
-            );
             for (i, rule) in policy_file.rules.iter().enumerate() {
                 println!("    Rule {}: {}", i + 1, rule);
             }
-        } else {
-            println!(
-                "📄 {} ({} rules)",
-                policy_file.path.display(),
-                policy_file.rules.len()
-            );
         }
     }
 
@@ -512,25 +503,4 @@ async fn show_policy(args: ShowPolicyArgs, _output_format: crate::OutputFormat) 
     }
 
     Ok(())
-}
-
-// Helper functions for formatting
-fn format_condition(condition: &unet_core::policy::Condition) -> String {
-    condition.to_string()
-}
-
-fn format_action(action: &unet_core::policy::Action) -> String {
-    action.to_string()
-}
-
-fn format_field_ref(field_ref: &unet_core::policy::FieldRef) -> String {
-    field_ref.to_string()
-}
-
-fn format_comparison_op(op: &unet_core::policy::ComparisonOperator) -> String {
-    op.to_string()
-}
-
-fn format_value(value: &unet_core::policy::Value) -> String {
-    value.to_string()
 }

@@ -165,8 +165,8 @@ impl CertificateManager {
         // For now, create placeholder metadata
         // In production, this would parse actual certificate data
         Ok(CertificateMetadata {
-            cert_path: cert_path.clone(),
-            key_path: key_path.clone(),
+            cert_path,
+            key_path,
             not_before: Utc::now() - chrono::Duration::days(30),
             not_after: Utc::now() + chrono::Duration::days(60),
             subject: "CN=localhost".to_string(),
@@ -187,7 +187,7 @@ impl CertificateManager {
         })?;
         let mut cert_reader = BufReader::new(cert_file);
 
-        let _certs: Vec<Certificate> = certs(&mut cert_reader)
+        let certificates: Vec<Certificate> = certs(&mut cert_reader)
             .map_err(|e| anyhow::anyhow!("Failed to parse certificate file: {}", e))?
             .into_iter()
             .map(Certificate)
@@ -199,13 +199,13 @@ impl CertificateManager {
         })?;
         let mut key_reader = BufReader::new(key_file);
 
-        let keys: Vec<PrivateKey> = pkcs8_private_keys(&mut key_reader)
+        if pkcs8_private_keys(&mut key_reader)
             .map_err(|e| anyhow::anyhow!("Failed to parse private key file: {}", e))?
             .into_iter()
             .map(PrivateKey)
-            .collect();
-
-        if keys.is_empty() {
+            .next()
+            .is_none()
+        {
             return Err(anyhow::anyhow!("No private keys found in key file"));
         }
 

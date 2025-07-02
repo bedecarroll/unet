@@ -7,12 +7,8 @@
 //! - Security compliance checks
 //! - Performance recommendation analysis
 
-use crate::config::{ClusterConfig, Config, DatabaseConfig, LoggingConfig, ServerConfig};
-use crate::error::{Error, Result};
-use regex::Regex;
+use crate::config::Config;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 
 /// Configuration validation context
@@ -140,7 +136,7 @@ pub struct ResourceUsageEstimate {
 }
 
 /// Error categories for classification
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ErrorCategory {
     /// Required field missing
     MissingRequired,
@@ -310,7 +306,7 @@ impl Config {
     fn validate_production_requirements(
         &self,
         result: &mut ValidationResult,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features // Reserved for future validation context features
     ) {
         // TLS must be enabled in production
         if self.server.tls.is_none() {
@@ -374,7 +370,7 @@ impl Config {
     fn validate_staging_requirements(
         &self,
         result: &mut ValidationResult,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features // Reserved for future validation context features
     ) {
         // Staging should mirror production but can be more permissive
         if !self.auth.enabled {
@@ -395,7 +391,7 @@ impl Config {
     fn validate_development_requirements(
         &self,
         result: &mut ValidationResult,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features
     ) {
         // Development can be permissive but warn about production settings
         if self.server.tls.is_some() && self.server.tls.as_ref().unwrap().force_https {
@@ -597,7 +593,7 @@ impl Config {
     fn validate_database_core(
         &self,
         errors: &mut Vec<ValidationError>,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features
     ) {
         // URL format validation
         if !self.database.url.starts_with("sqlite:")
@@ -631,7 +627,7 @@ impl Config {
     fn validate_server_core(
         &self,
         errors: &mut Vec<ValidationError>,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features
     ) {
         // Port validation
         if self.server.port == 0 {
@@ -683,7 +679,7 @@ impl Config {
     fn validate_logging_core(
         &self,
         errors: &mut Vec<ValidationError>,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features
     ) {
         // Log level validation
         let valid_levels = ["trace", "debug", "info", "warn", "error"];
@@ -773,7 +769,7 @@ impl Config {
     fn generate_performance_recommendations(
         &self,
         recommendations: &mut Vec<ValidationRecommendation>,
-        _context: &ValidationContext,
+        _context: &ValidationContext, // Reserved for future validation context features
     ) {
         // Resource management recommendation
         if !self.resource_management.memory.enabled {
@@ -1057,7 +1053,7 @@ mod tests {
     #[test]
     fn test_resource_estimation() {
         let mut config = Config::default();
-        config.resource_management.memory.max_cache_size_mb = 1024;
+        config.resource_management.memory.cache.max_size_mb = 1024;
         if let Some(ref mut pool) = config.database.pool {
             pool.max_connections = Some(50);
         }

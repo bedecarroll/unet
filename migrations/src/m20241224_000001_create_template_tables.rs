@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Template::Path).text().not_null())
                     .col(ColumnDef::new(Template::Description).text())
                     .col(ColumnDef::new(Template::Vendor).text())
-                    .col(ColumnDef::new(Template::TemplateType).text().not_null())
+                    .col(ColumnDef::new(Template::Type).text().not_null())
                     .col(ColumnDef::new(Template::Version).text().not_null())
                     .col(ColumnDef::new(Template::GitRepository).text())
                     .col(ColumnDef::new(Template::GitBranch).text())
@@ -240,7 +240,7 @@ impl MigrationTrait for Migration {
                     .name("idx_template_vendor_type")
                     .table(Template::Table)
                     .col(Template::Vendor)
-                    .col(Template::TemplateType)
+                    .col(Template::Type)
                     .to_owned(),
             )
             .await?;
@@ -373,7 +373,7 @@ enum Template {
     Path,
     Description,
     Vendor,
-    TemplateType,
+    Type,
     Version,
     GitRepository,
     GitBranch,

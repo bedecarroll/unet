@@ -423,9 +423,8 @@ impl ConfigMigrator {
                     .is_some()
                 {
                     return Ok(Version::new(1, 0, 0)); // Latest version
-                } else {
-                    return Ok(Version::new(0, 2, 0)); // Resource management added
                 }
+                return Ok(Version::new(0, 2, 0)); // Resource management added
             }
 
             if table.contains_key("cluster") {
@@ -499,7 +498,12 @@ impl ConfigMigrator {
                 merge_strategy,
             } => self.merge_fields(config, source_fields, merge_strategy, &rule.field_path),
             MigrationOperation::CustomTransform { function_name } => {
-                self.apply_custom_transform(config, &rule.field_path, function_name)
+                // Custom transforms not yet implemented
+                eprintln!(
+                    "Warning: Custom transform '{}' not implemented",
+                    function_name
+                );
+                Ok(())
             }
         }
     }
@@ -818,20 +822,6 @@ impl ConfigMigrator {
     }
 
     /// Apply custom transformation function
-    fn apply_custom_transform(
-        &self,
-        _config: &mut toml::Value,
-        _field_path: &str,
-        function_name: &str,
-    ) -> Result<()> {
-        // This would call custom transformation functions
-        // For now, just return success for unknown functions
-        eprintln!(
-            "Warning: Custom transform '{}' not implemented",
-            function_name
-        );
-        Ok(())
-    }
 
     /// Get field value by path
     fn get_field_value(

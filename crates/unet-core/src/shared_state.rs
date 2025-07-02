@@ -372,7 +372,7 @@ impl SharedStateManager {
     }
 
     /// High-level methods for common use cases
-
+    ///
     /// Store serializable object
     pub async fn store_json<T: Serialize>(
         &self,

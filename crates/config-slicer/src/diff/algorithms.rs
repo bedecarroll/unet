@@ -20,9 +20,7 @@ pub struct TextDiffer {
 }
 
 /// Hierarchical differ comparing configuration tree structures
-pub struct HierarchicalDiffer {
-    options: DiffOptions,
-}
+pub struct HierarchicalDiffer {}
 
 /// Semantic differ with configuration understanding
 pub struct SemanticDiffer {
@@ -48,7 +46,6 @@ impl TextDiffer {
         let mut changes = Vec::new();
         let mut additions = 0;
         let mut deletions = 0;
-        let mut modifications = 0;
 
         let mut old_line_num = 1;
         let mut new_line_num = 1;
@@ -109,8 +106,7 @@ impl TextDiffer {
         let filtered_changes = self.apply_context_filtering(changes);
 
         // Detect modifications (delete + insert pairs)
-        let (final_changes, actual_modifications) = self.detect_modifications(filtered_changes);
-        modifications = actual_modifications;
+        let (final_changes, modifications) = self.detect_modifications(filtered_changes);
 
         Ok(TextDiff {
             changes: final_changes,
@@ -235,8 +231,8 @@ impl TextDiffer {
 impl HierarchicalDiffer {
     /// Create a new hierarchical differ with the given options
     #[must_use]
-    pub const fn new(options: DiffOptions) -> Self {
-        Self { options }
+    pub const fn new(_options: DiffOptions) -> Self {
+        Self {}
     }
 
     /// Compare two configuration trees and generate a hierarchical diff

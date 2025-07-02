@@ -407,7 +407,7 @@ async fn execute_clone(args: CloneArgs, output_format: crate::OutputFormat) -> R
 
     println!("Cloning {} into {}...", args.url, target_dir.display());
 
-    let _repo = git_client.clone_to_path(&args.url, &target_dir).await?;
+    let repo = git_client.clone_to_path(&args.url, &target_dir).await?;
 
     let result = serde_json::json!({
         "status": "success",
@@ -475,18 +475,22 @@ async fn execute_config(args: ConfigArgs, output_format: crate::OutputFormat) ->
             })
         } else {
             // Get configuration
-            match config.get_string(&key) {
-                Ok(value) => serde_json::json!({
-                    "status": "success",
-                    "key": key,
-                    "value": value
-                }),
-                Err(_) => serde_json::json!({
-                    "status": "error",
-                    "message": format!("Configuration key '{}' not found", key),
-                    "key": key
-                }),
-            }
+            config.get_string(&key).map_or_else(
+                |_| {
+                    serde_json::json!({
+                        "status": "error",
+                        "message": format!("Configuration key '{}' not found", key),
+                        "key": key
+                    })
+                },
+                |value| {
+                    serde_json::json!({
+                        "status": "success",
+                        "key": key,
+                        "value": value
+                    })
+                },
+            )
         }
     } else {
         return Err(anyhow::anyhow!("Must specify --list or provide a key"));
@@ -742,7 +746,7 @@ async fn execute_diff(args: DiffArgs, output_format: crate::OutputFormat) -> Res
             };
 
             diff_stats.push(serde_json::json!({
-                "file": new_file.path().unwrap_or_else(|| old_file.path().unwrap_or(std::path::Path::new(""))).display().to_string(),
+                "file": new_file.path().unwrap_or_else(|| old_file.path().unwrap_or_else(|| std::path::Path::new(""))).display().to_string(),
                 "status": status,
                 "old_path": old_file.path().map(|p| p.display().to_string()),
                 "new_path": new_file.path().map(|p| p.display().to_string()),

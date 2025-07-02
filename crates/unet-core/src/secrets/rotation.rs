@@ -4,7 +4,7 @@
 //! validation, and rollback support for all secret backends including external providers.
 
 use crate::error::{Error, Result};
-use crate::secrets::{MasterKey, SecretManager};
+use crate::secrets::SecretManager;
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -299,7 +299,7 @@ impl SecretRotator for DefaultSecretRotator {
         Ok(())
     }
 
-    async fn rollback(&self, secret_name: &str, old_value: &str) -> Result<()> {
+    async fn rollback(&self, secret_name: &str, _old_value: &str) -> Result<()> {
         tracing::warn!("Rolling back rotation for secret: {}", secret_name);
 
         // Send failure notifications

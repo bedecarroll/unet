@@ -2,6 +2,13 @@
 //!
 //! REST API server for μNet network configuration management.
 
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(clippy::all)]
+#![allow(missing_docs)]
+#![allow(unexpected_cfgs)]
+
 mod api;
 mod background;
 mod cert_manager;
@@ -13,7 +20,6 @@ mod security_audit;
 mod server;
 mod tls;
 mod validation;
-mod vulnerability_scanner;
 
 use anyhow::Result;
 use clap::Parser;

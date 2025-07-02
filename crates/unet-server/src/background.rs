@@ -683,123 +683,207 @@ impl GitSyncTask {
         let branch = self.config.git.branch.clone();
 
         tokio::task::spawn_blocking(move || {
-            // Create a new GitClient for this operation
-            let git_config = GitClientConfig {
-                base_directory: std::path::PathBuf::from("./git-repos"),
-                default_sync_interval: 30,
-                max_state_age: 5,
-                auto_fetch: true,
-                auto_cleanup: false,
-            };
-            let git_client = GitClient::with_config(git_config);
-
-            // Determine local path
-            let local_name = repo_url
-                .split('/')
-                .next_back()
-                .unwrap_or("repository")
-                .trim_end_matches(".git");
-            let local_path = std::path::PathBuf::from("./git-repos").join(&repo_type);
-
-            // Create base directory if it doesn't exist
-            if !local_path.parent().unwrap().exists() {
-                std::fs::create_dir_all(local_path.parent().unwrap())?;
-            }
-
-            // Clone or open repository directly using GitRepository
-            let credential_provider = git_client.credential_provider();
-            let repository = if local_path.exists() && local_path.join(".git").exists() {
-                debug!("Opening existing repository at: {}", local_path.display());
-                GitRepository::open(&local_path, credential_provider)?
-            } else {
-                debug!("Cloning repository to: {}", local_path.display());
-                GitRepository::clone(&repo_url, &local_path, credential_provider)?
-            };
-
-            // Get current HEAD commit before fetch for incremental update detection
-            let current_head = repository.get_current_commit_hash().unwrap_or_else(|_| {
-                debug!("Could not get current HEAD, proceeding with full sync");
-                "unknown".to_string()
-            });
-
-            // Fetch latest changes
-            repository.fetch(None)?;
-
-            // Check if there are new commits (incremental update detection)
-            let latest_remote_commit = repository
-                .get_latest_remote_commit_hash(&branch)
-                .unwrap_or_else(|_| {
-                    debug!("Could not get latest remote commit, proceeding with pull");
-                    "unknown".to_string()
-                });
-
-            if current_head == latest_remote_commit && current_head != "unknown" {
-                debug!(
-                    "Repository {} is already up to date (commit: {})",
-                    repo_type,
-                    current_head[..8].to_string()
-                );
-                // Return special value to indicate up-to-date status
-                return Err(GitError::RepositoryOperation {
-                    message: "UP_TO_DATE".to_string(),
-                });
-            }
-
-            debug!(
-                "Repository {} has updates: {} -> {}",
-                repo_type,
-                &current_head[..8],
-                &latest_remote_commit[..8]
-            );
-
-            // Pull changes from the configured branch
-            repository.pull(None, Some(&branch)).map_err(|e| match &e {
-                GitError::MergeConflict { files } => {
-                    // Log merge conflicts but don't fail immediately - could be resolved
-                    warn!(
-                        "Merge conflict detected in repository {}: files {:?}",
-                        repo_type, files
-                    );
-                    GitError::RepositoryOperation {
-                        message: format!(
-                            "Merge conflict in files: {} - manual resolution may be required",
-                            files.join(", ")
-                        ),
-                    }
-                }
-                GitError::Authentication { repository } => {
-                    // Authentication errors are likely persistent
-                    error!(
-                        "Authentication failed for repository {}: {}",
-                        repo_type, repository
-                    );
-                    e
-                }
-                GitError::Network { message } => {
-                    // Network errors might be transient
-                    warn!("Network error for repository {}: {}", repo_type, message);
-                    e
-                }
-                GitError::RepositoryNotFound { path } => {
-                    // Repository not found is a configuration issue
-                    error!("Repository not found for {}: {}", repo_type, path);
-                    e
-                }
-                _ => {
-                    // Log other errors with context
-                    warn!("Git operation failed for repository {}: {}", repo_type, e);
-                    e
-                }
-            })?;
-
-            debug!("Successfully synced {} repository", repo_type);
-            Ok::<(), GitError>(())
+            Self::sync_repository_blocking(&repo_url, &repo_type, &branch)
         })
         .await
         .map_err(|e| format!("Task join error: {}", e))?
         .map_err(|e| format!("Git sync error: {}", e))?;
 
         Ok(())
+    }
+
+    /// Blocking implementation of repository sync
+    fn sync_repository_blocking(
+        repo_url: &str,
+        repo_type: &str,
+        branch: &str,
+    ) -> Result<(), GitError> {
+        let git_client = Self::create_git_client();
+        let local_path = Self::prepare_local_path(repo_url, repo_type)?;
+        let repository = Self::get_or_clone_repository(&git_client, repo_url, &local_path)?;
+
+        let current_head = Self::get_current_head(&repository);
+        repository.fetch(None)?;
+        let latest_remote_commit = Self::get_latest_remote_commit(&repository, branch);
+
+        if Self::is_repository_up_to_date(&current_head, &latest_remote_commit, repo_type) {
+            return Err(GitError::RepositoryOperation {
+                message: "UP_TO_DATE".to_string(),
+            });
+        }
+
+        Self::log_update_info(repo_type, &current_head, &latest_remote_commit);
+        Self::pull_with_error_handling(&repository, branch, repo_type)?;
+
+        debug!("Successfully synced {} repository", repo_type);
+        Ok(())
+    }
+
+    /// Create a new GitClient for repository operations
+    fn create_git_client() -> GitClient {
+        let git_config = GitClientConfig {
+            base_directory: std::path::PathBuf::from("./git-repos"),
+            default_sync_interval: 30,
+            max_state_age: 5,
+            auto_fetch: true,
+            auto_cleanup: false,
+        };
+        GitClient::with_config(git_config)
+    }
+
+    /// Prepare the local path for the repository
+    fn prepare_local_path(repo_url: &str, repo_type: &str) -> Result<std::path::PathBuf, GitError> {
+        let local_path = std::path::PathBuf::from("./git-repos").join(repo_type);
+
+        // Create base directory if it doesn't exist
+        if let Some(parent) = local_path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent).map_err(|e| GitError::RepositoryOperation {
+                    message: format!("Failed to create directory: {}", e),
+                })?;
+            }
+        }
+
+        Ok(local_path)
+    }
+
+    /// Get existing repository or clone a new one
+    fn get_or_clone_repository(
+        git_client: &GitClient,
+        repo_url: &str,
+        local_path: &std::path::Path,
+    ) -> Result<GitRepository, GitError> {
+        let credential_provider = git_client.credential_provider();
+
+        if local_path.exists() && local_path.join(".git").exists() {
+            debug!("Opening existing repository at: {}", local_path.display());
+            GitRepository::open(local_path, credential_provider)
+        } else {
+            debug!("Cloning repository to: {}", local_path.display());
+            GitRepository::clone(repo_url, local_path, credential_provider)
+        }
+    }
+
+    /// Get current HEAD commit hash
+    fn get_current_head(repository: &GitRepository) -> String {
+        repository.get_current_commit_hash().unwrap_or_else(|_| {
+            debug!("Could not get current HEAD, proceeding with full sync");
+            "unknown".to_string()
+        })
+    }
+
+    /// Get latest remote commit hash
+    fn get_latest_remote_commit(repository: &GitRepository, branch: &str) -> String {
+        repository
+            .get_latest_remote_commit_hash(branch)
+            .unwrap_or_else(|_| {
+                debug!("Could not get latest remote commit, proceeding with pull");
+                "unknown".to_string()
+            })
+    }
+
+    /// Check if repository is up to date
+    fn is_repository_up_to_date(
+        current_head: &str,
+        latest_remote_commit: &str,
+        repo_type: &str,
+    ) -> bool {
+        if current_head == latest_remote_commit && current_head != "unknown" {
+            debug!(
+                "Repository {} is already up to date (commit: {})",
+                repo_type,
+                current_head[..8].to_string()
+            );
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Log update information
+    fn log_update_info(repo_type: &str, current_head: &str, latest_remote_commit: &str) {
+        debug!(
+            "Repository {} has updates: {} -> {}",
+            repo_type,
+            &current_head[..8],
+            &latest_remote_commit[..8]
+        );
+    }
+
+    /// Pull with comprehensive error handling
+    fn pull_with_error_handling(
+        repository: &GitRepository,
+        branch: &str,
+        repo_type: &str,
+    ) -> Result<(), GitError> {
+        repository
+            .pull(None, Some(branch))
+            .map_err(|e| Self::handle_git_error(e, repo_type))
+    }
+
+    /// Handle different types of Git errors with appropriate logging
+    fn handle_git_error(error: GitError, repo_type: &str) -> GitError {
+        match &error {
+            GitError::MergeConflict { files } => {
+                Self::handle_merge_conflict_error(files, repo_type)
+            }
+            GitError::Authentication { repository } => {
+                Self::handle_authentication_error(repository, repo_type);
+                error
+            }
+            GitError::Network { message } => {
+                Self::handle_network_error(message, repo_type);
+                error
+            }
+            GitError::RepositoryNotFound { path } => {
+                Self::handle_repository_not_found_error(path, repo_type);
+                error
+            }
+            _ => {
+                Self::handle_general_git_error(&error, repo_type);
+                error
+            }
+        }
+    }
+
+    /// Handle merge conflict errors
+    fn handle_merge_conflict_error(files: &[String], repo_type: &str) -> GitError {
+        warn!(
+            "Merge conflict detected in repository {}: files {:?}",
+            repo_type, files
+        );
+        GitError::RepositoryOperation {
+            message: format!(
+                "Merge conflict in files: {} - manual resolution may be required",
+                files.join(", ")
+            ),
+        }
+    }
+
+    /// Handle authentication errors
+    fn handle_authentication_error(repository: &str, repo_type: &str) {
+        error!(
+            "Authentication failed for repository {}: {}",
+            repo_type, repository
+        );
+    }
+
+    /// Handle network errors
+    fn handle_network_error(message: &str, repo_type: &str) {
+        warn!("Network error for repository {}: {}", repo_type, message);
+    }
+
+    /// Handle repository not found errors
+    fn handle_repository_not_found_error(path: &str, repo_type: &str) {
+        error!("Repository not found for {}: {}", repo_type, path);
+    }
+
+    /// Handle general git errors
+    fn handle_general_git_error(error: &GitError, repo_type: &str) {
+        warn!(
+            "Git operation failed for repository {}: {}",
+            repo_type, error
+        );
     }
 }
 

@@ -657,8 +657,6 @@ pub struct ConflictResolutionAssistant {
 pub struct ConflictKnowledgeBase {
     /// File type specific strategies
     file_type_strategies: HashMap<String, Vec<ResolutionStrategy>>,
-    /// Common conflict patterns and solutions
-    pattern_solutions: HashMap<String, String>,
 }
 
 impl Default for ConflictKnowledgeBase {
@@ -689,19 +687,8 @@ impl Default for ConflictKnowledgeBase {
             vec![ResolutionStrategy::Manual, ResolutionStrategy::UseOurs],
         );
 
-        let mut pattern_solutions = HashMap::new();
-        pattern_solutions.insert(
-            "version_conflict".to_string(),
-            "Consider using the newer version or manually merging version numbers".to_string(),
-        );
-        pattern_solutions.insert(
-            "dependency_conflict".to_string(),
-            "Review dependency requirements and choose compatible versions".to_string(),
-        );
-
         Self {
             file_type_strategies,
-            pattern_solutions,
         }
     }
 }
@@ -837,12 +824,7 @@ impl ConflictResolutionAssistant {
     fn detect_version_conflict(&self, conflict: &ConflictInfo) -> bool {
         if let (Some(ours), Some(theirs)) = (&conflict.our_content, &conflict.their_content) {
             // Simple pattern matching for version conflicts
-            let version_patterns = [
-                r#""version""#,
-                r#"version ="#,
-                r#"version:"#,
-                r#"<version>"#,
-            ];
+            let version_patterns = [r#""version""#, r"version =", r"version:", r"<version>"];
 
             for pattern in &version_patterns {
                 if ours.contains(pattern) && theirs.contains(pattern) {
@@ -933,6 +915,7 @@ impl std::fmt::Display for ComplexityLevel {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_merge_tool_config() {

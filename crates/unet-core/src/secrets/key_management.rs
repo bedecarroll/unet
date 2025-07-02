@@ -10,8 +10,6 @@
 
 use crate::error::{Error, Result};
 use crate::secrets::MasterKey;
-use aes_gcm::Aes256Gcm;
-use argon2::Argon2;
 use base64::{Engine as _, engine::general_purpose};
 use chrono::{DateTime, Utc};
 use rand::{RngCore, rngs::OsRng};
@@ -19,7 +17,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use uuid::Uuid;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Key derivation path for hierarchical key management
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -352,9 +349,7 @@ impl SecureKeyManager {
         let key_id = self.generate_key_id(&path, &spec);
 
         // Derive the actual key material
-        let key_material = self
-            .perform_key_derivation(&spec, parent_key, &path)
-            .await?;
+        let key_material = self.perform_key_derivation(&spec, parent_key).await?;
 
         // Generate fingerprint
         let fingerprint = self.generate_key_fingerprint(&key_material, &spec)?;
@@ -428,9 +423,7 @@ impl SecureKeyManager {
         }
 
         // Generate new key material and fingerprint
-        let key_material = self
-            .perform_key_derivation(&new_key.spec, None, path)
-            .await?;
+        let key_material = self.perform_key_derivation(&new_key.spec, None).await?;
         new_key.fingerprint = self.generate_key_fingerprint(&key_material, &new_key.spec)?;
 
         // Store new version
@@ -593,7 +586,6 @@ impl SecureKeyManager {
         &self,
         spec: &KeyDerivationSpec,
         parent_key: Option<&MasterKey>,
-        path: &KeyPath,
     ) -> Result<Vec<u8>> {
         match &spec.kdf {
             KeyDerivationFunction::HKDF { hash, salt, info } => {

@@ -24,7 +24,7 @@ impl From<ValidationError> for StatusCode {
         match err {
             ValidationError::InvalidInput(_)
             | ValidationError::SanitizationFailed(_)
-            | ValidationError::InvalidFormat(_) => StatusCode::BAD_REQUEST,
+            | ValidationError::InvalidFormat(_) => Self::BAD_REQUEST,
         }
     }
 }

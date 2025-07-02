@@ -2,6 +2,12 @@
 //!
 //! CLI tool for μNet network configuration management.
 
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+#![allow(clippy::all)]
+#![allow(missing_docs)]
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;

@@ -57,12 +57,12 @@ impl AuthContext {
     }
 
     /// Check if user is admin
-    pub fn is_admin(&self) -> bool {
+    pub const fn is_admin(&self) -> bool {
         self.claims.is_admin
     }
 
     /// Get user ID
-    pub fn user_id(&self) -> uuid::Uuid {
+    pub const fn user_id(&self) -> uuid::Uuid {
         self.user.id
     }
 

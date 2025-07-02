@@ -308,7 +308,7 @@ pub async fn block_ip(
     info!("Blocking IP address: {}", ip_address);
 
     // Validate IP address
-    let _ip = ip_address.parse::<std::net::IpAddr>().map_err(|_| {
+    let ip = ip_address.parse::<std::net::IpAddr>().map_err(|_| {
         warn!("Invalid IP address format: {}", ip_address);
         StatusCode::BAD_REQUEST
     })?;
@@ -333,7 +333,7 @@ pub async fn unblock_ip(
     info!("Unblocking IP address: {}", ip_address);
 
     // Validate IP address
-    let _ip = ip_address.parse::<std::net::IpAddr>().map_err(|_| {
+    let ip = ip_address.parse::<std::net::IpAddr>().map_err(|_| {
         warn!("Invalid IP address format: {}", ip_address);
         StatusCode::BAD_REQUEST
     })?;

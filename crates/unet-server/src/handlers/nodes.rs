@@ -92,10 +92,8 @@ pub async fn list_nodes(
         .map(|node| {
             if include_status {
                 // TODO: Fetch actual status from datastore - for now just use None
-                NodeResponse::from_node(node)
-            } else {
-                NodeResponse::from_node(node)
             }
+            NodeResponse::from_node(node)
         })
         .collect();
 
@@ -244,7 +242,7 @@ pub async fn get_node_status(
     Path(id): Path<Uuid>,
 ) -> ServerResult<Json<ApiResponse<NodeStatus>>> {
     // First verify the node exists
-    let _node = app_state
+    let node = app_state
         .datastore
         .get_node_required(&id)
         .await
@@ -272,7 +270,7 @@ pub async fn get_node_interfaces(
     Path(id): Path<Uuid>,
 ) -> ServerResult<Json<ApiResponse<Vec<InterfaceStatus>>>> {
     // First verify the node exists
-    let _node = app_state
+    let node = app_state
         .datastore
         .get_node_required(&id)
         .await
@@ -299,7 +297,7 @@ pub async fn get_node_metrics(
     Path(id): Path<Uuid>,
 ) -> ServerResult<Json<ApiResponse<PerformanceMetrics>>> {
     // First verify the node exists
-    let _node = app_state
+    let node = app_state
         .datastore
         .get_node_required(&id)
         .await

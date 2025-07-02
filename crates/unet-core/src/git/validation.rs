@@ -467,7 +467,7 @@ impl ChangeValidator {
             self.generate_deployment_recommendation(&overall_impact, &validation_status, context);
 
         // Generate next steps
-        let next_steps = self.generate_next_steps(&validation_status, &deployment_recommendation);
+        let next_steps = self.generate_next_steps(&validation_status);
 
         Ok(ValidationReport {
             change_id: change.id.clone(),
@@ -799,11 +799,7 @@ impl ChangeValidator {
     }
 
     /// Generate next steps based on validation results
-    fn generate_next_steps(
-        &self,
-        status: &ValidationStatus,
-        recommendation: &DeploymentRecommendation,
-    ) -> Vec<String> {
+    fn generate_next_steps(&self, status: &ValidationStatus) -> Vec<String> {
         match status {
             ValidationStatus::Passed => vec!["Proceed with deployment".to_string()],
             ValidationStatus::PassedWithWarnings => vec![

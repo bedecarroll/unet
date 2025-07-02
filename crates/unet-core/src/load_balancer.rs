@@ -3,13 +3,13 @@
 //! This module provides load balancer compatibility features including
 //! enhanced health checks, graceful shutdown, and load balancer-specific headers.
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Load balancer configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

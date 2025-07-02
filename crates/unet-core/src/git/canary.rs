@@ -4,7 +4,6 @@
 //! rollout of configuration changes with validation, testing, and rollback capabilities.
 
 use crate::git::environment::{EnvironmentManager, PromotionResult};
-use crate::git::repository::GitRepository;
 use crate::git::types::{GitError, GitResult};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -621,8 +620,6 @@ pub struct CanaryResourceUtilization {
 
 /// Canary deployment manager
 pub struct CanaryManager {
-    /// Git repository
-    repository: GitRepository,
     /// Environment manager
     environment_manager: EnvironmentManager,
     /// Active canary deployments
@@ -633,9 +630,8 @@ pub struct CanaryManager {
 
 impl CanaryManager {
     /// Create a new canary manager
-    pub fn new(repository: GitRepository, environment_manager: EnvironmentManager) -> Self {
+    pub fn new(environment_manager: EnvironmentManager) -> Self {
         Self {
-            repository,
             environment_manager,
             active_deployments: HashMap::new(),
             deployment_history: Vec::new(),
@@ -1004,16 +1000,6 @@ impl CanaryManager {
         Ok(())
     }
 
-    fn setup_canary_environment(&self, _deployment: &mut CanaryDeployment) -> GitResult<()> {
-        // This would:
-        // 1. Create canary branch from source environment
-        // 2. Apply configuration overrides
-        // 3. Set up monitoring
-        // 4. Initialize test data
-        info!("Setting up canary environment");
-        Ok(())
-    }
-
     fn setup_canary_environment_by_id(&self, _canary_id: &str) -> GitResult<()> {
         // This would:
         // 1. Create canary branch from source environment
@@ -1116,12 +1102,6 @@ impl CanaryManager {
         self.run_health_checks(deployment)
     }
 
-    fn collect_monitoring_data(&self, _deployment: &mut CanaryDeployment) -> GitResult<()> {
-        // This would collect metrics, logs, and alerts
-        info!("Collecting monitoring data");
-        Ok(())
-    }
-
     fn collect_monitoring_data_by_id(&self, _canary_id: &str) -> GitResult<()> {
         // This would collect metrics, logs, and alerts
         info!("Collecting monitoring data");
@@ -1184,16 +1164,6 @@ impl CanaryManager {
             "Automatic rollback due to validation failure".to_string(),
             CanaryRollbackTrigger::Automatic,
         )
-    }
-
-    fn perform_canary_rollback(&self, _deployment: &CanaryDeployment) -> GitResult<()> {
-        // This would:
-        // 1. Switch back to original branch
-        // 2. Remove canary configurations
-        // 3. Clean up monitoring
-        // 4. Restore original state
-        info!("Performing canary rollback");
-        Ok(())
     }
 
     fn perform_canary_rollback_by_id(&self, _canary_id: &str) -> GitResult<()> {

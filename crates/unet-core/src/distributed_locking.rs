@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
-use tokio::time::{Instant, interval, timeout};
+use tokio::time::{interval, timeout};
 use uuid::Uuid;
 
 use crate::error::{Error as CoreError, Result};
@@ -274,14 +274,12 @@ impl DistributedLockProvider for RedisLockProvider {
 pub struct PostgresLockProvider {
     // Database connection would go here
     stats: Arc<RwLock<LockStats>>,
-    instance_id: String,
 }
 
 impl PostgresLockProvider {
     pub fn new() -> Self {
         Self {
             stats: Arc::new(RwLock::new(LockStats::default())),
-            instance_id: Uuid::new_v4().to_string(),
         }
     }
 
@@ -757,16 +755,14 @@ impl LeaderElection {
 
 /// Deadlock detection system
 pub struct DeadlockDetector {
-    config: DistributedLockConfig,
     lock_dependencies: Arc<RwLock<HashMap<String, Vec<String>>>>,
     lock_holders: Arc<RwLock<HashMap<String, String>>>,
     deadlock_count: Arc<RwLock<u64>>,
 }
 
 impl DeadlockDetector {
-    pub fn new(config: DistributedLockConfig) -> Self {
+    pub fn new(_config: DistributedLockConfig) -> Self {
         Self {
-            config,
             lock_dependencies: Arc::new(RwLock::new(HashMap::new())),
             lock_holders: Arc::new(RwLock::new(HashMap::new())),
             deadlock_count: Arc::new(RwLock::new(0)),

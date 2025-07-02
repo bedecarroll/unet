@@ -513,7 +513,7 @@ async fn execute_info(args: InfoConfigArgs) -> Result<()> {
 }
 
 /// Convert CLI vendor enum to library vendor enum
-fn convert_vendor(vendor: Vendor) -> config_slicer::parser::Vendor {
+const fn convert_vendor(vendor: Vendor) -> config_slicer::parser::Vendor {
     match vendor {
         Vendor::Cisco => config_slicer::parser::Vendor::Cisco,
         Vendor::Juniper => config_slicer::parser::Vendor::Juniper,
@@ -523,7 +523,7 @@ fn convert_vendor(vendor: Vendor) -> config_slicer::parser::Vendor {
 }
 
 /// Get vendor description for detailed info output
-fn get_vendor_description(vendor: &config_slicer::parser::Vendor) -> &'static str {
+const fn get_vendor_description(vendor: &config_slicer::parser::Vendor) -> &'static str {
     match vendor {
         config_slicer::parser::Vendor::Cisco => "Cisco IOS/IOS-XE configurations",
         config_slicer::parser::Vendor::Juniper => "Juniper JunOS configurations",

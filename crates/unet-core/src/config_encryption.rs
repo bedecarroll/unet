@@ -13,10 +13,7 @@ use base64::{Engine as _, engine::general_purpose};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::Path};
 
 /// Encrypted configuration file metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,7 +257,6 @@ impl ConfigEncryption {
             .await?;
 
         // Re-encrypt with new key
-        let config_format = self.detect_config_format(encrypted_path)?;
         let content_hash = self.calculate_content_hash(&decrypted_content);
         let (encrypted_data, nonce) = self.encrypt_content(&decrypted_content, &new_master_key)?;
 
@@ -312,7 +308,7 @@ impl ConfigEncryption {
     fn detect_config_format(&self, path: &Path) -> Result<String> {
         match path.extension().and_then(|ext| ext.to_str()) {
             Some("toml") => Ok("toml".to_string()),
-            Some("yaml") | Some("yml") => Ok("yaml".to_string()),
+            Some("yaml" | "yml") => Ok("yaml".to_string()),
             Some("json") => Ok("json".to_string()),
             _ => Err(Error::config(
                 "Unsupported configuration format".to_string(),

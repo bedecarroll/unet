@@ -96,10 +96,10 @@ pub struct ChangeHistoryQuery {
     pub per_page: u32,
 }
 
-fn default_page() -> u32 {
+const fn default_page() -> u32 {
     1
 }
-fn default_per_page() -> u32 {
+const fn default_per_page() -> u32 {
     20
 }
 
@@ -243,7 +243,7 @@ pub async fn get_change_history(
         sort: vec![],
         pagination: Some(
             unet_core::datastore::Pagination::new(limit as usize, offset as usize)
-                .unwrap_or(unet_core::datastore::Pagination::new(20, 0).unwrap()),
+                .unwrap_or_else(|_| unet_core::datastore::Pagination::new(20, 0).unwrap()),
         ),
     };
 
@@ -416,13 +416,10 @@ pub async fn handle_git_webhook(
     // - Log webhook events
 
     let message = match payload.event_type.as_str() {
-        "push" => {
-            if let Some(commits) = &payload.commits {
-                format!("Processed push event with {} commits", commits.len())
-            } else {
-                "Processed push event".to_string()
-            }
-        }
+        "push" => payload.commits.as_ref().map_or_else(
+            || "Processed push event".to_string(),
+            |commits| format!("Processed push event with {} commits", commits.len()),
+        ),
         "pull_request" => "Processed pull request event".to_string(),
         event => format!("Processed {} event", event),
     };

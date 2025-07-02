@@ -256,7 +256,7 @@ impl SnmpSession {
             let value = match *oid {
                 "1.3.6.1.2.1.1.1.0" => SnmpValue::String("Linux router 5.4.0".to_string()),
                 "1.3.6.1.2.1.1.2.0" => SnmpValue::Oid("1.3.6.1.4.1.8072.3.2.10".to_string()),
-                "1.3.6.1.2.1.1.3.0" => SnmpValue::TimeTicks(12345678),
+                "1.3.6.1.2.1.1.3.0" => SnmpValue::TimeTicks(12_345_678),
                 _ => SnmpValue::NoSuchObject,
             };
             result.insert(oid.to_string(), value);
@@ -298,7 +298,7 @@ impl SnmpSession {
                 let value = match start_oid {
                     "1.3.6.1.2.1.2.2.1.2" => SnmpValue::String(format!("eth{}", i - 1)),
                     "1.3.6.1.2.1.2.2.1.3" => SnmpValue::Integer(6), // ethernetCsmacd
-                    "1.3.6.1.2.1.2.2.1.5" => SnmpValue::Gauge32(1000000000), // 1Gbps
+                    "1.3.6.1.2.1.2.2.1.5" => SnmpValue::Gauge32(1_000_000_000), // 1Gbps
                     _ => SnmpValue::NoSuchObject,
                 };
                 result.insert(oid, value);

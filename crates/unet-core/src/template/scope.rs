@@ -3,10 +3,10 @@
 //! This module provides functionality for resolving template scope conflicts,
 //! managing template priorities, and composing templates for configuration generation.
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use tracing::{debug, warn};
 
 use super::header::{HeaderParser, TemplateHeader, TemplateScope};
