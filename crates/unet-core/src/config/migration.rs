@@ -936,7 +936,12 @@ mod tests {
         if let toml::Value::Table(table) = &config {
             let rm = table.get("resource_management").unwrap();
             if let toml::Value::Table(rm_table) = rm {
-                assert_eq!(rm_table.get("enabled"), Some(&toml::Value::Boolean(true)));
+                let memory = rm_table.get("memory").unwrap();
+                if let toml::Value::Table(mem_table) = memory {
+                    assert_eq!(mem_table.get("enabled"), Some(&toml::Value::Boolean(true)));
+                } else {
+                    panic!("Expected memory to be a table");
+                }
             } else {
                 panic!("Expected resource_management to be a table");
             }

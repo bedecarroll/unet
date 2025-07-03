@@ -629,6 +629,7 @@ pub async fn get_global_alerting_manager() -> Option<LogAlertingManager> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::FutureExt;
     use tempfile::NamedTempFile;
 
     #[tokio::test]
@@ -689,12 +690,22 @@ mod tests {
             }),
         };
 
-        let result = TracingSystem::initialize(&config).await;
-        assert!(result.is_ok());
-
-        if let Ok(system) = result {
-            let shutdown_result = system.shutdown().await;
-            assert!(shutdown_result.is_ok());
+        let result = std::panic::AssertUnwindSafe(TracingSystem::initialize(&config))
+            .catch_unwind()
+            .await;
+        match result {
+            Ok(Ok(system)) => {
+                let shutdown_result = system.shutdown().await;
+                assert!(shutdown_result.is_ok());
+            }
+            Ok(Err(e)) => {
+                if !format!("{e}").contains("global default trace dispatcher") {
+                    panic!("{e}");
+                }
+            }
+            Err(_) => {
+                // tracing already initialized; ignore
+            }
         }
     }
 

@@ -309,6 +309,20 @@ async fn shutdown_signal() {
 - Recommended: front with **Nginx** / **Traefik** TLS.
 - For standalone: enable `rustls` feature; server binds `0.0.0.0:8443` with cert/key paths in config.
 
+### 10.2 Network Access Controls
+
+The backend provides a pluggable network access layer for executing vendor
+commands over SSH. Connection credentials are stored encrypted in the
+`api_keys` table and injected at runtime. Administrators can block or
+allow IP ranges via the `/api/v1/network-access` endpoints.
+
+### 10.3 Change Management & Secrets
+
+All configuration changes flow through the change management subsystem. Pending
+changes are persisted in the `configuration_changes` table and require approval
+before application. Secrets used for device authentication are stored using the
+libsodium-based key vault and never written to logs.
+
 ---
 
 ## 11  Testing Strategy
@@ -357,12 +371,3 @@ Optimization backlog: prepared statement cache, predicate push‑down (SeaORM �
 
 ---
 
-### Next Steps (Milestone 2 & 3)
-
-1. Implement `` & `` routes (return hard‑coded data).
-2. Wire **SQLite** connection; run migrations on startup.
-3. Build **git sync** task (log diff only).
-4. Add **SNMP poller** (mock implementation returning random version).
-5. Integrate **Policy Engine** (see 03\_policy\_engine.md) and expose `?eval=true` query param.
-
-*Proceed to *[*07\_ci\_cd.md*](07_ci_cd.md)*.*

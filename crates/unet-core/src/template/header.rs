@@ -15,7 +15,7 @@ use std::collections::HashMap;
 ///
 /// # Examples
 ///
-/// ```
+/// ```text
 /// # Template header examples:
 /// # template-match: interface.ethernet.*
 /// # template-match: /^vlan\.\d+$/
@@ -84,16 +84,20 @@ impl HeaderParser {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// use unet_core::template::header::HeaderParser;
+    /// use anyhow::Result;
     ///
-    /// let parser = HeaderParser::new();
+    /// fn main() -> Result<()> {
+    ///     let mut parser = HeaderParser::new();
     ///
-    /// // Parse different header types
-    /// let exact = parser.parse("template-match: interface.ethernet.eth0")?;
-    /// let regex = parser.parse("template-match: /^vlan\\.\\d+$/")?;
-    /// let glob = parser.parse("template-match: bgp.neighbors.*.ipv4")?;
-    /// let hierarchical = parser.parse("template-match: ospf.area.**.networks")?;
+    ///     // Parse different header types
+    ///     let exact = parser.parse("template-match: interface.ethernet.eth0")?;
+    ///     let regex = parser.parse("template-match: /^vlan\\.\\d+$/")?;
+    ///     let glob = parser.parse("template-match: bgp.neighbors.*.ipv4")?;
+    ///     let hierarchical = parser.parse("template-match: ospf.area.**.networks")?;
+    ///     Ok(())
+    /// }
     /// ```
     pub fn parse(&mut self, header_line: &str) -> Result<TemplateHeader> {
         let trimmed = header_line.trim();

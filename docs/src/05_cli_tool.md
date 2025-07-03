@@ -76,6 +76,10 @@ Commands:
   location    CRUD for sites
   policy      Rule validation & compliance diff
   template    Render, diff, and canary push
+  git         Git repository helpers (sync, status)
+  config      Manage server configuration values
+  import      Load fixtures into the datastore
+  export      Dump data to CSV or JSON
   db          Admin actions (migrate, vacuum)
   completion  Generate shell completion script
   version     Print CLI + server versions
@@ -155,6 +159,27 @@ unet db export --format csv    # dump nodes, links
 ```
 
 Requires `UNET_TOKEN` with `admin` scope (future). In `--local` mode no auth.
+
+### 4.5 `git` Command
+
+```bash
+unet git sync           # pull latest policies and templates
+unet git status         # show last sync time and commit ids
+```
+
+### 4.6 `config` Command
+
+```bash
+unet config show                # print current server config
+unet config set polling.interval 900
+```
+
+### 4.7 `import` / `export`
+
+```bash
+unet import fixtures/demo
+unet export --format json > backup.json
+```
 
 ---
 
@@ -314,11 +339,3 @@ Release workflow tags commit, builds **musl‑static** binaries for `x86_64`+`aa
 
 ---
 
-### Next Steps
-
-1. Scaffold `CLI` struct with Clap derive (Milestone 1).
-2. Implement `` wired to LocalStore.
-3. Integrate REST client once server skeleton ready.
-4. Generate shell completion scripts in CI.
-
-*Proceed to *[*06\_server\_backend.md*](06_server_backend.md)*.*

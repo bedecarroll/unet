@@ -16,8 +16,6 @@
 7. [Extensibility Points](#7-extensibility-points)
 8. [Operational Considerations](#8-operational-considerations)
 9. [Rejected Architectures](#9-rejected-architectures)
-10. [What to Build First](#10-what-to-build-first)
-
 ---
 
 ## 1  Goals & Non‑Goals
@@ -100,9 +98,12 @@
 | Area                 | Responsibility                                             |
 | -------------------- | ---------------------------------------------------------- |
 | **HTTP API**         | CRUD endpoints (`/nodes`, `/links`, …) using Axum routers. |
-| **Background Tasks** | Tokio‑spawned: `git_sync`, `snmp_poll`, `policy_eval`.     |
-| **Config Loader**    | Parses `config.toml` into strongly‑typed struct.           |
-| **Auth (future)**    | Optional Basic auth middleware (Tower layer).              |
+| **Background Tasks** | Tokio‐spawned: `git_sync`, `snmp_poll`, `policy_eval`. |
+| **Config Loader**    | Parses `config.toml` into strongly-typed struct. |
+| **Authentication**   | Basic and JWT middleware backed by `users` table. |
+| **Change Management** | Tracks configuration changes & approvals. |
+| **Metrics**          | Exposes Prometheus `/metrics` endpoint. |
+| **Network Access**   | SSH command plugins with secrets stored securely. |
 
 ### 3.3 `unet-cli` (Binary Crate)
 
@@ -238,17 +239,3 @@ SNMP Poller ─┐          snmp2 lib          Policy Engine
 
 ---
 
-## 10  What to Build First (Engineer Tasks)
-
-1. **Clone repo & **``** (10 min).**
-2. Implement `Node` SeaORM entity + migration (PR #1).
-3. Build CSV prototype store; add `node add/list` CLI (PR #2).
-4. Axum route `POST /nodes` + integration test (PR #3).
-
-> 🎯 *Goal:* milestone **1** complete; everyone comfortable with data layer & API skeleton.
-
----
-
-*Cross‑reference:* For deeper dives into data schema or CLI commands, jump to [02\_data\_models.md](02_data_models.md) and [05\_cli\_tool.md](05_cli_tool.md). For production deployment and runtime configuration, see [14\_configuration.md](14_configuration.md).
-
-Happy hacking 🚀

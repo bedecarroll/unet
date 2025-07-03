@@ -1274,7 +1274,7 @@ mod tests {
     fn test_validate_database_config() {
         // Valid SQLite config
         let config = DatabaseConfig {
-            url: "sqlite:./test.db".to_string(),
+            url: "sqlite://./test.db".to_string(),
             max_connections: Some(1),
             timeout: Some(30),
             postgres: None,
