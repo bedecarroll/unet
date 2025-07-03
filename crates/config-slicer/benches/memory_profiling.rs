@@ -185,7 +185,7 @@ fn bench_parsing_memory_usage(c: &mut Criterion) {
                         let start = std::time::Instant::now();
 
                         let parser = HierarchicalParser::new().unwrap();
-                        let _result = parser.parse(black_box(config));
+                        let _ = parser.parse(black_box(config));
 
                         total_duration += start.elapsed();
                         tracker.update_peak();
@@ -213,7 +213,7 @@ fn bench_parsing_memory_usage(c: &mut Criterion) {
                         let start = std::time::Instant::now();
 
                         let api = ConfigSlicerApi::new();
-                        let _result = api.parse_config(black_box(config), Some(Vendor::Cisco));
+                        let _ = api.parse_config(black_box(config), Some(Vendor::Cisco));
 
                         total_duration += start.elapsed();
                         tracker.update_peak();
@@ -276,7 +276,7 @@ fn bench_streaming_memory_efficiency(c: &mut Criterion) {
 
                         let processor = StreamingProcessor::with_config(config.clone());
                         let cursor = Cursor::new(config_text.as_bytes());
-                        let _result =
+                        let _ =
                             processor.process_large_config(black_box(cursor), Some(Vendor::Cisco));
 
                         total_duration += start.elapsed();

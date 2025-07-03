@@ -7,13 +7,13 @@ use std::fs;
 
 /// Load test fixture content
 fn load_fixture(name: &str) -> String {
-    let path = format!("tests/fixtures/{}", name);
-    fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to load fixture: {}", path))
+    let path = format!("tests/fixtures/{name}");
+    fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to load fixture: {path}"))
 }
 
 #[test]
 fn test_api_creation() {
-    let api = ConfigSlicerApi::new();
+    ConfigSlicerApi::new();
     // Just verify we can create the API without panicking
     println!("ConfigSlicerApi created successfully");
 }
@@ -53,10 +53,8 @@ fn test_cisco_fixture_parsing() -> Result<()> {
         "Should parse children from Cisco config"
     );
 
-    println!(
-        "Successfully parsed Cisco fixture with {} child nodes",
-        result.children.len()
-    );
+    let count = result.children.len();
+    println!("Successfully parsed Cisco fixture with {count} child nodes");
     Ok(())
 }
 
@@ -73,10 +71,8 @@ fn test_juniper_fixture_parsing() -> Result<()> {
         "Should parse children from Juniper config"
     );
 
-    println!(
-        "Successfully parsed Juniper fixture with {} child nodes",
-        result.children.len()
-    );
+    let count = result.children.len();
+    println!("Successfully parsed Juniper fixture with {count} child nodes");
     Ok(())
 }
 
@@ -93,10 +89,8 @@ fn test_arista_fixture_parsing() -> Result<()> {
         "Should parse children from Arista config"
     );
 
-    println!(
-        "Successfully parsed Arista fixture with {} child nodes",
-        result.children.len()
-    );
+    let count = result.children.len();
+    println!("Successfully parsed Arista fixture with {count} child nodes");
     Ok(())
 }
 
@@ -175,7 +169,7 @@ fn test_performance_basic() -> Result<()> {
 
     // Measure slicing time
     let start = std::time::Instant::now();
-    let _slice_result = api.slice_by_glob(&config_tree, "interface*")?;
+    let _ = api.slice_by_glob(&config_tree, "interface*")?;
     let slice_duration = start.elapsed();
 
     println!(
@@ -215,13 +209,12 @@ fn test_multiple_vendors() -> Result<()> {
         // Should parse successfully for all vendors
         assert!(
             !parse_result.children.is_empty() || !parse_result.command.is_empty(),
-            "Should parse {} successfully",
-            fixture_name
+            "Should parse {fixture_name} successfully"
         );
 
         println!(
-            "Successfully parsed {} with vendor {:?}",
-            fixture_name, vendor
+            "Successfully parsed {fixture_name} with vendor {:?}",
+            vendor
         );
     }
 
@@ -247,13 +240,9 @@ interface GigabitEthernet0/2
     let match_count = slice_result.match_count();
     let has_matches = slice_result.has_matches();
     let matches = slice_result.matches();
-    let _pattern = slice_result.pattern();
     let metadata = slice_result.metadata();
 
-    println!(
-        "SliceResult: {} matches, has_matches={}",
-        match_count, has_matches
-    );
+    println!("SliceResult: {match_count} matches, has_matches={has_matches}");
 
     // Basic verification
     assert_eq!(

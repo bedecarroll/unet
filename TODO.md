@@ -13,6 +13,7 @@ These tasks track issues identified during a review of the `docs/` directory. Th
 ## Medium Priority
 
 - [ ] **Resolve TODO Placeholders:** Search the documentation for `TODO` markers and either implement the missing content or remove the placeholders.
+  - [x] Replaced metrics placeholder in `01_architecture.md` and updated auth table in `06_server_backend.md`.
 - [ ] **Add Missing Feature Guides:** Write new docs for authentication, change management workflows, metrics/monitoring, and secrets management.
 - [ ] **Improve Cross-Linking:** Ensure related topics link to each other (e.g., policy docs linking to template docs and CLI examples).
 - [ ] **Spell Check and Style Pass:** Run a spell checker and ensure consistent heading levels and code block formatting.

@@ -21,8 +21,8 @@ fn generate_cisco_config(interface_count: usize, acl_entries: usize) -> String {
 
     // Generate interfaces
     for i in 1..=interface_count {
-        config.push_str(&format!("interface GigabitEthernet0/{}\n", i));
-        config.push_str(&format!(" description Interface_{}_description\n", i));
+        config.push_str(&format!("interface GigabitEthernet0/{i}\n"));
+        config.push_str(&format!(" description Interface_{i}_description\n"));
         config.push_str(&format!(
             " ip address 192.168.{}.1 255.255.255.0\n",
             (i % 254) + 1
@@ -47,7 +47,7 @@ fn generate_cisco_config(interface_count: usize, acl_entries: usize) -> String {
     config.push_str("router ospf 1\n");
     config.push_str(" router-id 192.168.1.1\n");
     for i in 1..=10 {
-        config.push_str(&format!(" network 192.168.{}.0 0.0.0.255 area 0\n", i));
+        config.push_str(&format!(" network 192.168.{i}.0 0.0.0.255 area 0\n"));
     }
     config.push_str("!\n");
 
@@ -65,8 +65,8 @@ fn generate_juniper_config(interface_count: usize) -> String {
 
     config.push_str("interfaces {\n");
     for i in 1..=interface_count {
-        config.push_str(&format!("    ge-0/0/{} {{\n", i));
-        config.push_str(&format!("        description \"Interface {}\";\n", i));
+        config.push_str(&format!("    ge-0/0/{i} {{\n"));
+        config.push_str(&format!("        description \"Interface {i}\";\n"));
         config.push_str(&format!(
             "        unit 0 {{\n            family inet {{\n                address 192.168.{}.1/24;\n            }}\n        }}\n",
             (i % 254) + 1
@@ -79,7 +79,7 @@ fn generate_juniper_config(interface_count: usize) -> String {
     config.push_str("    ospf {\n");
     config.push_str("        area 0.0.0.0 {\n");
     for i in 1..=5 {
-        config.push_str(&format!("            interface ge-0/0/{}.0;\n", i));
+        config.push_str(&format!("            interface ge-0/0/{i}.0;\n"));
     }
     config.push_str("        }\n");
     config.push_str("    }\n");

@@ -6,8 +6,8 @@ use std::fs;
 
 /// Load test fixture
 fn load_fixture(name: &str) -> String {
-    let path = format!("tests/fixtures/{}", name);
-    fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to load fixture: {}", path))
+    let path = format!("tests/fixtures/{name}");
+    fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to load fixture: {path}"))
 }
 
 /// Generate synthetic configuration for scaling tests
@@ -16,8 +16,8 @@ fn generate_synthetic_config(interface_count: usize) -> String {
     config.push_str("!\n! Generated synthetic configuration\n!\n");
 
     for i in 1..=interface_count {
-        config.push_str(&format!("interface GigabitEthernet0/{}\n", i));
-        config.push_str(&format!(" description Interface {}\n", i));
+        config.push_str(&format!("interface GigabitEthernet0/{i}\n"));
+        config.push_str(&format!(" description Interface {i}\n"));
         config.push_str(&format!(
             " ip address 192.168.{}.1 255.255.255.0\n",
             i % 255

@@ -331,7 +331,7 @@ impl LineProcessor {
         self.process_chunk()?;
 
         // Build final configuration from remaining lines
-        let _config_text = self.lines.into_iter().collect::<Vec<_>>().join("\n");
+        let _ = self.lines.into_iter().collect::<Vec<_>>().join("\n");
 
         // This is simplified - in practice, you'd use the actual parser
         // For now, create a basic configuration node
