@@ -32,6 +32,10 @@
 - [Security and Compliance Guide](security_compliance_guide.md)
 - [Issue Triage Procedures](issue_triage_procedures.md)
 - [Maintenance and Update Procedures](maintenance_procedures.md)
+- [Authentication Guide](authentication_guide.md)
+- [Change Management Guide](change_management_guide.md)
+- [Metrics & Monitoring Guide](metrics_monitoring_guide.md)
+- [Secrets Management Guide](secrets_management_guide.md)
 
 # Policy Development
 
