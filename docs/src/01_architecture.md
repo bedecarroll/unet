@@ -220,7 +220,7 @@ SNMP Poller ─┐          snmp2 lib          Policy Engine
 | Topic        | Guidance                                                                  |
 | ------------ | ------------------------------------------------------------------------- |
 | **Logging**  | `RUST_LOG=info unet-server …`; logs to stdout (systemd/journal friendly). |
-| **Metrics**  | TODO (Milestone 7): add `axum-prometheus` for Grafana.                    |
+| **Metrics**  | Prometheus metrics via `axum-prometheus`; `/metrics` endpoint for Grafana. |
 | **Backups**  | If using SQLite – copy db file; `VACUUM` monthly.                         |
 | **Scaling**  | Single instance handles \~10k nodes polling every 15 min (Tokio async).   |
 | **Security** | Run server behind VPN; enable TLS via Nginx or Axum’s TLS feature.        |

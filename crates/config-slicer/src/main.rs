@@ -488,15 +488,7 @@ fn main() -> Result<()> {
             side_by_side,
             html,
             stats,
-        } => handle_diff_command(
-            old_file,
-            new_file,
-            output,
-            color,
-            side_by_side,
-            html,
-            stats,
-        ),
+        } => handle_diff_command(old_file, new_file, output, color, side_by_side, html, stats),
         Commands::Validate {
             file,
             vendor,
@@ -809,7 +801,7 @@ fn handle_info_command(detailed: bool) {
         if detailed {
             println!("  {parser:?} - {}", get_vendor_description(&parser));
         } else {
-            println!("  {:?}", parser);
+            println!("  {parser:?}");
         }
     }
     println!();
@@ -1007,7 +999,7 @@ fn process_slice_files(
     let error_count = Arc::new(AtomicUsize::new(0));
     let success_count = Arc::new(AtomicUsize::new(0));
 
-    let _results: Vec<Result<()>> = input_files
+    let _: Vec<Result<()>> = input_files
         .par_iter()
         .map(|input_file| {
             let result = process_slice_file(
@@ -1176,7 +1168,7 @@ fn process_diff_pairs(
     let error_count = Arc::new(AtomicUsize::new(0));
     let success_count = Arc::new(AtomicUsize::new(0));
 
-    let _results: Vec<Result<()>> = file_pairs
+    let _: Vec<Result<()>> = file_pairs
         .par_iter()
         .map(|(old_file, new_file)| {
             let result = process_diff_pair(old_file, new_file, output_dir, html, stats);
@@ -1698,9 +1690,9 @@ fn format_diff_stats(diff_result: &config_slicer::DiffResult) -> String {
         .filter(|c| matches!(c.change_type, config_slicer::DiffType::Modification))
         .count();
 
-    stats.push_str(&format!("  Additions: {}\n", additions));
-    stats.push_str(&format!("  Deletions: {}\n", deletions));
-    stats.push_str(&format!("  Modifications: {}\n", modifications));
+    stats.push_str(&format!("  Additions: {additions}\n"));
+    stats.push_str(&format!("  Deletions: {deletions}\n"));
+    stats.push_str(&format!("  Modifications: {modifications}\n"));
 
     stats
 }
@@ -1829,7 +1821,7 @@ fn process_slice_file(
         OutputFormat::Json => "json",
         OutputFormat::Yaml => "yaml",
     };
-    let output_path = output_dir.join(format!("{}_slice.{}", output_filename, output_extension));
+    let output_path = output_dir.join(format!("{output_filename}_slice.{output_extension}"));
 
     fs::write(&output_path, formatted_output)
         .with_context(|| format!("Failed to write slice output to {}", output_path.display()))?;
@@ -1891,7 +1883,7 @@ fn process_diff_pair(
     // Add statistics if requested
     let final_output = if stats {
         let stats_output = format_diff_stats(&diff_result);
-        format!("{}\n\n{}", formatted_output, stats_output)
+        format!("{formatted_output}\n\n{stats_output}")
     } else {
         formatted_output
     };
@@ -1907,8 +1899,7 @@ fn process_diff_pair(
         .unwrap_or("new");
     let output_extension = if html { "html" } else { "diff" };
     let output_path = output_dir.join(format!(
-        "{}_vs_{}.{}",
-        old_filename, new_filename, output_extension
+        "{old_filename}_vs_{new_filename}.{output_extension}"
     ));
 
     fs::write(&output_path, final_output)
@@ -1948,10 +1939,7 @@ fn process_validate_file(
         OutputFormat::Json => "json",
         OutputFormat::Yaml => "yaml",
     };
-    let output_path = output_dir.join(format!(
-        "{}_validation.{}",
-        output_filename, output_extension
-    ));
+    let output_path = output_dir.join(format!("{output_filename}_validation.{output_extension}"));
 
     fs::write(&output_path, formatted_output).with_context(|| {
         format!(
@@ -2046,7 +2034,7 @@ fn generate_validation_summary(
         OutputFormat::Json => "json",
         OutputFormat::Yaml => "yaml",
     };
-    let summary_path = output_dir.join(format!("validation_summary.{}", output_extension));
+    let summary_path = output_dir.join(format!("validation_summary.{output_extension}"));
 
     fs::write(&summary_path, summary).with_context(|| {
         format!(
@@ -2087,12 +2075,10 @@ fn handle_workflow_command(command: WorkflowCommands, output_format: OutputForma
             )
             .await
         }),
-        WorkflowCommands::List { 
-            status: _status, // Unused until implementation 
-            detailed: _detailed // Unused until implementation
-        } => {
-            handle_workflow_list(output_format)
-        }
+        WorkflowCommands::List {
+            status: _status,     // Unused until implementation
+            detailed: _detailed, // Unused until implementation
+        } => handle_workflow_list(output_format),
         WorkflowCommands::Show {
             workflow_id,
             history: _history, // Unused until implementation
@@ -2171,7 +2157,7 @@ async fn handle_workflow_execute(
     }
 
     let output = match output_format {
-        OutputFormat::Text => format!("Workflow executed successfully: {}", workflow_id),
+        OutputFormat::Text => format!("Workflow executed successfully: {workflow_id}"),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id.to_string(),
             "status": "executed",
@@ -2220,7 +2206,7 @@ fn handle_workflow_show(workflow_id: String, output_format: OutputFormat) -> Res
     // Parameter (show_history) will be added when implementation supports it
     // Placeholder implementation
     let output = match output_format {
-        OutputFormat::Text => format!("Workflow details for {} would be shown here", workflow_id),
+        OutputFormat::Text => format!("Workflow details for {workflow_id} would be shown here"),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id,
             "message": "Workflow details would be shown here"
@@ -2244,7 +2230,7 @@ fn handle_workflow_approve(
 ) -> Result<()> {
     // Placeholder implementation
     let output = match output_format {
-        OutputFormat::Text => format!("Workflow {} would be approved by {}", workflow_id, reviewer),
+        OutputFormat::Text => format!("Workflow {workflow_id} would be approved by {reviewer}"),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id,
             "reviewer": reviewer,
@@ -2272,7 +2258,7 @@ fn handle_workflow_reject(
 ) -> Result<()> {
     // Placeholder implementation
     let output = match output_format {
-        OutputFormat::Text => format!("Workflow {} would be rejected by {}", workflow_id, reviewer),
+        OutputFormat::Text => format!("Workflow {workflow_id} would be rejected by {reviewer}"),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id,
             "reviewer": reviewer,
@@ -2295,7 +2281,7 @@ fn handle_workflow_reject(
 fn handle_workflow_archive(workflow_id: String, output_format: OutputFormat) -> Result<()> {
     // Placeholder implementation
     let output = match output_format {
-        OutputFormat::Text => format!("Workflow {} would be archived", workflow_id),
+        OutputFormat::Text => format!("Workflow {workflow_id} would be archived"),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id,
             "action": "archive"
@@ -2319,18 +2305,8 @@ fn handle_workflow_history(
     // Placeholder implementation
     let output = match output_format {
         OutputFormat::Text => workflow_id.map_or_else(
-            || {
-                format!(
-                    "All workflow history (limit: {}) would be shown here",
-                    limit
-                )
-            },
-            |id| {
-                format!(
-                    "History for workflow {} (limit: {}) would be shown here",
-                    id, limit
-                )
-            },
+            || format!("All workflow history (limit: {limit}) would be shown here"),
+            |id| format!("History for workflow {id} (limit: {limit}) would be shown here"),
         ),
         OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "workflow_id": workflow_id,

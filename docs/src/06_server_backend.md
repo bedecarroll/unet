@@ -275,6 +275,10 @@ Runs **after** SNMP poll completes or on `git_sync` rule reload.
 | Prometheus    | `/metrics` | Expose via `axum-prometheus` middleware. |
 | OpenTelemetry | feature    | Optional compile‑time feature `otel`.    |
 
+The `MetricsManager` in `unet-core` collects HTTP, database, and business
+metrics, exporting them in Prometheus format. Point Grafana at the `/metrics`
+endpoint to build dashboards.
+
 Configure via env vars (`RUST_LOG`, `OTEL_EXPORTER_OTLP_ENDPOINT`).
 
 ---
@@ -297,8 +301,8 @@ async fn shutdown_signal() {
 | Mode    | Description                     | Status |
 | ------- | ------------------------------- | ------ |
 | `none`  | No auth; for PoC / lab          | READY  |
-| `basic` | HTTP Basic (users table in DB)  | TODO   |
-| `jwt`   | Bearer JWT, public key rotation | FUTURE |
+| `basic` | HTTP Basic (users table in DB)  | PLANNED |
+| `jwt`   | Bearer JWT with role management | READY  |
 
 ### 10.1 TLS Termination
 

@@ -16,6 +16,7 @@ Key features:
 - **Example data fixtures** for quick onboarding and testing with realistic network topologies.
 - **Custom DSL** policy engine, familiar **MiniJinja** templates.
 - **Hierarchical config diff** via the stand‑alone `config‑slicer` crate.
+- **Prometheus metrics** exposed at `/metrics` for monitoring.
 
 *(Full architectural deep‑dive in *[*`docs/01_architecture.md`*](docs/src/01_architecture.md)*.)*
 
