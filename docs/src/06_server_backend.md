@@ -304,6 +304,8 @@ async fn shutdown_signal() {
 | `basic` | HTTP Basic (users table in DB)  | PLANNED |
 | `jwt`   | Bearer JWT with role management | READY  |
 
+For practical setup instructions see the [Authentication Guide](authentication_guide.md).
+
 ### 10.1 TLS Termination
 
 - Recommended: front with **Nginx** / **Traefik** TLS.
@@ -321,7 +323,10 @@ allow IP ranges via the `/api/v1/network-access` endpoints.
 All configuration changes flow through the change management subsystem. Pending
 changes are persisted in the `configuration_changes` table and require approval
 before application. Secrets used for device authentication are stored using the
-libsodium-based key vault and never written to logs.
+libsodium-based key vault and never written to logs. See the
+[Change Management Guide](change_management_guide.md) and
+[Secrets Management Guide](secrets_management_guide.md) for operational
+details.
 
 ---
 
