@@ -1057,6 +1057,7 @@ mod tests {
         if let Some(ref mut pool) = config.database.pool {
             pool.max_connections = Some(50);
         }
+        config.database.max_connections = Some(50);
 
         let context = ValidationContext::production(DeploymentType::Cluster);
         let result = config.validate_with_context(&context);

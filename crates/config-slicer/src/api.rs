@@ -24,11 +24,15 @@ use tracing::{debug, info};
 ///
 /// ```rust
 /// use config_slicer::ConfigSlicerApi;
+/// use anyhow::Result;
 ///
-/// let api = ConfigSlicerApi::new();
-/// let config_text = "interface GigabitEthernet0/1\n description Link to router\n ip address 10.1.1.1 255.255.255.0";
-/// let tree = api.parse_config(config_text, None)?;
-/// let results = api.slice_by_glob(&tree, "interface*")?;
+/// fn main() -> Result<()> {
+///     let api = ConfigSlicerApi::new();
+///     let config_text = "interface GigabitEthernet0/1\n description Link to router\n ip address 10.1.1.1 255.255.255.0";
+///     let tree = api.parse_config(config_text, None)?;
+///     let _results = api.slice_by_glob(&tree, "interface*")?;
+///     Ok(())
+/// }
 /// ```
 pub struct ConfigSlicerApi {
     parser_registry: PluginRegistry,
@@ -142,8 +146,14 @@ impl ConfigSlicerApi {
     /// # Examples
     ///
     /// ```rust
-    /// let results = api.slice_by_glob(&tree, "interface*")?;
-    /// let results = api.slice_by_glob(&tree, "vlan?0?")?;
+    /// # use config_slicer::ConfigSlicerApi;
+    /// # use anyhow::Result;
+    /// # fn example() -> Result<()> {
+    /// # let api = ConfigSlicerApi::new();
+    /// # let tree = api.parse_config("interface eth0", None)?;
+    /// let _results = api.slice_by_glob(&tree, "interface*")?;
+    /// let _results = api.slice_by_glob(&tree, "vlan?0?")?;
+    /// # Ok(()) }
     /// ```
     pub fn slice_by_glob(&self, config_tree: &ConfigNode, pattern: &str) -> Result<SliceResult> {
         let slice_pattern = PatternBuilder::glob(pattern).build()?;
@@ -160,7 +170,13 @@ impl ConfigSlicerApi {
     /// # Examples
     ///
     /// ```rust
-    /// let results = api.slice_by_regex(&tree, r"^interface\s+GigabitEthernet\d+/\d+$")?;
+    /// # use config_slicer::ConfigSlicerApi;
+    /// # use anyhow::Result;
+    /// # fn demo() -> Result<()> {
+    /// # let api = ConfigSlicerApi::new();
+    /// # let tree = api.parse_config("interface Gi0/1", None)?;
+    /// let _results = api.slice_by_regex(&tree, r"^interface\s+GigabitEthernet\d+/\d+$")?;
+    /// # Ok(()) }
     /// ```
     pub fn slice_by_regex(&self, config_tree: &ConfigNode, pattern: &str) -> Result<SliceResult> {
         let slice_pattern = PatternBuilder::regex(pattern).build()?;
@@ -177,8 +193,14 @@ impl ConfigSlicerApi {
     /// # Examples
     ///
     /// ```rust
-    /// let results = api.slice_by_path(&tree, "interface/ip")?;
-    /// let results = api.slice_by_path(&tree, "router/bgp/[neighbor]/remote-as")?;
+    /// # use config_slicer::ConfigSlicerApi;
+    /// # use anyhow::Result;
+    /// # fn demo() -> Result<()> {
+    /// # let api = ConfigSlicerApi::new();
+    /// # let tree = api.parse_config("interface eth0", None)?;
+    /// let _results = api.slice_by_path(&tree, "interface/ip")?;
+    /// let _results = api.slice_by_path(&tree, "router/bgp/[neighbor]/remote-as")?;
+    /// # Ok(()) }
     /// ```
     pub fn slice_by_path(&self, config_tree: &ConfigNode, path: &str) -> Result<SliceResult> {
         use crate::slicer::HierarchicalPattern;
@@ -227,10 +249,15 @@ impl ConfigSlicerApi {
     /// # Examples
     ///
     /// ```rust
-    /// let context = api.context_builder()
-    ///     .include_vendor(Vendor::Cisco)
-    ///     .include_context_type(ConfigContext::Interface)
+    /// # use config_slicer::ConfigSlicerApi;
+    /// # use anyhow::Result;
+    /// # fn demo() -> Result<()> {
+    /// # let api = ConfigSlicerApi::new();
+    /// let _context = api.context_builder()
+    ///     .interfaces_only()
+    ///     .at_indent_level(2)
     ///     .build();
+    /// # Ok(()) }
     /// ```
     #[must_use]
     pub fn context_builder(&self) -> SliceContextBuilder {
@@ -242,10 +269,15 @@ impl ConfigSlicerApi {
     /// # Examples
     ///
     /// ```rust
-    /// let pattern = api.pattern_builder()
-    ///     .glob("interface*")
+    /// # use config_slicer::{ConfigSlicerApi};
+    /// # use config_slicer::slicer::PatternBuilder;
+    /// # use anyhow::Result;
+    /// # fn demo() -> Result<()> {
+    /// # let _api = ConfigSlicerApi::new();
+    /// let _pattern = PatternBuilder::glob("interface*")
     ///     .case_sensitive(false)
     ///     .build()?;
+    /// # Ok(()) }
     /// ```
     #[must_use]
     pub fn pattern_builder(&self) -> PatternBuilder {

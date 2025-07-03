@@ -459,6 +459,7 @@ impl ConfigEncryption {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::secrets::SecretBackend;
     use tempfile::tempdir;
 
     #[tokio::test]
@@ -479,7 +480,19 @@ level = "info"
         fs::write(&config_path, test_config).unwrap();
 
         // Create configuration encryption manager
-        let secret_manager = SecretManager::new_in_memory();
+        let temp_secret = tempdir().unwrap();
+        let mut secret_manager = SecretManager::new(SecretBackend::File {
+            path: temp_secret
+                .path()
+                .join("secrets.json")
+                .to_str()
+                .unwrap()
+                .to_string(),
+        });
+        secret_manager
+            .initialize_with_password("test")
+            .await
+            .unwrap();
         let mut config_encryption = ConfigEncryption::new(secret_manager);
 
         // Encrypt configuration
@@ -518,7 +531,19 @@ value = "original"
 "#;
         fs::write(&config_path, test_config).unwrap();
 
-        let secret_manager = SecretManager::new_in_memory();
+        let temp_secret = tempdir().unwrap();
+        let mut secret_manager = SecretManager::new(SecretBackend::File {
+            path: temp_secret
+                .path()
+                .join("secrets.json")
+                .to_str()
+                .unwrap()
+                .to_string(),
+        });
+        secret_manager
+            .initialize_with_password("test")
+            .await
+            .unwrap();
         let mut config_encryption = ConfigEncryption::new(secret_manager);
 
         config_encryption

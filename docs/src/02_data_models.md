@@ -172,6 +172,40 @@ If we later decide to make template‑to‑node mapping persistent (instead of o
 
 Policy engine would `UPSERT` rows each run; CLI can query quickly.
 
+### 4.6 Authentication & RBAC tables
+
+μNet now ships with user and role management. These SeaORM entities back the
+authentication module:
+
+| Table        | Purpose                                                      |
+| ------------ | ------------------------------------------------------------ |
+| `users`      | Login accounts containing bcrypt password hashes            |
+| `roles`      | Named roles such as `viewer`, `operator` and `admin`        |
+| `user_roles` | Join table mapping users to roles (many‑to‑many)            |
+| `api_keys`   | Bearer tokens with expiry and optional scope                |
+
+### 4.7 Change management tables
+
+Configuration changes are tracked and audited in the database:
+
+| Table                      | Purpose                                         |
+| -------------------------- | ----------------------------------------------- |
+| `configuration_changes`    | Staged config diffs awaiting approval           |
+| `change_approval_workflow` | Required approvers and status for each change   |
+| `change_audit_log`         | Immutable record of approvals and rejections    |
+| `change_rollback_snapshot` | Backup of previous config before apply          |
+
+### 4.8 Operational metrics tables
+
+Additional entities persist runtime information:
+
+| Table               | Purpose                                        |
+| ------------------- | ---------------------------------------------- |
+| `polling_tasks`     | Tracks last SNMP poll attempt per node         |
+| `interface_status`  | Per‑interface counters and operational state   |
+| `template_usage`    | Records which nodes rendered a template        |
+| `template_versions` | Stores versioned templates fetched from Git    |
+
 ---
 
 ## 5  Derived‑State Strategy

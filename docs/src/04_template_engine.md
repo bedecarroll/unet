@@ -182,7 +182,7 @@ Steps executed by `unet template diff` CLI:
 | --------------- | -------------------------- | --------------------------------------- |
 | Local text file | `-o live.txt`              | Reads from file path                    |
 | Standard input  | `-o -`                     | Reads from `stdin`                      |
-| SSH fetch       | `--ssh user@host show ...` | **TODO** Milestone 5 – plugin execution |
+| SSH fetch       | `--ssh user@host show ...` | Executes vendor show command over SSH via plugin |
 
 ---
 

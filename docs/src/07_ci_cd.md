@@ -239,7 +239,7 @@ Use `` blocks to follow **least privilege**; avoid `contents: write` except in r
 - **Rust dependency cache** – `actions/cache` keyed on `Cargo.lock`.
 - **Docker layer cache** – Buildx automatically utilises GHCR `--cache-from` (use nightly tag).
 - **Parallel matrix** – set `max-parallel` to CPU count; default runner concurrency = 2.
-- **Incremental tests** – leverage `cargo test --doc --no-default-features` in a fast pre‑job (TODO).
+- **Incremental tests** – leverage `cargo test --doc --no-default-features` in a fast pre‑job to catch doc test regressions early.
 
 > **Metrics:** Track average workflow duration in GitHub Insights; aim < 7 min per PR.
 

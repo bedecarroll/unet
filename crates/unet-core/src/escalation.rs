@@ -843,7 +843,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_escalation_engine_creation() {
-        let config = EscalationConfig::default();
+        let mut config = EscalationConfig::default();
+        config.enable_notifications = false;
         let engine = EscalationEngine::new(config);
 
         let policies = create_default_escalation_policies();
@@ -857,7 +858,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_alert_escalation_start() {
-        let config = EscalationConfig::default();
+        let mut config = EscalationConfig::default();
+        config.enable_notifications = false;
         let engine = EscalationEngine::new(config);
 
         let default_policy = create_default_escalation_policies()

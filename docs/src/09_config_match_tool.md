@@ -132,7 +132,7 @@ Examples:
 | -------------- | -------------------------- | --------------------------------------------------- | ------ |
 | Juniper JunOS  | `vendor::junos`            | Brace depth using stack; ignore comments.           | READY  |
 | Cisco IOS‑Like | `vendor::flat`             | Hierarchy depth simulated by leading spaces indent. | READY  |
-| Arista EOS     | `vendor::eos` (alias flat) | Same as flat, but exclamation sentinel lines.       | TODO   |
+| Arista EOS     | `vendor::eos` (alias flat) | Same as flat, but exclamation sentinel lines.       | READY  |
 | YAML‑style     | `vendor::indent_yaml`      | For systems like NetBox intended future.            | FUTURE |
 
 **Autodetect heuristic:**
