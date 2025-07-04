@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Introduction to μNet
 
 > **Audience:** Network engineers evaluating or adopting μNet.

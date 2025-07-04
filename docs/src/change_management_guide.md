@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Change Management Guide
 
 > **Audience:** Network operators coordinating configuration changes.

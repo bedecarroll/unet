@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 04 Template Engine – MiniJinja Rendering, Match Headers & Diff Workflow
 
 > **Audience:** Engineers wiring MiniJinja into `unet-core`, and operators writing templates.\

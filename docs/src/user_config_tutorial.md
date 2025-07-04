@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Configuration Management Tutorial
 
 > **Audience:** Network engineers ready to dive deeper into μNet's configuration management capabilities.  

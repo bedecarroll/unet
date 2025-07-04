@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Troubleshooting Guide and FAQ
 
 > **Audience:** System administrators, DevOps engineers, and developers working with μNet.  

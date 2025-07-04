@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 02 Data Models – Schema & Rust Structs
 
 > **Audience:** Engineers implementing the storage layer and writing migrations.\

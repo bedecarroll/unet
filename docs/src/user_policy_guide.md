@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Policy Creation Guide
 
 > **Audience:** Network engineers who want to implement automated configuration validation using μNet's policy engine.  

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 06 Server Backend – Axum API, Tasks & Infrastructure
 
 > **Audience:** Engineers implementing the `unet-server` binary crate.

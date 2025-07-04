@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Issue Triage Procedures
 
 This document outlines the procedures for triaging and managing issues in the μNet repository.

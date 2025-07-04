@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 07 CI/CD – Building, Testing & Releasing μNet with GitHub Actions
 
 > **Audience:** Engineers responsible for automation and release engineering.

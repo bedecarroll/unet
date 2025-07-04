@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Community Support Channels
 
 Welcome to the μNet community! This document outlines the various channels available for getting help, sharing knowledge, and contributing to the project.

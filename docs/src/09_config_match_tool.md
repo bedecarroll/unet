@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 09 Config‑Match Tool – `config‑slicer` Crate & CLI Guide
 
 > **Audience:** Engineers extracting the hierarchy‑match logic into a reusable crate, plus operators or 3rd‑party tooling authors who want to programmatically slice network configs.
@@ -301,7 +303,7 @@ Criterion benchmark on 1.5 MB JunOS config (\~25 k lines):
 - Binary published via μNet **release workflow** (see 07\_ci\_cd.md) as `config-slicer-<target>.tar.gz`.
 - Homebrew formula taps the GH tarball.
 - Debian/RPM packages include man page (`man/config-slicer.1`).
-- Crate published to **crates.io** under `config-slicer` name (MIT/Apache‑2).
+- Crate published to **crates.io** under `config-slicer` name (MIT).
 - Versioning **follows μNet minor**: tool `0.4.0` pairs with server `0.4.x`.
 
 ---

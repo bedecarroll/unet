@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 01 Architecture – μNet (Unet)
 
 > **Audience:** New engineers joining the project (0–2 yrs experience).\
@@ -38,37 +40,16 @@
 
 ## 2  High‑Level System Diagram
 
-```ascii
-          ┌────────────────────────────── Git (pull) ───────────────────────────────┐
-          │                                                                         │
-┌─────────▼──────────┐                  cron / webhook                 ┌───────────▼───────────┐
-│ Policy Repository  │                                                 │ Template Repository   │
-│  *.rules, README   │                                                 │  *.jinja, helpers/    │
-└─────────▲──────────┘                                                 └───────────▲───────────┘
-          │                                                                         │
-          │   1. Clone/Fetch                                                        │
-          │                                                                         │
-          │                                                                         │
-          │                                                                         │
-          │   2. Load into memory                                                   │
-          │                                                                         │
-          ▼                                                                         ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                  unet‑server (Axum)                                     │
-│ ───────────────────────────────────────────────────────────────────────────────────────── │
-│  • DataStore (SQLite via SeaORM)        • SNMP Poller (Tokio task)                      │
-│  • Policy Engine (Pest DSL)             • Template Engine (MiniJinja)                   │
-│  • Git Sync Scheduler (git2)            • REST API (OpenAPI)                            │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-          ▲                               ▲                                   ▲
-          │                               │ derived state                     │ rendered config / diff
-          │                               │                                   │
- REST/JSON│                               │                                   │ REST/JSON
-          │                               │                                   │
-┌─────────┴──────────┐        Web‑Socket (future)                ┌────────────┴───────────┐
-│      unet‑cli      │──────────────────────────────────────────▶│    (Optional UI)      │
-│  (operator laptop) │                                           │  Rust + Tauri (roadmap)│
-└────────────────────┘                                           └────────────────────────┘
+All diagrams are now standardised on **Mermaid** for clarity and easier maintenance.
+
+```mermaid
+flowchart TD
+    P["Policy Repo<br/>*.rules"] -->|clone| S((unet-server))
+    T["Template Repo<br/>*.jinja"] -->|clone| S
+    S -- "REST/JSON" --> CLI((unet-cli))
+    S -- "derived state" --> CLI
+    CLI -- "rendered config/diff" --> UI((Optional UI))
+    S -.->|WebSocket (future)| UI
 ```
 
 **Legend**

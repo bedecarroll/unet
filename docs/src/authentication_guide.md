@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Authentication Guide
 
 > **Audience:** Administrators securing μNet deployments.

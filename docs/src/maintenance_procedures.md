@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Maintenance and Update Procedures
 
 This document outlines the maintenance and update procedures for μNet installations, covering everything from routine maintenance to major version upgrades.

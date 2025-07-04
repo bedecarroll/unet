@@ -21,10 +21,10 @@ These tasks track issues identified during a review of the `docs/` directory. Th
 
 ## Low Priority
 
-- [ ] **Update Future Work Section:** Trim unrealistic items and align with current roadmap.
-- [ ] **Add Contribution Guidelines:** Provide clear instructions for external contributors, including coding standards and the CLA process.
-- [ ] **Consider Diagrams:** Evaluate whether architecture diagrams should be regenerated with a consistent tool.
-- [ ] **License Audit:** Confirm all documentation files contain the correct license headers.
+- [x] **Update Future Work Section:** Trim unrealistic items and align with current roadmap.
+- [x] **Add Contribution Guidelines:** Provide clear instructions for external contributors, including coding standards and the CLA process.
+- [x] **Consider Diagrams:** Evaluate whether architecture diagrams should be regenerated with a consistent tool.
+- [x] **License Audit:** Confirm all documentation files contain the correct license headers.
 
 
 ## Repository Cleanup

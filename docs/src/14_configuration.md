@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 14 Configuration Management – Runtime Options & Deployment
 
 > **Audience:** System administrators, DevOps engineers, and developers deploying μNet  

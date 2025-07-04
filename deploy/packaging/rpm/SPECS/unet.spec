@@ -3,7 +3,7 @@ Version:        0.1.0
 Release:        1%{?dist}
 Summary:        Network configuration management and automation tool
 
-License:        MIT or Apache-2.0
+License:        MIT
 URL:            https://github.com/example/unet
 Source0:        %{name}-%{version}.tar.gz
 
@@ -162,7 +162,7 @@ fi
 %systemd_postun_with_restart unet-server.service
 
 %files
-%license LICENSE-MIT LICENSE-APACHE
+%license LICENSE-MIT
 %doc %{_docdir}/%{name}/README.md
 %{_bindir}/unet
 %dir %attr(750,root,unet) %{_sysconfdir}/unet

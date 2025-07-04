@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 08 Deployment – Linux, Docker Compose & Nix‑Flake Guides
 
 > **Audience:** Ops‑minded junior engineers tasked with deploying μNet in greenfield environments.

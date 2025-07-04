@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 10 Future Work – Roadmap, Research & Stretch Goals
 
 > **Audience:** Core maintainers and senior juniors tasked with shaping μNet **after** the MVP ships (Milestone 7).\
@@ -116,12 +118,7 @@
 | Idea                           | Potential Benefit                                        | Unknowns / Risks                                        |
 | ------------------------------ | -------------------------------------------------------- | ------------------------------------------------------- |
 | **Streaming Telemetry (gNMI)** | Real‑time interface counters into timeseries             | High ingest cost; vendor support patchy.                |
-| **Intent‑based DSL**           | Operators express topology intents, engine plans changes | Complexity vs ROI; verification algorithms.             |
-| **AI diff summariser**         | LLM summarises diff & policy impact in English           | Token cost, hallucinations; requires guardrails.        |
-| **WebAssembly policy plugins** | Sandboxed, multi‑lang policy extension                   | Runtime latency; compile targets.                       |
-| **Data‑plane testing harness** | Generate traffic, verify ACLs automatically              | Lab gear availability; maybe use containerised net‑lab. |
-| **Formal verification**        | Use SMT (Z3) to prove template idempotence               | Staff expertise, long compute times.                    |
-
+| **Intent‑based DSL** | Operators express topology intents, engine plans changes | Complexity vs ROI; verification algorithms. |
 ---
 
 ## 5  Architectural Spikes & RFC Process

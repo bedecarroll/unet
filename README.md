@@ -146,7 +146,7 @@ New?  Start with “Good First Issue” in GitHub or follow the 30‑day plan in
 
 ## License
 
-MIT OR Apache‑2.0 – choose whichever suits your project, or dual‑license as we do.
+MIT license.
 
 ---
 

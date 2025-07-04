@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Example Configurations
 
 > **Audience:** Network engineers looking for real-world μNet configuration examples.  

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Security and Compliance Guide
 
 > **Audience:** Security officers, compliance teams, system administrators, and DevOps engineers.  

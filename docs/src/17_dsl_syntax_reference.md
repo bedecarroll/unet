@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # DSL Syntax Reference
 
 This document provides a complete reference for the μNet Policy Domain Specific Language (DSL) syntax.
