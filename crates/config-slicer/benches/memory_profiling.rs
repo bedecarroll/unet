@@ -9,70 +9,7 @@ use config_slicer::{
     streaming::{MemoryMonitor, StreamingConfig, StreamingProcessor},
 };
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use std::alloc::{GlobalAlloc, Layout, System};
 use std::io::Cursor;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-/// Custom allocator that tracks memory usage
-struct TrackingAllocator {
-    allocated: Arc<AtomicUsize>,
-    peak: Arc<AtomicUsize>,
-}
-
-impl TrackingAllocator {
-    fn new() -> Self {
-        Self {
-            allocated: Arc::new(AtomicUsize::new(0)),
-            peak: Arc::new(AtomicUsize::new(0)),
-        }
-    }
-
-    fn get_allocated(&self) -> usize {
-        self.allocated.load(Ordering::Relaxed)
-    }
-
-    fn get_peak(&self) -> usize {
-        self.peak.load(Ordering::Relaxed)
-    }
-
-    fn reset(&self) {
-        self.allocated.store(0, Ordering::Relaxed);
-        self.peak.store(0, Ordering::Relaxed);
-    }
-}
-
-unsafe impl GlobalAlloc for TrackingAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        unsafe {
-            let ptr = System.alloc(layout);
-            if !ptr.is_null() {
-                let current =
-                    self.allocated.fetch_add(layout.size(), Ordering::Relaxed) + layout.size();
-                let mut peak = self.peak.load(Ordering::Relaxed);
-                while current > peak {
-                    match self.peak.compare_exchange_weak(
-                        peak,
-                        current,
-                        Ordering::Relaxed,
-                        Ordering::Relaxed,
-                    ) {
-                        Ok(_) => break,
-                        Err(new_peak) => peak = new_peak,
-                    }
-                }
-            }
-            ptr
-        }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        unsafe {
-            System.dealloc(ptr, layout);
-            self.allocated.fetch_sub(layout.size(), Ordering::Relaxed);
-        }
-    }
-}
 
 /// Generate large configuration for memory testing
 fn generate_large_config(size_multiplier: usize) -> String {
@@ -85,10 +22,9 @@ fn generate_large_config(size_multiplier: usize) -> String {
 
     // Generate many interfaces with complex configuration
     for i in 1..=(size_multiplier * 10) {
-        config.push_str(&format!("interface GigabitEthernet0/{}\n", i));
+        config.push_str(&format!("interface GigabitEthernet0/{i}\n"));
         config.push_str(&format!(
-            " description Interface_{}_with_long_description_for_memory_testing\n",
-            i
+            " description Interface_{i}_with_long_description_for_memory_testing\n"
         ));
         config.push_str(&format!(
             " ip address 192.168.{}.1 255.255.255.0\n",
@@ -122,7 +58,7 @@ fn generate_large_config(size_multiplier: usize) -> String {
     config.push_str("router bgp 65001\n");
     config.push_str(" bgp router-id 192.168.1.1\n");
     for i in 1..=(size_multiplier * 5) {
-        config.push_str(&format!(" network 192.168.{}.0 mask 255.255.255.0\n", i));
+        config.push_str(&format!(" network 192.168.{i}.0 mask 255.255.255.0\n"));
     }
     config.push_str("!\n");
 
@@ -193,7 +129,7 @@ fn bench_parsing_memory_usage(c: &mut Criterion) {
 
                     // Log memory usage
                     let memory_delta = tracker.get_delta();
-                    println!("Memory delta for size {}: {} bytes", size, memory_delta);
+                    println!("Memory delta for size {size}: {memory_delta} bytes");
 
                     total_duration
                 });
@@ -220,7 +156,7 @@ fn bench_parsing_memory_usage(c: &mut Criterion) {
                     }
 
                     let memory_delta = tracker.get_delta();
-                    println!("API Memory delta for size {}: {} bytes", size, memory_delta);
+                    println!("API Memory delta for size {size}: {memory_delta} bytes");
 
                     total_duration
                 });
@@ -284,10 +220,7 @@ fn bench_streaming_memory_efficiency(c: &mut Criterion) {
                     }
 
                     let memory_delta = tracker.get_delta();
-                    println!(
-                        "Streaming memory delta for {}: {} bytes",
-                        name, memory_delta
-                    );
+                    println!("Streaming memory delta for {name}: {memory_delta} bytes");
 
                     total_duration
                 });

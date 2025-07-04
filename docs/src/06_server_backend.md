@@ -67,8 +67,7 @@ bind = "0.0.0.0:8080"
 workers = 0                  # 0 = Tokio picks #CPUs
 
 [database]
-type = "sqlite"             # "sqlite" | "postgres"
-path = "/var/lib/unet/unet.db"  # Ignored for postgres
+url = "sqlite:///var/lib/unet/unet.db?mode=rwc"
 
 [git]
 policies = "https://github.com/org/unet-policies.git"

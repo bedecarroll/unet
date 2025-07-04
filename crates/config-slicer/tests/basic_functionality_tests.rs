@@ -13,7 +13,7 @@ fn load_fixture(name: &str) -> String {
 
 #[test]
 fn test_api_creation() {
-    ConfigSlicerApi::new();
+    let _api = ConfigSlicerApi::new();
     // Just verify we can create the API without panicking
     println!("ConfigSlicerApi created successfully");
 }
@@ -212,10 +212,7 @@ fn test_multiple_vendors() -> Result<()> {
             "Should parse {fixture_name} successfully"
         );
 
-        println!(
-            "Successfully parsed {fixture_name} with vendor {:?}",
-            vendor
-        );
+        println!("Successfully parsed {fixture_name} with vendor {vendor:?}");
     }
 
     Ok(())

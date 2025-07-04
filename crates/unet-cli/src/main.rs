@@ -10,10 +10,12 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use cli_config::CliConfig;
 use std::path::PathBuf;
 use tracing::{error, info};
 use unet_core::{config::Config, prelude::*};
 
+mod cli_config;
 mod commands;
 
 #[derive(Parser)]
@@ -30,7 +32,7 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Database URL (SQLite)
-    #[arg(short, long, default_value = "sqlite://unet.db")]
+    #[arg(short, long, default_value = "sqlite:///var/lib/unet/unet.db?mode=rwc")]
     database_url: String,
 
     /// Server URL for remote operations
@@ -102,11 +104,13 @@ enum Commands {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // Load configuration
+    // Load CLI config for defaults
+    let cli_cfg = cli_config::load_config(cli.config.as_deref());
+
+    // Load server configuration
     let mut config = if let Some(config_path) = &cli.config {
         Config::from_file(config_path)?
     } else {
-        // Try to load from environment, fallback to defaults
         Config::from_env().unwrap_or_else(|_| Config::default())
     };
 
@@ -120,50 +124,61 @@ async fn main() -> Result<()> {
 
     if cli.verbose {
         info!("Starting μNet CLI in verbose mode");
-        info!("Database URL: {}", cli.database_url);
         if let Some(config_path) = &cli.config {
             info!("Using configuration from: {}", config_path.display());
         }
     }
 
-    // Initialize SQLite datastore
-    let database_url = cli.database_url.clone();
-    if cli.verbose {
-        info!("Initializing SQLite datastore with URL: {}", database_url);
-    }
+    let server_url = cli.server.or_else(|| {
+        cli_cfg
+            .as_ref()
+            .and_then(|c| c.client.as_ref())
+            .and_then(|c| c.server_url.clone())
+    });
 
-    // Ensure database is initialized by running migrations
-    use migration::{Migrator, MigratorTrait};
-    use sea_orm::{ConnectOptions, Database};
+    let datastore: Box<dyn unet_core::datastore::DataStore> = if let Some(url) = server_url {
+        if cli.verbose {
+            info!("Using remote server at {}", url);
+        }
+        Box::new(unet_core::datastore::rest::RestDataStore::new(&url))
+    } else {
+        let database_url = cli.database_url.clone();
+        if cli.verbose {
+            info!("Initializing SQLite datastore with URL: {}", database_url);
+        }
 
-    if cli.verbose {
-        info!("Running database migrations...");
-    }
+        use migration::{Migrator, MigratorTrait};
+        use sea_orm::{ConnectOptions, Database};
 
-    let mut opt = ConnectOptions::new(&database_url);
-    opt.sqlx_logging(false);
-    let db_for_migration = Database::connect(opt).await.map_err(|e| {
-        error!("Failed to connect to database for migration: {}", e);
-        anyhow::anyhow!("Failed to connect to database for migration: {}", e)
-    })?;
+        if cli.verbose {
+            info!("Running database migrations...");
+        }
 
-    Migrator::up(&db_for_migration, None).await.map_err(|e| {
-        error!("Failed to run migrations: {}", e);
-        anyhow::anyhow!("Failed to run migrations: {}", e)
-    })?;
+        let mut opt = ConnectOptions::new(&database_url);
+        opt.sqlx_logging(false);
+        let db_for_migration = Database::connect(opt).await.map_err(|e| {
+            error!("Failed to connect to database for migration: {}", e);
+            anyhow::anyhow!("Failed to connect to database for migration: {}", e)
+        })?;
 
-    if cli.verbose {
-        info!("Database migrations completed successfully");
-    }
+        Migrator::up(&db_for_migration, None).await.map_err(|e| {
+            error!("Failed to run migrations: {}", e);
+            anyhow::anyhow!("Failed to run migrations: {}", e)
+        })?;
 
-    let datastore: Box<dyn unet_core::datastore::DataStore> = Box::new(
-        unet_core::datastore::sqlite::SqliteStore::new(&database_url)
-            .await
-            .map_err(|e| {
-                error!("Failed to initialize SQLite datastore: {}", e);
-                anyhow::anyhow!("Failed to initialize SQLite datastore: {}", e)
-            })?,
-    );
+        if cli.verbose {
+            info!("Database migrations completed successfully");
+        }
+
+        Box::new(
+            unet_core::datastore::sqlite::SqliteStore::new(&database_url)
+                .await
+                .map_err(|e| {
+                    error!("Failed to initialize SQLite datastore: {}", e);
+                    anyhow::anyhow!("Failed to initialize SQLite datastore: {}", e)
+                })?,
+        )
+    };
 
     // Execute command
     match cli.command {

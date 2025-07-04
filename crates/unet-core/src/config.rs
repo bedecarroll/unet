@@ -725,7 +725,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             database: DatabaseConfig {
-                url: "sqlite:./unet.db?mode=rwc".to_string(),
+                url: "sqlite:///var/lib/unet/unet.db?mode=rwc".to_string(),
                 max_connections: Some(10),
                 timeout: Some(30),
                 postgres: None,
@@ -877,7 +877,10 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = Config::default();
-        assert_eq!(config.database.url, "sqlite:./unet.db?mode=rwc");
+        assert_eq!(
+            config.database.url,
+            "sqlite:///var/lib/unet/unet.db?mode=rwc"
+        );
         assert_eq!(config.logging.level, "info");
         assert_eq!(config.snmp.community, "public");
         assert_eq!(config.server.port, 8080);

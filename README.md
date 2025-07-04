@@ -98,7 +98,7 @@ $ cargo test --workspace
 # 4. Start the demo server (SQLite, fixtures)
 $ cargo run -p unet-cli -- init --database ./unet.db
 $ cargo run -p unet-cli -- import --from fixtures/examples/small-office/
-$ cargo run -p unet-server -- --database-url sqlite:./unet.db
+$ cargo run -p unet-server -- --database-url sqlite://./unet.db
 
 # 5. Open a new shell – list demo nodes via CLI
 $ cargo run -p unet-cli -- nodes list

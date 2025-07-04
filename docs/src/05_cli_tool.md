@@ -200,7 +200,7 @@ Implementation uses `` crate for tables and `serde_json` for JSON.
 
 ## 6  Configuration Files
 
-`$HOME/.config/unet/cli.toml` (XDG) overrides env/flags.
+`$HOME/.config/unet/config.toml` (XDG) overrides env/flags.
 
 ```toml
 [defaults]

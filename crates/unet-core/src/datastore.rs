@@ -194,6 +194,370 @@ impl Pagination {
     }
 }
 
+/// REST-based DataStore implementation for remote server interaction
+pub mod rest {
+    use super::*;
+    use reqwest::Client;
+
+    /// Simple REST client DataStore
+    pub struct RestDataStore {
+        client: Client,
+        base_url: String,
+    }
+
+    impl RestDataStore {
+        /// Create a new RestDataStore with the given base URL
+        pub fn new(base_url: &str) -> Self {
+            Self {
+                client: Client::new(),
+                base_url: base_url.trim_end_matches('/').to_string(),
+            }
+        }
+
+        fn endpoint(&self, path: &str) -> String {
+            format!("{}/{}", self.base_url, path.trim_start_matches('/'))
+        }
+    }
+
+    #[async_trait]
+    impl DataStore for RestDataStore {
+        fn name(&self) -> &'static str {
+            "REST"
+        }
+
+        async fn health_check(&self) -> DataStoreResult<()> {
+            let url = self.endpoint("health");
+            let resp =
+                self.client
+                    .get(url)
+                    .send()
+                    .await
+                    .map_err(|e| DataStoreError::ConnectionError {
+                        message: e.to_string(),
+                    })?;
+            if resp.status().is_success() {
+                Ok(())
+            } else {
+                Err(DataStoreError::ConnectionError {
+                    message: resp.status().to_string(),
+                })
+            }
+        }
+
+        async fn begin_transaction(&self) -> DataStoreResult<Box<dyn Transaction>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "begin_transaction".to_string(),
+            })
+        }
+
+        async fn create_node(&self, node: &Node) -> DataStoreResult<Node> {
+            let url = self.endpoint("api/v1/nodes");
+            let resp = self.client.post(url).json(node).send().await.map_err(|e| {
+                DataStoreError::ConnectionError {
+                    message: e.to_string(),
+                }
+            })?;
+            if resp.status().is_success() {
+                let api: ServerApiResponse<Node> =
+                    resp.json()
+                        .await
+                        .map_err(|e| DataStoreError::InternalError {
+                            message: e.to_string(),
+                        })?;
+                Ok(api.data)
+            } else {
+                Err(DataStoreError::InternalError {
+                    message: resp.status().to_string(),
+                })
+            }
+        }
+
+        async fn get_node(&self, id: &Uuid) -> DataStoreResult<Option<Node>> {
+            let url = self.endpoint(&format!("api/v1/nodes/{}", id));
+            let resp =
+                self.client
+                    .get(url)
+                    .send()
+                    .await
+                    .map_err(|e| DataStoreError::ConnectionError {
+                        message: e.to_string(),
+                    })?;
+            if resp.status().is_success() {
+                let api: ServerApiResponse<Node> =
+                    resp.json()
+                        .await
+                        .map_err(|e| DataStoreError::InternalError {
+                            message: e.to_string(),
+                        })?;
+                Ok(Some(api.data))
+            } else if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                Ok(None)
+            } else {
+                Err(DataStoreError::InternalError {
+                    message: resp.status().to_string(),
+                })
+            }
+        }
+
+        async fn list_nodes(&self, options: &QueryOptions) -> DataStoreResult<PagedResult<Node>> {
+            let url = self.endpoint("api/v1/nodes");
+            let mut req = self.client.get(url);
+
+            if let Some(p) = &options.pagination {
+                let page = (p.offset / p.limit) + 1;
+                req = req.query(&[("page", page as u64), ("per_page", p.limit as u64)]);
+            }
+
+            for filter in &options.filters {
+                if let FilterValue::String(val) = &filter.value {
+                    req = req.query(&[(filter.field.as_str(), val)]);
+                }
+            }
+
+            let resp = req
+                .send()
+                .await
+                .map_err(|e| DataStoreError::ConnectionError {
+                    message: e.to_string(),
+                })?;
+
+            if !resp.status().is_success() {
+                return Err(DataStoreError::InternalError {
+                    message: resp.status().to_string(),
+                });
+            }
+
+            let api: ServerApiResponse<ServerPaginatedResponse<Node>> =
+                resp.json()
+                    .await
+                    .map_err(|e| DataStoreError::InternalError {
+                        message: e.to_string(),
+                    })?;
+
+            Ok(PagedResult {
+                items: api.data.data,
+                total_count: api.data.total as usize,
+                page_size: api.data.per_page as usize,
+                page: api.data.page as usize,
+                total_pages: api.data.total_pages as usize,
+                has_next: api.data.has_next,
+                has_previous: api.data.has_prev,
+            })
+        }
+
+        async fn update_node(&self, node: &Node) -> DataStoreResult<Node> {
+            let url = self.endpoint(&format!("api/v1/nodes/{}", node.id));
+            let resp = self.client.put(url).json(node).send().await.map_err(|e| {
+                DataStoreError::ConnectionError {
+                    message: e.to_string(),
+                }
+            })?;
+            if resp.status().is_success() {
+                let api: ServerApiResponse<Node> =
+                    resp.json()
+                        .await
+                        .map_err(|e| DataStoreError::InternalError {
+                            message: e.to_string(),
+                        })?;
+                Ok(api.data)
+            } else {
+                Err(DataStoreError::InternalError {
+                    message: resp.status().to_string(),
+                })
+            }
+        }
+
+        async fn delete_node(&self, id: &Uuid) -> DataStoreResult<()> {
+            let url = self.endpoint(&format!("api/v1/nodes/{}", id));
+            let resp = self.client.delete(url).send().await.map_err(|e| {
+                DataStoreError::ConnectionError {
+                    message: e.to_string(),
+                }
+            })?;
+            if resp.status().is_success() {
+                Ok(())
+            } else {
+                Err(DataStoreError::InternalError {
+                    message: resp.status().to_string(),
+                })
+            }
+        }
+
+        async fn get_nodes_by_location(&self, _location_id: &Uuid) -> DataStoreResult<Vec<Node>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_nodes_by_location".to_string(),
+            })
+        }
+
+        async fn search_nodes_by_name(&self, _name: &str) -> DataStoreResult<Vec<Node>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "search_nodes_by_name".to_string(),
+            })
+        }
+
+        async fn create_link(&self, _link: &Link) -> DataStoreResult<Link> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "create_link".to_string(),
+            })
+        }
+
+        async fn get_link(&self, _id: &Uuid) -> DataStoreResult<Option<Link>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_link".to_string(),
+            })
+        }
+
+        async fn list_links(&self, _options: &QueryOptions) -> DataStoreResult<PagedResult<Link>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "list_links".to_string(),
+            })
+        }
+
+        async fn update_link(&self, _link: &Link) -> DataStoreResult<Link> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "update_link".to_string(),
+            })
+        }
+
+        async fn delete_link(&self, _id: &Uuid) -> DataStoreResult<()> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "delete_link".to_string(),
+            })
+        }
+
+        async fn get_links_for_node(&self, _node_id: &Uuid) -> DataStoreResult<Vec<Link>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_links_for_node".to_string(),
+            })
+        }
+
+        async fn get_links_between_nodes(
+            &self,
+            _first_node_id: &Uuid,
+            _second_node_id: &Uuid,
+        ) -> DataStoreResult<Vec<Link>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_links_between_nodes".to_string(),
+            })
+        }
+
+        async fn create_location(&self, _location: &Location) -> DataStoreResult<Location> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "create_location".to_string(),
+            })
+        }
+
+        async fn get_location(&self, _id: &Uuid) -> DataStoreResult<Option<Location>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_location".to_string(),
+            })
+        }
+
+        async fn list_locations(
+            &self,
+            _options: &QueryOptions,
+        ) -> DataStoreResult<PagedResult<Location>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "list_locations".to_string(),
+            })
+        }
+
+        async fn update_location(&self, _location: &Location) -> DataStoreResult<Location> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "update_location".to_string(),
+            })
+        }
+
+        async fn delete_location(&self, _id: &Uuid) -> DataStoreResult<()> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "delete_location".to_string(),
+            })
+        }
+
+        async fn get_child_locations(&self, _parent_id: &Uuid) -> DataStoreResult<Vec<Location>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_child_locations".to_string(),
+            })
+        }
+
+        async fn get_location_tree(&self) -> DataStoreResult<Vec<Location>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_location_tree".to_string(),
+            })
+        }
+
+        async fn validate_location_hierarchy(
+            &self,
+            _child_id: &Uuid,
+            _new_parent_id: &Uuid,
+        ) -> DataStoreResult<()> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "validate_location_hierarchy".to_string(),
+            })
+        }
+
+        async fn batch_nodes(
+            &self,
+            _operations: &[BatchOperation<Node>],
+        ) -> DataStoreResult<BatchResult> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "batch_nodes".to_string(),
+            })
+        }
+
+        async fn batch_links(
+            &self,
+            _operations: &[BatchOperation<Link>],
+        ) -> DataStoreResult<BatchResult> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "batch_links".to_string(),
+            })
+        }
+
+        async fn batch_locations(
+            &self,
+            _operations: &[BatchOperation<Location>],
+        ) -> DataStoreResult<BatchResult> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "batch_locations".to_string(),
+            })
+        }
+
+        async fn get_entity_counts(&self) -> DataStoreResult<HashMap<String, usize>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_entity_counts".to_string(),
+            })
+        }
+
+        async fn get_statistics(&self) -> DataStoreResult<HashMap<String, serde_json::Value>> {
+            Err(DataStoreError::UnsupportedOperation {
+                operation: "get_statistics".to_string(),
+            })
+        }
+
+        // The remaining trait methods are not currently supported over REST
+    }
+
+    #[derive(Deserialize)]
+    struct ServerApiResponse<T> {
+        data: T,
+        success: bool,
+        #[serde(default)]
+        message: Option<String>,
+    }
+
+    #[derive(Deserialize)]
+    struct ServerPaginatedResponse<T> {
+        data: Vec<T>,
+        total: u64,
+        page: u64,
+        per_page: u64,
+        total_pages: u64,
+        has_next: bool,
+        has_prev: bool,
+    }
+}
+
 /// Query parameters for list operations
 #[derive(Debug, Clone, Default)]
 pub struct QueryOptions {

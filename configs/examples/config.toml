@@ -3,7 +3,7 @@
 
 [database]
 # Database URL - supports SQLite and PostgreSQL
-url = "sqlite:./unet.db?mode=rwc"
+url = "sqlite:///var/lib/unet/unet.db?mode=rwc"
 # Maximum number of connections in the pool
 max_connections = 10
 # Connection timeout in seconds

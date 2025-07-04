@@ -114,4 +114,5 @@ log = { workspace = true }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 criterion = { workspace = true }
+httpmock = "0.6"
 

@@ -46,7 +46,7 @@ struct Args {
     port: Option<u16>,
 
     /// Database URL (SQLite)
-    #[arg(short, long, default_value = "sqlite://unet.db")]
+    #[arg(short, long, default_value = "sqlite:///var/lib/unet/unet.db?mode=rwc")]
     database_url: String,
 
     /// Log level (trace, debug, info, warn, error)
@@ -82,7 +82,7 @@ async fn main() -> Result<()> {
     }
 
     // Override database URL from command line or use config
-    let database_url = if args.database_url != "sqlite://unet.db" {
+    let database_url = if args.database_url != "sqlite:///var/lib/unet/unet.db?mode=rwc" {
         args.database_url
     } else {
         config.database_url()

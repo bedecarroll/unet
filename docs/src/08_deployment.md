@@ -110,8 +110,7 @@ Minimal starter:
 bind = "0.0.0.0:8080"
 
 [database]
-type = "sqlite"
-path = "/var/lib/unet/unet.db"
+url = "sqlite:///var/lib/unet/unet.db?mode=rwc"
 
 [git]
 policies  = "https://github.com/org/unet-policies.git"

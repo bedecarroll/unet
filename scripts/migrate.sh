@@ -6,7 +6,7 @@
 set -e
 
 COMMAND=${1:-"up"}
-DATABASE_URL=${2:-"sqlite:./unet.db?mode=rwc"}
+DATABASE_URL=${2:-"sqlite:///var/lib/unet/unet.db?mode=rwc"}
 
 echo "Running migration command: $COMMAND"
 echo "Database URL: $DATABASE_URL"

@@ -46,7 +46,7 @@
 # CLI configuration search paths  
 ./unet-cli.toml             # Current directory
 ./config/unet-cli.toml      # Config subdirectory
-~/.config/unet/cli.toml     # User config directory
+~/.config/unet/config.toml     # User config directory
 /etc/unet/cli.toml          # System-wide configuration
 ```
 
@@ -60,7 +60,7 @@
 # /etc/unet/server.toml - Complete μNet Server Configuration
 
 [database]
-url = "sqlite:./unet.db?mode=rwc"
+url = "sqlite:///var/lib/unet/unet.db?mode=rwc"
 max_connections = 10
 timeout_secs = 30
 
@@ -139,7 +139,7 @@ Controls how μNet connects to and manages the database:
 ```toml
 [database]
 # SQLite (default for development)
-url = "sqlite:./unet.db?mode=rwc"
+url = "sqlite:///var/lib/unet/unet.db?mode=rwc"
 
 # PostgreSQL (recommended for production)
 # url = "postgresql://unet:password@localhost:5432/unet"
@@ -252,7 +252,7 @@ cors_origins = [
 ### 5.1 CLI Global Settings
 
 ```toml
-# ~/.config/unet/cli.toml
+# ~/.config/unet/config.toml
 [client]
 server_url = "https://unet.corp.local:8080"
 timeout_secs = 30

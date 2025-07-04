@@ -2,7 +2,7 @@
 # This demonstrates comprehensive resource management settings for production deployments
 
 [database]
-url = "sqlite:./unet.db?mode=rwc"
+url = "sqlite:///var/lib/unet/unet.db?mode=rwc"
 
 [logging]
 level = "info"
