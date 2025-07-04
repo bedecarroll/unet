@@ -140,7 +140,7 @@ test_documentation() {
     # Check required documentation files
     run_test "README exists" "test -f '$PROJECT_ROOT/README.md'"
     run_test "CHANGELOG exists" "test -f '$PROJECT_ROOT/CHANGELOG.md'"
-    run_test "License files exist" "test -f '$PROJECT_ROOT/LICENSE-MIT' -o -f '$PROJECT_ROOT/LICENSE-APACHE'"
+    run_test "License file exists" "test -f '$PROJECT_ROOT/LICENSE-MIT'"
 }
 
 # Test binaries

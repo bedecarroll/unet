@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Release Process
 
 This document describes the complete release process for μNet, including automation tools and manual procedures.

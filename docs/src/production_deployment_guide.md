@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Production Deployment and Operations Guide
 
 > **Audience:** DevOps and Infrastructure teams deploying μNet in production environments.  

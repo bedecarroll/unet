@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Secrets Management Guide
 
 > **Audience:** Administrators responsible for protecting credentials.

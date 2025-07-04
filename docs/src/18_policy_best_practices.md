@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Policy Best Practices Guide
 
 This guide provides advanced patterns, best practices, and optimization techniques for μNet policy development and deployment.

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 03 Policy Engine – Design, DSL & Implementation Guide
 
 > **Audience:** Engineers building the rule parser/evaluator, and operators authoring policies.

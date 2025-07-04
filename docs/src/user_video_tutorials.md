@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Video Tutorial Scripts and Walkthroughs
 
 > **Audience:** Content creators and trainers who want to create video tutorials for μNet.  

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Community Contribution Guidelines
 
 > **Audience:** Contributors, maintainers, and community members who want to participate in μNet development.  

@@ -423,10 +423,6 @@ impl LiveConfigManager {
         cache.access_order.push(node_id);
     }
 
-
-
-
-
     /// Get cache statistics
     pub async fn cache_stats(&self) -> CacheStats {
         let cache = self.config_cache.read().await;
@@ -573,7 +569,6 @@ pub struct CacheStats {
 
 // Placeholder implementations for helper methods that would require additional dependencies
 impl LiveConfigManager {
-
     fn build_snmp_session_config(
         &self,
         address: SocketAddr,
@@ -628,9 +623,6 @@ impl LiveConfigManager {
             "HTTP API client implementation pending - requires reqwest integration",
         ))
     }
-
-
-
 
     async fn get_oldest_entry_age(&self, cache: &ConfigCache) -> Option<u64> {
         cache

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 12 Onboarding – Getting Started With μNet as a Junior Engineer
 
 > **Audience:** Brand‑new engineers (intern → 2 yrs) joining the Unet team.\

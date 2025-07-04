@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # unet the simple network configuration system
 
 This is a stream of conciousness that we need to change into a workable design.

@@ -3,7 +3,7 @@ class Unet < Formula
   homepage "https://github.com/example/unet"
   url "https://github.com/example/unet/archive/v0.1.0.tar.gz"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"  # Update with actual SHA256
-  license any_of: ["MIT", "Apache-2.0"]
+  license "MIT"
   head "https://github.com/example/unet.git", branch: "main"
 
   livecheck do

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 13 Dependencies & Coding Conventions – Crate‐by‐Crate Rationale
 
 > **Audience:** All contributors (especially juniors) touching Rust code, Cargo manifests, or CI workflows.\

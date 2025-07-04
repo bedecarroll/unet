@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Implementation Plan for the **μNet (Unet)** Network Configuration System
 
 > \*\*Audience \*\* Junior engineers joining a brand‑new (greenfield) project. \*\*Goal \*\* Provide a step‑by‑step roadmap, with rationale and rejected alternatives, for building Unet.

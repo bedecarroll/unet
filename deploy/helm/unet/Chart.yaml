@@ -23,7 +23,7 @@ keywords:
 
 annotations:
   category: Network Management
-  licenses: MIT OR Apache-2.0
+  licenses: MIT
 
 dependencies:
   - name: postgresql

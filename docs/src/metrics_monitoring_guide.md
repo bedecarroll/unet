@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Metrics & Monitoring Guide
 
 > **Audience:** Operators and SRE teams.

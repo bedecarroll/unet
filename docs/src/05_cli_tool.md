@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 05 CLI Tool – `unet-cli` Command‑Line Interface Guide
 
 > **Audience:** Engineers implementing the CLI (Clap v4) *and* operators who will invoke it daily.

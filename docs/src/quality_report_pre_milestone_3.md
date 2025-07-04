@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Code Quality Assessment Report – Pre-Milestone 3
 
 > **Report Date:** 2025-06-22 07:30:00 PST  

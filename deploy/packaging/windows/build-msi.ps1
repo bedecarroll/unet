@@ -143,7 +143,7 @@ function Initialize-BuildEnvironment {
 \f0\fs24
 μNet Network Configuration Management Tool\par
 \par
-Licensed under MIT or Apache-2.0\par
+Licensed under the MIT License\par
 \par
 Copyright 2025 μNet Development Team\par
 \par

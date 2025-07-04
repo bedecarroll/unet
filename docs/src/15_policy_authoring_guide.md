@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Policy Authoring Guide
 
 This guide provides comprehensive instructions for writing μNet policy rules using the Domain Specific Language (DSL).

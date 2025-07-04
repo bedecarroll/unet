@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Getting Started with μNet
 
 > **Audience:** Network engineers and administrators who want to start using μNet for configuration management.  

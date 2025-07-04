@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Policy Examples
 
 This document provides real-world examples of μNet policy rules for common network automation scenarios.

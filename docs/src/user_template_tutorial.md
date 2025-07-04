@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # Template Usage Tutorial
 
 > **Audience:** Network engineers who want to master μNet's template system for generating network configurations.  

@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # API Reference Documentation
 
 > **Audience:** Developers integrating with μNet API, system administrators, and API consumers.  

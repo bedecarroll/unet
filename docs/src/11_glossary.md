@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+
 # 11 Glossary – Vocabulary & Acronyms Used in μNet Docs
 
 > **Audience:** Everyone touching the code or docs—especially junior engineers new to networking *and* Rust.  
