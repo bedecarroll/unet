@@ -30,7 +30,7 @@ struct Cli {
     #[arg(short, long)]
     config: Option<PathBuf>,
 
-    /// Database URL (SQLite)
+    /// Database URL (`SQLite`)
     #[arg(short, long, default_value = "sqlite://unet.db")]
     database_url: String,
 
@@ -57,7 +57,7 @@ enum OutputFormat {
     Yaml,
 }
 
-impl std::str::FromStr for OutputFormat {
+impl core::str::FromStr for OutputFormat {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -65,7 +65,7 @@ impl std::str::FromStr for OutputFormat {
             "table" => Ok(Self::Table),
             "json" => Ok(Self::Json),
             "yaml" => Ok(Self::Yaml),
-            _ => Err(format!("Invalid output format: {}", s)),
+            _ => return Err(format!("Invalid output format: {s}")),
         }
     }
 }
@@ -104,14 +104,14 @@ async fn main() -> Result<()> {
 
     // Override log level based on verbose flag
     if cli.verbose {
-        config.logging.level = "debug".to_string();
+        config.logging.level = "debug".to_owned();
     }
 
     // Initialize tracing with config
     init_tracing(&config.logging)?;
 
     if cli.verbose {
-        info!("Starting μNet CLI in verbose mode");
+        info!("Starting \u{3bc}Net CLI in verbose mode");
         info!("Database URL: {}", cli.database_url);
         if let Some(config_path) = &cli.config {
             info!("Using configuration from: {}", config_path.display());
@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
     }
 
     // Ensure database is initialized by running migrations
-    use migration::{Migrator, MigratorTrait};
+    use migration::{Migrator, MigratorTrait as _};
     use sea_orm::{ConnectOptions, Database};
 
     if cli.verbose {

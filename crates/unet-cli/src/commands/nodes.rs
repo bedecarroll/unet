@@ -397,7 +397,7 @@ async fn list_nodes(
 
     if let Some(lifecycle) = args.lifecycle {
         filters.push(Filter {
-            field: "lifecycle".to_string(),
+            field: "lifecycle".to_owned(),
             operation: FilterOperation::Equals,
             value: FilterValue::String(lifecycle),
         });
@@ -405,7 +405,7 @@ async fn list_nodes(
 
     if let Some(role) = args.role {
         filters.push(Filter {
-            field: "role".to_string(),
+            field: "role".to_owned(),
             operation: FilterOperation::Equals,
             value: FilterValue::String(role),
         });
@@ -413,7 +413,7 @@ async fn list_nodes(
 
     if let Some(vendor) = args.vendor {
         filters.push(Filter {
-            field: "vendor".to_string(),
+            field: "vendor".to_owned(),
             operation: FilterOperation::Equals,
             value: FilterValue::String(vendor),
         });
@@ -422,7 +422,7 @@ async fn list_nodes(
     let options = QueryOptions {
         filters,
         sort: vec![Sort {
-            field: "name".to_string(),
+            field: "name".to_owned(),
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {

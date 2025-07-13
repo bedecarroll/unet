@@ -41,22 +41,22 @@ pub async fn execute(
 
     let export_all = args.only.is_none();
     let export_types = args.only.clone().unwrap_or_else(|| {
-        vec![
-            "locations".to_string(),
-            "nodes".to_string(),
-            "links".to_string(),
+        return vec![
+            "locations".to_owned(),
+            "nodes".to_owned(),
+            "links".to_owned(),
         ]
     });
 
     // Export locations
-    if export_all || export_types.contains(&"locations".to_string()) {
+    if export_all || export_types.contains(&"locations".to_owned()) {
         match export_locations(&args, datastore).await {
             Ok(count) => {
                 exported_count += count;
                 info!("Exported {} locations", count);
             }
             Err(e) => {
-                let error_msg = format!("Failed to export locations: {}", e);
+                let error_msg = format!("Failed to export locations: {e}");
                 errors.push(error_msg.clone());
                 warn!("{}", error_msg);
             }
@@ -64,14 +64,14 @@ pub async fn execute(
     }
 
     // Export nodes
-    if export_all || export_types.contains(&"nodes".to_string()) {
+    if export_all || export_types.contains(&"nodes".to_owned()) {
         match export_nodes(&args, datastore).await {
             Ok(count) => {
                 exported_count += count;
                 info!("Exported {} nodes", count);
             }
             Err(e) => {
-                let error_msg = format!("Failed to export nodes: {}", e);
+                let error_msg = format!("Failed to export nodes: {e}");
                 errors.push(error_msg.clone());
                 warn!("{}", error_msg);
             }
@@ -79,14 +79,14 @@ pub async fn execute(
     }
 
     // Export links
-    if export_all || export_types.contains(&"links".to_string()) {
+    if export_all || export_types.contains(&"links".to_owned()) {
         match export_links(&args, datastore).await {
             Ok(count) => {
                 exported_count += count;
                 info!("Exported {} links", count);
             }
             Err(e) => {
-                let error_msg = format!("Failed to export links: {}", e);
+                let error_msg = format!("Failed to export links: {e}");
                 errors.push(error_msg.clone());
                 warn!("{}", error_msg);
             }

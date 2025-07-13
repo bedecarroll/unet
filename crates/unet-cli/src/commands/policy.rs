@@ -117,7 +117,7 @@ async fn validate_policy(
     let git_config = GitConfig {
         policies_repo: None,
         templates_repo: None,
-        branch: "main".to_string(),
+        branch: "main".to_owned(),
         sync_interval: 300,
     };
 
@@ -128,7 +128,7 @@ async fn validate_policy(
         let content = std::fs::read_to_string(&args.path)?;
         match PolicyParser::parse_file(&content) {
             Ok(rules) => {
-                println!("✅ Policy file is valid");
+                println!("\u{2705} Policy file is valid");
                 if args.verbose {
                     println!("Rules found: {}", rules.len());
                     for (i, rule) in rules.iter().enumerate() {
@@ -137,7 +137,7 @@ async fn validate_policy(
                 }
             }
             Err(e) => {
-                println!("❌ Policy file validation failed: {}", e);
+                println!("\u{274c} Policy file validation failed: {e}");
                 return Err(anyhow::anyhow!("Policy validation failed: {}", e));
             }
         }
@@ -160,7 +160,7 @@ async fn validate_policy(
         if args.verbose {
             for policy_file in &load_result.loaded {
                 println!(
-                    "✅ {}: {} rules",
+                    "\u{2705} {}: {} rules",
                     policy_file.path.display(),
                     policy_file.rules.len()
                 );
@@ -168,7 +168,7 @@ async fn validate_policy(
         }
 
         for (file_path, error) in &load_result.errors {
-            println!("❌ {}: {}", file_path.display(), error);
+            println!("\u{274c} {}: {}", file_path.display(), error);
         }
 
         if !load_result.errors.is_empty() {
@@ -195,7 +195,7 @@ async fn eval_policy(
     let git_config = GitConfig {
         policies_repo: None,
         templates_repo: None,
-        branch: "main".to_string(),
+        branch: "main".to_owned(),
         sync_interval: 300,
     };
 
@@ -210,7 +210,7 @@ async fn eval_policy(
         let load_result = loader.load_policies_from_directory(&args.path).await?;
         if !load_result.errors.is_empty() {
             for (file_path, error) in &load_result.errors {
-                println!("❌ Failed to load {}: {}", file_path.display(), error);
+                println!("\u{274c} Failed to load {}: {}", file_path.display(), error);
             }
             return Err(anyhow::anyhow!("Failed to load some policy files"));
         }
@@ -275,28 +275,28 @@ async fn eval_policy(
                     Ok(evaluation_result) => {
                         match evaluation_result {
                             unet_core::policy::EvaluationResult::Satisfied { action } => {
-                                println!("  ✅ Rule {} condition matched", rule_idx + 1);
+                                println!("  \u{2705} Rule {} condition matched", rule_idx + 1);
 
                                 if args.dry_run {
-                                    println!("  🔍 Would execute: {}", action);
+                                    println!("  \u{1f50d} Would execute: {action}");
                                 } else {
                                     // Note: For now, we'll just show what would be executed
                                     // Full action execution requires additional integration
-                                    println!("  🔍 Would execute: {}", action);
+                                    println!("  \u{1f50d} Would execute: {action}");
                                 }
                             }
                             unet_core::policy::EvaluationResult::NotSatisfied => {
                                 if args.verbose {
-                                    println!("  ⏭️  Rule {} condition not matched", rule_idx + 1);
+                                    println!("  \u{23ed}\u{fe0f}  Rule {} condition not matched", rule_idx + 1);
                                 }
                             }
                             unet_core::policy::EvaluationResult::Error { message } => {
-                                println!("  💥 Rule {} error: {}", rule_idx + 1, message);
+                                println!("  \u{1f4a5} Rule {} error: {}", rule_idx + 1, message);
                             }
                         }
                     }
                     Err(e) => {
-                        println!("  💥 Failed to evaluate rule {}: {}", rule_idx + 1, e);
+                        println!("  \u{1f4a5} Failed to evaluate rule {}: {}", rule_idx + 1, e);
                     }
                 }
             }
@@ -328,7 +328,7 @@ async fn diff_policy(
     let git_config = GitConfig {
         policies_repo: None,
         templates_repo: None,
-        branch: "main".to_string(),
+        branch: "main".to_owned(),
         sync_interval: 300,
     };
 
@@ -343,7 +343,7 @@ async fn diff_policy(
         let load_result = loader.load_policies_from_directory(&args.path).await?;
         if !load_result.errors.is_empty() {
             for (file_path, error) in &load_result.errors {
-                println!("❌ Failed to load {}: {}", file_path.display(), error);
+                println!("\u{274c} Failed to load {}: {}", file_path.display(), error);
             }
             return Err(anyhow::anyhow!("Failed to load some policy files"));
         }
@@ -384,27 +384,27 @@ async fn diff_policy(
                                 // For now, we'll assume it passes (need full action execution)
                                 passed_checks += 1;
                                 if !args.failed_only {
-                                    println!("  ✅ Rule {}: {}", rule_idx + 1, rule.action);
+                                    println!("  \u{2705} Rule {}: {}", rule_idx + 1, rule.action);
                                 }
                             }
                             unet_core::policy::EvaluationResult::NotSatisfied => {
                                 // Condition not met, so assertion doesn't apply
                                 if !args.failed_only {
                                     println!(
-                                        "  ⏭️  Rule {}: Condition not met, assertion not applicable",
+                                        "  \u{23ed}\u{fe0f}  Rule {}: Condition not met, assertion not applicable",
                                         rule_idx + 1
                                     );
                                 }
                             }
                             unet_core::policy::EvaluationResult::Error { message } => {
                                 failed_checks += 1;
-                                println!("  💥 Rule {}: Error - {}", rule_idx + 1, message);
+                                println!("  \u{1f4a5} Rule {}: Error - {}", rule_idx + 1, message);
                             }
                         }
                     }
                     Err(e) => {
                         failed_checks += 1;
-                        println!("  💥 Rule {}: Error evaluating - {}", rule_idx + 1, e);
+                        println!("  \u{1f4a5} Rule {}: Error evaluating - {}", rule_idx + 1, e);
                     }
                 }
             }
@@ -412,16 +412,16 @@ async fn diff_policy(
     }
 
     println!("\nCompliance Summary:");
-    println!("  Total compliance checks: {}", compliance_checks);
-    println!("  Passed: {}", passed_checks);
-    println!("  Failed: {}", failed_checks);
+    println!("  Total compliance checks: {compliance_checks}");
+    println!("  Passed: {passed_checks}");
+    println!("  Failed: {failed_checks}");
 
     if failed_checks > 0 {
-        println!("⚠️  Node has compliance violations");
+        println!("\u{26a0}\u{fe0f}  Node has compliance violations");
     } else if compliance_checks > 0 {
-        println!("✅ Node is compliant with all policies");
+        println!("\u{2705} Node is compliant with all policies");
     } else {
-        println!("ℹ️  No compliance checks found in policies");
+        println!("\u{2139}\u{fe0f}  No compliance checks found in policies");
     }
 
     Ok(())
@@ -441,7 +441,7 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     let git_config = GitConfig {
         policies_repo: None,
         templates_repo: None,
-        branch: "main".to_string(),
+        branch: "main".to_owned(),
         sync_interval: 300,
     };
 
@@ -456,7 +456,7 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     for policy_file in load_result.loaded {
         if args.verbose {
             println!(
-                "📄 {} ({} rules)",
+                "\u{1f4c4} {} ({} rules)",
                 policy_file.path.display(),
                 policy_file.rules.len()
             );
@@ -465,7 +465,7 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
             }
         } else {
             println!(
-                "📄 {} ({} rules)",
+                "\u{1f4c4} {} ({} rules)",
                 policy_file.path.display(),
                 policy_file.rules.len()
             );
@@ -473,7 +473,7 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     }
 
     for (file_path, error) in load_result.errors {
-        println!("❌ {}: {}", file_path.display(), error);
+        println!("\u{274c} {}: {}", file_path.display(), error);
     }
 
     Ok(())
@@ -491,7 +491,7 @@ async fn show_policy(args: ShowPolicyArgs, _output_format: crate::OutputFormat) 
 
     println!("\n--- File Contents ---");
     let contents = std::fs::read_to_string(&args.path)?;
-    println!("{}", contents);
+    println!("{contents}");
 
     // Parse the file to show the rules
     match PolicyParser::parse_file(&contents) {
@@ -501,12 +501,12 @@ async fn show_policy(args: ShowPolicyArgs, _output_format: crate::OutputFormat) 
                 println!("Rule {}: {}", i + 1, rule);
 
                 if args.ast {
-                    println!("  AST: {:#?}", rule);
+                    println!("  AST: {rule:#?}");
                 }
             }
         }
         Err(e) => {
-            println!("\n❌ Failed to parse policy file: {}", e);
+            println!("\n\u{274c} Failed to parse policy file: {e}");
             return Err(anyhow::anyhow!("Failed to parse policy file: {}", e));
         }
     }

@@ -194,7 +194,7 @@ async fn list_locations(
 
     if let Some(location_type) = args.location_type {
         filters.push(Filter {
-            field: "location_type".to_string(),
+            field: "location_type".to_owned(),
             operation: FilterOperation::Equals,
             value: FilterValue::String(location_type),
         });
@@ -202,7 +202,7 @@ async fn list_locations(
 
     if let Some(parent_id) = args.parent_id {
         filters.push(Filter {
-            field: "parent_id".to_string(),
+            field: "parent_id".to_owned(),
             operation: FilterOperation::Equals,
             value: FilterValue::Uuid(parent_id),
         });
@@ -211,7 +211,7 @@ async fn list_locations(
     let options = QueryOptions {
         filters,
         sort: vec![Sort {
-            field: "name".to_string(),
+            field: "name".to_owned(),
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {

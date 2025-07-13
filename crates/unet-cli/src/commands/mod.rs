@@ -6,8 +6,6 @@ pub mod nodes;
 pub mod policy;
 
 use anyhow::Result;
-use serde_json;
-use serde_yaml;
 
 /// Common output formatting utilities
 pub fn format_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat) -> Result<String> {
@@ -24,6 +22,6 @@ pub fn format_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat)
 /// Print data in the specified format
 pub fn print_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat) -> Result<()> {
     let output = format_output(data, format)?;
-    println!("{}", output);
+    println!("{output}");
     Ok(())
 }

@@ -56,7 +56,7 @@ pub struct AddLinkArgs {
 
 #[derive(Args)]
 pub struct ListLinkArgs {
-    /// Filter by node ID (either node_a or node_z)
+    /// Filter by node ID (either `node_a` or `node_z`)
     #[arg(long)]
     node_id: Option<Uuid>,
 
@@ -202,7 +202,7 @@ async fn list_links(
         // We'll need to filter by either node_a_id or node_z_id
         // For now, just filter by node_a_id as an example
         filters.push(Filter {
-            field: "node_a_id".to_string(),
+            field: "node_a_id".to_owned(),
             operation: FilterOperation::Equals,
             value: FilterValue::Uuid(node_id),
         });
@@ -214,7 +214,7 @@ async fn list_links(
     let options = QueryOptions {
         filters,
         sort: vec![Sort {
-            field: "node_a_interface".to_string(),
+            field: "node_a_interface".to_owned(),
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {

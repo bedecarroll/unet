@@ -1,7 +1,6 @@
 // Integration test for SQLite datastore
 // Moved from root test_sqlite_datastore.rs, converted into proper cargo integration test.
 
-use uuid::Uuid;
 use unet_core::datastore::{sqlite::SqliteStore, DataStore};
 use unet_core::models::{Node, Vendor, DeviceRole, Lifecycle};
 
