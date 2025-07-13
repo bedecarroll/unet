@@ -59,9 +59,9 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
     info!("Initializing policy service");
     let policy_service = PolicyService::new(config.git.clone());
 
-    let app_state = AppState { 
-        datastore: datastore.clone(), 
-        policy_service: policy_service.clone() 
+    let app_state = AppState {
+        datastore: datastore.clone(),
+        policy_service: policy_service.clone(),
     };
 
     // Start background tasks
@@ -115,10 +115,22 @@ async fn create_app(config: Config, database_url: String) -> Result<Router> {
         .route("/api/v1/links/:id", put(handlers::links::update_link))
         .route("/api/v1/links/:id", delete(handlers::links::delete_link))
         // Policy endpoints
-        .route("/api/v1/policies/evaluate", post(handlers::policies::evaluate_policies))
-        .route("/api/v1/policies/results", get(handlers::policies::get_policy_results))
-        .route("/api/v1/policies/validate", post(handlers::policies::validate_policies))
-        .route("/api/v1/policies/status", get(handlers::policies::get_policy_status))
+        .route(
+            "/api/v1/policies/evaluate",
+            post(handlers::policies::evaluate_policies),
+        )
+        .route(
+            "/api/v1/policies/results",
+            get(handlers::policies::get_policy_results),
+        )
+        .route(
+            "/api/v1/policies/validate",
+            post(handlers::policies::validate_policies),
+        )
+        .route(
+            "/api/v1/policies/status",
+            get(handlers::policies::get_policy_status),
+        )
         // Health check
         .route("/health", get(handlers::health::health_check))
         // Add application state

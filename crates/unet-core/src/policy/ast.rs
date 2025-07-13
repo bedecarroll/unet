@@ -1,5 +1,5 @@
 //! Abstract Syntax Tree definitions for policy rules
-//! 
+//!
 //! This module defines the data structures that represent parsed policy rules
 //! and their components.
 
@@ -31,10 +31,7 @@ pub enum Condition {
         value: Value,
     },
     /// Check if field exists/is null
-    Existence {
-        field: FieldRef,
-        is_null: bool,
-    },
+    Existence { field: FieldRef, is_null: bool },
 }
 
 /// Comparison operators for conditions
@@ -54,19 +51,11 @@ pub enum ComparisonOperator {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Action {
     /// Assert that a field has a specific value (compliance checking)
-    Assert {
-        field: FieldRef,
-        expected: Value,
-    },
+    Assert { field: FieldRef, expected: Value },
     /// Set a field to a specific value (mutation)
-    Set {
-        field: FieldRef,
-        value: Value,
-    },
+    Set { field: FieldRef, value: Value },
     /// Apply a template to generate configuration
-    ApplyTemplate {
-        template_path: String,
-    },
+    ApplyTemplate { template_path: String },
 }
 
 /// Reference to a field in the data model (dot notation)
@@ -82,7 +71,7 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     Null,
-    Regex(String), // Regex pattern as string
+    Regex(String),      // Regex pattern as string
     FieldRef(FieldRef), // Reference to another field
 }
 
@@ -126,7 +115,11 @@ impl fmt::Display for Condition {
             Condition::And(left, right) => write!(f, "({} AND {})", left, right),
             Condition::Or(left, right) => write!(f, "({} OR {})", left, right),
             Condition::Not(cond) => write!(f, "NOT {}", cond),
-            Condition::Comparison { field, operator, value } => {
+            Condition::Comparison {
+                field,
+                operator,
+                value,
+            } => {
                 write!(f, "{} {} {}", field, operator, value)
             }
             Condition::Existence { field, is_null } => {
@@ -180,8 +173,17 @@ mod tests {
         assert_eq!(Value::Number(15.1).to_string(), "15.1");
         assert_eq!(Value::Boolean(true).to_string(), "true");
         assert_eq!(Value::Null.to_string(), "null");
-        assert_eq!(Value::Regex("^dist-\\d+$".to_string()).to_string(), "/^dist-\\d+$/");
-        assert_eq!(Value::FieldRef(FieldRef { path: vec!["node".to_string(), "vendor".to_string()] }).to_string(), "node.vendor");
+        assert_eq!(
+            Value::Regex("^dist-\\d+$".to_string()).to_string(),
+            "/^dist-\\d+$/"
+        );
+        assert_eq!(
+            Value::FieldRef(FieldRef {
+                path: vec!["node".to_string(), "vendor".to_string()]
+            })
+            .to_string(),
+            "node.vendor"
+        );
     }
 
     #[test]
@@ -224,7 +226,14 @@ mod tests {
             },
             expected: Value::String("15.1".to_string()),
         };
-        let rule = PolicyRule { id: None, condition, action };
-        assert_eq!(rule.to_string(), "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"");
+        let rule = PolicyRule {
+            id: None,
+            condition,
+            action,
+        };
+        assert_eq!(
+            rule.to_string(),
+            "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\""
+        );
     }
 }

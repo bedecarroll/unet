@@ -1,16 +1,16 @@
 //! Policy evaluation engine
-//! 
+//!
 //! This module provides the evaluation engine that takes parsed policy rules
 //! and evaluates them against network nodes to determine compliance and actions.
 
-use crate::policy::ast::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value};
-use crate::policy::PolicyError;
 use crate::datastore::DataStore;
+use crate::policy::PolicyError;
+use crate::policy::ast::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value};
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::interval;
+use uuid::Uuid;
 
 /// Context for policy evaluation containing node data
 #[derive(Debug, Clone)]
@@ -36,7 +36,11 @@ pub enum ActionResult {
     /// Action executed successfully
     Success { message: String },
     /// Action failed compliance check
-    ComplianceFailure { field: String, expected: JsonValue, actual: JsonValue },
+    ComplianceFailure {
+        field: String,
+        expected: JsonValue,
+        actual: JsonValue,
+    },
     /// Action failed due to an error
     Error { message: String },
 }
@@ -50,9 +54,7 @@ pub enum RollbackData {
         previous_value: Option<JsonValue>,
     },
     /// APPLY action rollback - contains template that was applied
-    ApplyRollback {
-        template_path: String,
-    },
+    ApplyRollback { template_path: String },
     /// ASSERT action rollback - no rollback needed (read-only)
     AssertRollback,
 }
@@ -201,7 +203,7 @@ impl PolicyEvaluator {
         node_id: &Uuid,
     ) -> Result<PolicyExecutionResult, PolicyError> {
         let evaluation_result = Self::evaluate_rule(rule, context)?;
-        
+
         let action_result = match &evaluation_result {
             EvaluationResult::Satisfied { action } => {
                 Some(Self::execute_action_with_rollback(action, context, datastore, node_id).await?)
@@ -224,12 +226,12 @@ impl PolicyEvaluator {
         node_id: &Uuid,
     ) -> Result<Vec<PolicyExecutionResult>, PolicyError> {
         let mut results = Vec::new();
-        
+
         for rule in rules {
             let result = Self::execute_rule(rule, context, datastore, node_id).await?;
             results.push(result);
         }
-        
+
         Ok(results)
     }
 
@@ -249,10 +251,17 @@ impl PolicyEvaluator {
                 })
             }
             Action::Set { field, value } => {
-                Self::execute_set_action_with_rollback(field, value, context, datastore, node_id).await
+                Self::execute_set_action_with_rollback(field, value, context, datastore, node_id)
+                    .await
             }
             Action::ApplyTemplate { template_path } => {
-                Self::execute_apply_template_action_with_rollback(template_path, context, datastore, node_id).await
+                Self::execute_apply_template_action_with_rollback(
+                    template_path,
+                    context,
+                    datastore,
+                    node_id,
+                )
+                .await
             }
         }
     }
@@ -264,7 +273,8 @@ impl PolicyEvaluator {
         datastore: &dyn DataStore,
         node_id: &Uuid,
     ) -> Result<ActionResult, PolicyError> {
-        let result = Self::execute_action_with_rollback(action, context, datastore, node_id).await?;
+        let result =
+            Self::execute_action_with_rollback(action, context, datastore, node_id).await?;
         Ok(result.result)
     }
 
@@ -276,7 +286,7 @@ impl PolicyEvaluator {
     ) -> Result<ActionResult, PolicyError> {
         let actual_value = Self::resolve_field(field, context)?;
         let expected_value = Self::resolve_value(expected, context)?;
-        
+
         if Self::json_values_equal(&actual_value, &expected_value) {
             Ok(ActionResult::Success {
                 message: format!("Compliance check passed: {} == {}", field, expected),
@@ -302,15 +312,21 @@ impl PolicyEvaluator {
         if field.path.is_empty() || field.path[0] != "custom_data" {
             return Ok(ActionExecutionResult {
                 result: ActionResult::Error {
-                    message: format!("SET action only supports custom_data fields, got: {}", field),
+                    message: format!(
+                        "SET action only supports custom_data fields, got: {}",
+                        field
+                    ),
                 },
                 rollback_data: None,
             });
         }
 
         // Get the current node
-        let mut node = datastore.get_node_required(node_id).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        let mut node = datastore.get_node_required(node_id).await.map_err(|e| {
+            PolicyError::DataStoreError {
+                message: e.to_string(),
+            }
+        })?;
 
         // Get the current value for rollback
         let previous_value = Self::get_nested_field(&node.custom_data, &field.path[1..]);
@@ -324,8 +340,12 @@ impl PolicyEvaluator {
         node.custom_data = custom_data;
 
         // Save the updated node
-        datastore.update_node(&node).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        datastore
+            .update_node(&node)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
+                message: e.to_string(),
+            })?;
 
         Ok(ActionExecutionResult {
             result: ActionResult::Success {
@@ -346,7 +366,9 @@ impl PolicyEvaluator {
         datastore: &dyn DataStore,
         node_id: &Uuid,
     ) -> Result<ActionResult, PolicyError> {
-        let result = Self::execute_set_action_with_rollback(field, value, context, datastore, node_id).await?;
+        let result =
+            Self::execute_set_action_with_rollback(field, value, context, datastore, node_id)
+                .await?;
         Ok(result.result)
     }
 
@@ -358,8 +380,11 @@ impl PolicyEvaluator {
         node_id: &Uuid,
     ) -> Result<ActionExecutionResult, PolicyError> {
         // Get the current node
-        let mut node = datastore.get_node_required(node_id).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        let mut node = datastore.get_node_required(node_id).await.map_err(|e| {
+            PolicyError::DataStoreError {
+                message: e.to_string(),
+            }
+        })?;
 
         // Add template assignment to custom_data
         let mut custom_data = node.custom_data.clone();
@@ -368,12 +393,13 @@ impl PolicyEvaluator {
         }
 
         let mut template_was_already_assigned = false;
-        
+
         if let JsonValue::Object(map) = &mut custom_data {
             // Add or update the assigned templates array
-            let templates = map.entry("assigned_templates".to_string())
+            let templates = map
+                .entry("assigned_templates".to_string())
                 .or_insert_with(|| JsonValue::Array(vec![]));
-            
+
             if let JsonValue::Array(templates_array) = templates {
                 let template_value = JsonValue::String(template_path.to_string());
                 if templates_array.contains(&template_value) {
@@ -388,8 +414,12 @@ impl PolicyEvaluator {
             node.custom_data = custom_data;
 
             // Save the updated node
-            datastore.update_node(&node).await
-                .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+            datastore
+                .update_node(&node)
+                .await
+                .map_err(|e| PolicyError::DataStoreError {
+                    message: e.to_string(),
+                })?;
         }
 
         Ok(ActionExecutionResult {
@@ -417,7 +447,13 @@ impl PolicyEvaluator {
         datastore: &dyn DataStore,
         node_id: &Uuid,
     ) -> Result<ActionResult, PolicyError> {
-        let result = Self::execute_apply_template_action_with_rollback(template_path, context, datastore, node_id).await?;
+        let result = Self::execute_apply_template_action_with_rollback(
+            template_path,
+            context,
+            datastore,
+            node_id,
+        )
+        .await?;
         Ok(result.result)
     }
 
@@ -444,7 +480,8 @@ impl PolicyEvaluator {
                 map.insert(path[0].clone(), value);
             } else {
                 // Intermediate field - navigate deeper
-                let next_data = map.entry(path[0].clone())
+                let next_data = map
+                    .entry(path[0].clone())
                     .or_insert_with(|| JsonValue::Object(serde_json::Map::new()));
                 Self::set_nested_field(next_data, &path[1..], value)?;
             }
@@ -473,9 +510,10 @@ impl PolicyEvaluator {
         node_id: &Uuid,
     ) -> Result<(), PolicyError> {
         match rollback_data {
-            RollbackData::SetRollback { field, previous_value } => {
-                Self::rollback_set_action(field, previous_value, datastore, node_id).await
-            }
+            RollbackData::SetRollback {
+                field,
+                previous_value,
+            } => Self::rollback_set_action(field, previous_value, datastore, node_id).await,
             RollbackData::ApplyRollback { template_path } => {
                 Self::rollback_apply_action(template_path, datastore, node_id).await
             }
@@ -494,8 +532,11 @@ impl PolicyEvaluator {
         node_id: &Uuid,
     ) -> Result<(), PolicyError> {
         // Get the current node
-        let mut node = datastore.get_node_required(node_id).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        let mut node = datastore.get_node_required(node_id).await.map_err(|e| {
+            PolicyError::DataStoreError {
+                message: e.to_string(),
+            }
+        })?;
 
         // Restore the previous value
         let mut custom_data = node.custom_data.clone();
@@ -517,8 +558,12 @@ impl PolicyEvaluator {
         node.custom_data = custom_data;
 
         // Save the updated node
-        datastore.update_node(&node).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        datastore
+            .update_node(&node)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
+                message: e.to_string(),
+            })?;
 
         Ok(())
     }
@@ -530,8 +575,11 @@ impl PolicyEvaluator {
         node_id: &Uuid,
     ) -> Result<(), PolicyError> {
         // Get the current node
-        let mut node = datastore.get_node_required(node_id).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        let mut node = datastore.get_node_required(node_id).await.map_err(|e| {
+            PolicyError::DataStoreError {
+                message: e.to_string(),
+            }
+        })?;
 
         // Remove template assignment from custom_data
         let mut custom_data = node.custom_data.clone();
@@ -539,7 +587,7 @@ impl PolicyEvaluator {
             if let Some(JsonValue::Array(templates_array)) = map.get_mut("assigned_templates") {
                 let template_value = JsonValue::String(template_path.to_string());
                 templates_array.retain(|template| template != &template_value);
-                
+
                 // If the array is now empty, remove it entirely
                 if templates_array.is_empty() {
                     map.remove("assigned_templates");
@@ -550,8 +598,12 @@ impl PolicyEvaluator {
         node.custom_data = custom_data;
 
         // Save the updated node
-        datastore.update_node(&node).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+        datastore
+            .update_node(&node)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
+                message: e.to_string(),
+            })?;
 
         Ok(())
     }
@@ -577,7 +629,7 @@ impl PolicyEvaluator {
                 // Intermediate field - navigate deeper
                 if let Some(next_data) = map.get_mut(&path[0]) {
                     Self::remove_nested_field(next_data, &path[1..])?;
-                    
+
                     // Clean up empty parent objects
                     if let JsonValue::Object(child_map) = next_data {
                         if child_map.is_empty() {
@@ -609,26 +661,33 @@ impl PolicyEvaluator {
         };
 
         // Capture original node state
-        let original_node = datastore.get_node_required(node_id).await
-            .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
-        transaction.original_node_state = Some(serde_json::to_value(&original_node)
-            .map_err(|e| PolicyError::ValidationError { message: e.to_string() })?);
+        let original_node = datastore.get_node_required(node_id).await.map_err(|e| {
+            PolicyError::DataStoreError {
+                message: e.to_string(),
+            }
+        })?;
+        transaction.original_node_state =
+            Some(serde_json::to_value(&original_node).map_err(|e| {
+                PolicyError::ValidationError {
+                    message: e.to_string(),
+                }
+            })?);
 
         let mut results = Vec::new();
-        
+
         for rule in rules {
             let result = Self::execute_rule(rule, context, datastore, node_id).await?;
-            
+
             // If the action was executed successfully, add rollback data to transaction
             if let Some(action_result) = &result.action_result {
                 if let Some(rollback_data) = &action_result.rollback_data {
                     transaction.rollback_stack.push(rollback_data.clone());
                 }
             }
-            
+
             results.push(result);
         }
-        
+
         Ok((results, transaction))
     }
 
@@ -668,11 +727,16 @@ impl PolicyEvaluator {
         if let Some(original_state) = &transaction.original_node_state {
             // Deserialize the original node state
             let original_node: crate::models::Node = serde_json::from_value(original_state.clone())
-                .map_err(|e| PolicyError::ValidationError { message: e.to_string() })?;
+                .map_err(|e| PolicyError::ValidationError {
+                    message: e.to_string(),
+                })?;
 
             // Restore the node to its original state
-            datastore.update_node(&original_node).await
-                .map_err(|e| PolicyError::DataStoreError { message: e.to_string() })?;
+            datastore.update_node(&original_node).await.map_err(|e| {
+                PolicyError::DataStoreError {
+                    message: e.to_string(),
+                }
+            })?;
         }
 
         Ok(())
@@ -727,16 +791,30 @@ impl PolicyEvaluator {
     ) -> Result<bool, PolicyError> {
         let field_value = Self::resolve_field(field, context)?;
         let expected_value = Self::resolve_value(expected, context)?;
-        
+
         match operator {
             ComparisonOperator::Equal => Ok(Self::json_values_equal(&field_value, &expected_value)),
-            ComparisonOperator::NotEqual => Ok(!Self::json_values_equal(&field_value, &expected_value)),
-            ComparisonOperator::LessThan => Self::compare_json_values(&field_value, &expected_value, |a, b| a < b),
-            ComparisonOperator::LessThanOrEqual => Self::compare_json_values(&field_value, &expected_value, |a, b| a <= b),
-            ComparisonOperator::GreaterThan => Self::compare_json_values(&field_value, &expected_value, |a, b| a > b),
-            ComparisonOperator::GreaterThanOrEqual => Self::compare_json_values(&field_value, &expected_value, |a, b| a >= b),
-            ComparisonOperator::Contains => Self::evaluate_contains_json(&field_value, &expected_value),
-            ComparisonOperator::Matches => Self::evaluate_regex_match_json(&field_value, &expected_value),
+            ComparisonOperator::NotEqual => {
+                Ok(!Self::json_values_equal(&field_value, &expected_value))
+            }
+            ComparisonOperator::LessThan => {
+                Self::compare_json_values(&field_value, &expected_value, |a, b| a < b)
+            }
+            ComparisonOperator::LessThanOrEqual => {
+                Self::compare_json_values(&field_value, &expected_value, |a, b| a <= b)
+            }
+            ComparisonOperator::GreaterThan => {
+                Self::compare_json_values(&field_value, &expected_value, |a, b| a > b)
+            }
+            ComparisonOperator::GreaterThanOrEqual => {
+                Self::compare_json_values(&field_value, &expected_value, |a, b| a >= b)
+            }
+            ComparisonOperator::Contains => {
+                Self::evaluate_contains_json(&field_value, &expected_value)
+            }
+            ComparisonOperator::Matches => {
+                Self::evaluate_regex_match_json(&field_value, &expected_value)
+            }
         }
     }
 
@@ -756,13 +834,15 @@ impl PolicyEvaluator {
         context: &EvaluationContext,
     ) -> Result<JsonValue, PolicyError> {
         let mut current = &context.node_data;
-        
+
         for part in &field.path {
-            current = current.get(part).ok_or_else(|| PolicyError::FieldNotFound {
-                field: field.to_string(),
-            })?;
+            current = current
+                .get(part)
+                .ok_or_else(|| PolicyError::FieldNotFound {
+                    field: field.to_string(),
+                })?;
         }
-        
+
         Ok(current.clone())
     }
 
@@ -859,9 +939,14 @@ impl PolicyEvaluator {
         }
     }
 
-    fn evaluate_contains_json(actual: &JsonValue, expected: &JsonValue) -> Result<bool, PolicyError> {
+    fn evaluate_contains_json(
+        actual: &JsonValue,
+        expected: &JsonValue,
+    ) -> Result<bool, PolicyError> {
         match (actual, expected) {
-            (JsonValue::String(haystack), JsonValue::String(needle)) => Ok(haystack.contains(needle)),
+            (JsonValue::String(haystack), JsonValue::String(needle)) => {
+                Ok(haystack.contains(needle))
+            }
             _ => Err(PolicyError::TypeMismatch {
                 expected: "string".to_string(),
                 actual: format!("{:?}", actual),
@@ -884,7 +969,10 @@ impl PolicyEvaluator {
         }
     }
 
-    fn evaluate_regex_match_json(actual: &JsonValue, expected: &JsonValue) -> Result<bool, PolicyError> {
+    fn evaluate_regex_match_json(
+        actual: &JsonValue,
+        expected: &JsonValue,
+    ) -> Result<bool, PolicyError> {
         match (actual, expected) {
             (JsonValue::String(text), JsonValue::String(pattern)) => {
                 let regex = regex::Regex::new(pattern).map_err(|_| PolicyError::InvalidRegex {
@@ -927,7 +1015,8 @@ impl PolicyOrchestrator {
         context: EvaluationContext,
         rules: Vec<OrchestrationRule>,
     ) -> String {
-        let batch_id = format!("batch_{}_{}",
+        let batch_id = format!(
+            "batch_{}_{}",
             node_id.to_string().chars().take(8).collect::<String>(),
             Instant::now().elapsed().as_millis()
         );
@@ -963,7 +1052,7 @@ impl PolicyOrchestrator {
             }
 
             let result = self.execute_batch(&batch, datastore).await?;
-            
+
             // Cache the result if enabled
             if self.config.enable_caching {
                 let cache_key = self.create_cache_key(&batch);
@@ -996,7 +1085,8 @@ impl PolicyOrchestrator {
                 &batch.context,
                 datastore,
                 &batch.node_id,
-            ).await?;
+            )
+            .await?;
 
             // Count result types
             match &result.evaluation_result {
@@ -1050,7 +1140,7 @@ impl PolicyOrchestrator {
     ) -> Result<AggregatedResult, PolicyError> {
         let batch_id = self.schedule_evaluation(node_id, context, rules);
         let results = self.execute_pending_batches(datastore).await?;
-        
+
         results
             .into_iter()
             .find(|r| r.batch_id == batch_id)
@@ -1069,17 +1159,15 @@ impl PolicyOrchestrator {
 
         loop {
             interval_timer.tick().await;
-            
+
             // Clean expired cache entries
             self.clean_expired_cache();
-            
+
             // Check for batches that have timed out
             let timed_out_nodes: Vec<Uuid> = self
                 .pending_batches
                 .iter()
-                .filter(|(_, batch)| {
-                    batch.created_at.elapsed() > self.config.batch_timeout
-                })
+                .filter(|(_, batch)| batch.created_at.elapsed() > self.config.batch_timeout)
                 .map(|(&node_id, _)| node_id)
                 .collect();
 
@@ -1110,14 +1198,14 @@ impl PolicyOrchestrator {
 
         let mut hasher = DefaultHasher::new();
         batch.node_id.hash(&mut hasher);
-        
+
         // Hash rule content for cache invalidation
         for rule in &batch.rules {
             format!("{:?}", rule.rule).hash(&mut hasher);
             rule.priority.hash(&mut hasher);
             rule.order.hash(&mut hasher);
         }
-        
+
         format!("cache_{:x}", hasher.finish())
     }
 
@@ -1174,12 +1262,14 @@ impl PolicyOrchestrator {
         let mut stats = HashMap::new();
         stats.insert("total_entries".to_string(), self.cache.len());
         stats.insert("pending_batches".to_string(), self.pending_batches.len());
-        
-        let expired_count = self.cache.values()
+
+        let expired_count = self
+            .cache
+            .values()
             .filter(|entry| entry.expires_at <= Instant::now())
             .count();
         stats.insert("expired_entries".to_string(), expired_count);
-        
+
         stats
     }
 }
@@ -1271,9 +1361,13 @@ impl PolicyExecutionResult {
                     expected: Value::Boolean(false),
                 },
             },
-            evaluation_result: EvaluationResult::Error { message: message.clone() },
+            evaluation_result: EvaluationResult::Error {
+                message: message.clone(),
+            },
             action_result: Some(ActionExecutionResult {
-                result: ActionResult::Error { message: message.clone() },
+                result: ActionResult::Error {
+                    message: message.clone(),
+                },
                 rollback_data: None,
             }),
         }
@@ -1297,7 +1391,10 @@ impl PolicyExecutionResult {
     /// Checks if this result represents a compliance failure
     pub fn is_compliance_failure(&self) -> bool {
         if let Some(action_exec_result) = &self.action_result {
-            matches!(action_exec_result.result, ActionResult::ComplianceFailure { .. })
+            matches!(
+                action_exec_result.result,
+                ActionResult::ComplianceFailure { .. }
+            )
         } else {
             false
         }
@@ -1456,7 +1553,11 @@ mod tests {
         let result = PolicyEvaluator::execute_assert_action(&field, &expected, &context).await;
         assert!(result.is_ok());
         match result.unwrap() {
-            ActionResult::ComplianceFailure { field: f, expected: e, actual: a } => {
+            ActionResult::ComplianceFailure {
+                field: f,
+                expected: e,
+                actual: a,
+            } => {
                 assert_eq!(f, "node.version");
                 assert_eq!(e, json!("15.1"));
                 assert_eq!(a, json!("14.0"));
@@ -1468,7 +1569,11 @@ mod tests {
     #[test]
     fn test_set_nested_field() {
         let mut data = json!({});
-        let path = vec!["custom_data".to_string(), "location".to_string(), "rack".to_string()];
+        let path = vec![
+            "custom_data".to_string(),
+            "location".to_string(),
+            "rack".to_string(),
+        ];
         let value = json!("R42");
 
         let result = PolicyEvaluator::set_nested_field(&mut data, &path, value);
@@ -1485,7 +1590,11 @@ mod tests {
                 }
             }
         });
-        let path = vec!["custom_data".to_string(), "location".to_string(), "rack".to_string()];
+        let path = vec![
+            "custom_data".to_string(),
+            "location".to_string(),
+            "rack".to_string(),
+        ];
         let value = json!("R42");
 
         let result = PolicyEvaluator::set_nested_field(&mut data, &path, value);
@@ -1521,7 +1630,8 @@ mod tests {
         let orch_rule_high = OrchestrationRule::with_priority(rule.clone(), PolicyPriority::High);
         assert_eq!(orch_rule_high.priority, PolicyPriority::High);
 
-        let orch_rule_ordered = OrchestrationRule::with_priority_and_order(rule, PolicyPriority::Critical, 5);
+        let orch_rule_ordered =
+            OrchestrationRule::with_priority_and_order(rule, PolicyPriority::Critical, 5);
         assert_eq!(orch_rule_ordered.priority, PolicyPriority::Critical);
         assert_eq!(orch_rule_ordered.order, 5);
     }
@@ -1555,12 +1665,20 @@ mod tests {
         let rules = vec![
             OrchestrationRule::with_priority_and_order(base_rule.clone(), PolicyPriority::Low, 3),
             OrchestrationRule::with_priority_and_order(base_rule.clone(), PolicyPriority::High, 1),
-            OrchestrationRule::with_priority_and_order(base_rule.clone(), PolicyPriority::Critical, 2),
-            OrchestrationRule::with_priority_and_order(base_rule.clone(), PolicyPriority::Medium, 0),
+            OrchestrationRule::with_priority_and_order(
+                base_rule.clone(),
+                PolicyPriority::Critical,
+                2,
+            ),
+            OrchestrationRule::with_priority_and_order(
+                base_rule.clone(),
+                PolicyPriority::Medium,
+                0,
+            ),
         ];
 
         let sorted = PolicyOrchestrator::sort_rules_by_priority(rules);
-        
+
         // Should be sorted by priority (Critical, High, Medium, Low)
         assert_eq!(sorted[0].priority, PolicyPriority::Critical);
         assert_eq!(sorted[1].priority, PolicyPriority::High);
@@ -1581,7 +1699,7 @@ mod tests {
     async fn test_policy_orchestrator_cache_stats() {
         let orchestrator = PolicyOrchestrator::default();
         let stats = orchestrator.cache_stats();
-        
+
         assert_eq!(stats.get("total_entries"), Some(&0));
         assert_eq!(stats.get("pending_batches"), Some(&0));
         assert_eq!(stats.get("expired_entries"), Some(&0));
@@ -1592,7 +1710,7 @@ mod tests {
         let orchestrator = PolicyOrchestrator::default();
         let node_id = Uuid::new_v4();
         let context = EvaluationContext::new(json!({"node": {"vendor": "cisco"}}));
-        
+
         let rule = PolicyRule {
             id: None,
             condition: Condition::Comparison {
@@ -1626,7 +1744,7 @@ mod tests {
     #[test]
     fn test_summary_creation() {
         let orchestrator = PolicyOrchestrator::default();
-        
+
         let summary = orchestrator.create_summary(10, 8, 1, 1, 2);
         assert!(summary.contains("8/10 rules satisfied"));
         assert!(summary.contains("80.0% success"));
@@ -1637,10 +1755,10 @@ mod tests {
     #[tokio::test]
     async fn test_set_action_rollback() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{Node, DeviceRole, Vendor};
+        use crate::models::{DeviceRole, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
-        
+
         // Create a test node with initial custom_data
         let mut node = Node::new(
             "test-node".to_string(),
@@ -1659,15 +1777,21 @@ mod tests {
 
         // Test SET action with rollback
         let field = FieldRef {
-            path: vec!["custom_data".to_string(), "location".to_string(), "rack".to_string()],
+            path: vec![
+                "custom_data".to_string(),
+                "location".to_string(),
+                "rack".to_string(),
+            ],
         };
         let new_value = Value::String("R2".to_string());
         let context = EvaluationContext::new(json!({"node": {"vendor": "cisco"}}));
 
         // Execute SET action with rollback
         let result = PolicyEvaluator::execute_set_action_with_rollback(
-            &field, &new_value, &context, &datastore, &node_id
-        ).await.unwrap();
+            &field, &new_value, &context, &datastore, &node_id,
+        )
+        .await
+        .unwrap();
 
         // Verify action succeeded
         assert!(matches!(result.result, ActionResult::Success { .. }));
@@ -1679,7 +1803,9 @@ mod tests {
 
         // Execute rollback
         if let Some(rollback_data) = &result.rollback_data {
-            PolicyEvaluator::execute_rollback(rollback_data, &datastore, &node_id).await.unwrap();
+            PolicyEvaluator::execute_rollback(rollback_data, &datastore, &node_id)
+                .await
+                .unwrap();
         }
 
         // Verify field was restored
@@ -1690,11 +1816,11 @@ mod tests {
     #[tokio::test]
     async fn test_apply_action_rollback() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{Node, DeviceRole, Vendor, Lifecycle};
+        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
-        
-        // Create a test node 
+
+        // Create a test node
         let mut node = Node::new(
             "test-node".to_string(),
             "test.example.com".to_string(),
@@ -1714,8 +1840,13 @@ mod tests {
 
         // Execute APPLY action with rollback
         let result = PolicyEvaluator::execute_apply_template_action_with_rollback(
-            template_path, &context, &datastore, &node_id
-        ).await.unwrap();
+            template_path,
+            &context,
+            &datastore,
+            &node_id,
+        )
+        .await
+        .unwrap();
 
         // Verify action succeeded
         assert!(matches!(result.result, ActionResult::Success { .. }));
@@ -1723,29 +1854,37 @@ mod tests {
 
         // Verify template was assigned
         let updated_node = datastore.get_node_required(&node_id).await.unwrap();
-        let assigned_templates = updated_node.custom_data["assigned_templates"].as_array().unwrap();
+        let assigned_templates = updated_node.custom_data["assigned_templates"]
+            .as_array()
+            .unwrap();
         assert!(assigned_templates.contains(&json!(template_path)));
 
         // Execute rollback
         if let Some(rollback_data) = &result.rollback_data {
-            PolicyEvaluator::execute_rollback(rollback_data, &datastore, &node_id).await.unwrap();
+            PolicyEvaluator::execute_rollback(rollback_data, &datastore, &node_id)
+                .await
+                .unwrap();
         }
 
         // Verify template assignment was removed
         let restored_node = datastore.get_node_required(&node_id).await.unwrap();
-        assert!(!restored_node.custom_data.get("assigned_templates")
-            .and_then(|t| t.as_array())
-            .map(|arr| arr.contains(&json!(template_path)))
-            .unwrap_or(false));
+        assert!(
+            !restored_node
+                .custom_data
+                .get("assigned_templates")
+                .and_then(|t| t.as_array())
+                .map(|arr| arr.contains(&json!(template_path)))
+                .unwrap_or(false)
+        );
     }
 
     #[tokio::test]
     async fn test_transaction_rollback() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{Node, DeviceRole, Vendor, Lifecycle};
+        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
-        
+
         // Create a test node with initial custom_data
         let mut node = Node::new(
             "test-node".to_string(),
@@ -1767,13 +1906,19 @@ mod tests {
             PolicyRule {
                 id: Some("rule1".to_string()),
                 condition: Condition::Comparison {
-                    field: FieldRef { path: vec!["node".to_string(), "vendor".to_string()] },
+                    field: FieldRef {
+                        path: vec!["node".to_string(), "vendor".to_string()],
+                    },
                     operator: ComparisonOperator::Equal,
                     value: Value::String("cisco".to_string()),
                 },
                 action: Action::Set {
-                    field: FieldRef { 
-                        path: vec!["custom_data".to_string(), "location".to_string(), "rack".to_string()] 
+                    field: FieldRef {
+                        path: vec![
+                            "custom_data".to_string(),
+                            "location".to_string(),
+                            "rack".to_string(),
+                        ],
                     },
                     value: Value::String("R2".to_string()),
                 },
@@ -1781,13 +1926,19 @@ mod tests {
             PolicyRule {
                 id: Some("rule2".to_string()),
                 condition: Condition::Comparison {
-                    field: FieldRef { path: vec!["node".to_string(), "vendor".to_string()] },
+                    field: FieldRef {
+                        path: vec!["node".to_string(), "vendor".to_string()],
+                    },
                     operator: ComparisonOperator::Equal,
                     value: Value::String("cisco".to_string()),
                 },
                 action: Action::Set {
-                    field: FieldRef { 
-                        path: vec!["custom_data".to_string(), "compliance".to_string(), "status".to_string()] 
+                    field: FieldRef {
+                        path: vec![
+                            "custom_data".to_string(),
+                            "compliance".to_string(),
+                            "status".to_string(),
+                        ],
                     },
                     value: Value::String("passed".to_string()),
                 },
@@ -1795,7 +1946,9 @@ mod tests {
             PolicyRule {
                 id: Some("rule3".to_string()),
                 condition: Condition::Comparison {
-                    field: FieldRef { path: vec!["node".to_string(), "vendor".to_string()] },
+                    field: FieldRef {
+                        path: vec!["node".to_string(), "vendor".to_string()],
+                    },
                     operator: ComparisonOperator::Equal,
                     value: Value::String("cisco".to_string()),
                 },
@@ -1813,25 +1966,36 @@ mod tests {
         }));
 
         // Execute rules with transaction
-        let (results, transaction) = PolicyEvaluator::execute_rules_with_transaction(
-            &rules, &context, &datastore, &node_id
-        ).await.unwrap();
+        let (results, transaction) =
+            PolicyEvaluator::execute_rules_with_transaction(&rules, &context, &datastore, &node_id)
+                .await
+                .unwrap();
 
         // Verify all rules executed successfully
         assert_eq!(results.len(), 3);
         for result in &results {
-            assert!(matches!(result.evaluation_result, EvaluationResult::Satisfied { .. }));
+            assert!(matches!(
+                result.evaluation_result,
+                EvaluationResult::Satisfied { .. }
+            ));
         }
 
         // Verify modifications were applied
         let modified_node = datastore.get_node_required(&node_id).await.unwrap();
         assert_eq!(modified_node.custom_data["location"]["rack"], json!("R2"));
-        assert_eq!(modified_node.custom_data["compliance"]["status"], json!("passed"));
-        let assigned_templates = modified_node.custom_data["assigned_templates"].as_array().unwrap();
+        assert_eq!(
+            modified_node.custom_data["compliance"]["status"],
+            json!("passed")
+        );
+        let assigned_templates = modified_node.custom_data["assigned_templates"]
+            .as_array()
+            .unwrap();
         assert!(assigned_templates.contains(&json!("templates/cisco-router.j2")));
 
         // Execute transaction rollback
-        let rollback_result = PolicyEvaluator::rollback_transaction(&transaction, &datastore).await.unwrap();
+        let rollback_result = PolicyEvaluator::rollback_transaction(&transaction, &datastore)
+            .await
+            .unwrap();
         assert!(rollback_result.success);
         assert_eq!(rollback_result.actions_rolled_back, 3);
         assert_eq!(rollback_result.rollback_failures, 0);
@@ -1839,18 +2003,26 @@ mod tests {
         // Verify all changes were rolled back
         let restored_node = datastore.get_node_required(&node_id).await.unwrap();
         assert_eq!(restored_node.custom_data["location"]["rack"], json!("R1"));
-        assert_eq!(restored_node.custom_data["location"]["building"], json!("DC1"));
+        assert_eq!(
+            restored_node.custom_data["location"]["building"],
+            json!("DC1")
+        );
         assert!(restored_node.custom_data.get("compliance").is_none());
-        assert!(restored_node.custom_data.get("assigned_templates").is_none());
+        assert!(
+            restored_node
+                .custom_data
+                .get("assigned_templates")
+                .is_none()
+        );
     }
 
     #[tokio::test]
     async fn test_rollback_with_missing_fields() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{Node, DeviceRole, Vendor, Lifecycle};
+        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
-        
+
         // Create a test node with empty custom_data
         let mut node = Node::new(
             "test-node".to_string(),
@@ -1875,8 +2047,10 @@ mod tests {
 
         // Execute SET action with rollback
         let result = PolicyEvaluator::execute_set_action_with_rollback(
-            &field, &new_value, &context, &datastore, &node_id
-        ).await.unwrap();
+            &field, &new_value, &context, &datastore, &node_id,
+        )
+        .await
+        .unwrap();
 
         // Verify action succeeded and captured that field didn't exist
         assert!(matches!(result.result, ActionResult::Success { .. }));
@@ -1890,7 +2064,9 @@ mod tests {
 
         // Execute rollback
         if let Some(rollback_data) = &result.rollback_data {
-            PolicyEvaluator::execute_rollback(rollback_data, &datastore, &node_id).await.unwrap();
+            PolicyEvaluator::execute_rollback(rollback_data, &datastore, &node_id)
+                .await
+                .unwrap();
         }
 
         // Verify field was removed (since it didn't exist before)
@@ -1901,10 +2077,10 @@ mod tests {
     #[tokio::test]
     async fn test_original_state_restoration() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{Node, DeviceRole, Vendor, Lifecycle};
+        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
-        
+
         // Create a test node with complex initial state
         let mut node = Node::new(
             "test-node".to_string(),
@@ -1931,13 +2107,19 @@ mod tests {
             PolicyRule {
                 id: Some("rule1".to_string()),
                 condition: Condition::Comparison {
-                    field: FieldRef { path: vec!["node".to_string(), "vendor".to_string()] },
+                    field: FieldRef {
+                        path: vec!["node".to_string(), "vendor".to_string()],
+                    },
                     operator: ComparisonOperator::Equal,
                     value: Value::String("arista".to_string()),
                 },
                 action: Action::Set {
-                    field: FieldRef { 
-                        path: vec!["custom_data".to_string(), "location".to_string(), "rack".to_string()] 
+                    field: FieldRef {
+                        path: vec![
+                            "custom_data".to_string(),
+                            "location".to_string(),
+                            "rack".to_string(),
+                        ],
                     },
                     value: Value::String("R3".to_string()),
                 },
@@ -1945,13 +2127,19 @@ mod tests {
             PolicyRule {
                 id: Some("rule2".to_string()),
                 condition: Condition::Comparison {
-                    field: FieldRef { path: vec!["node".to_string(), "vendor".to_string()] },
+                    field: FieldRef {
+                        path: vec!["node".to_string(), "vendor".to_string()],
+                    },
                     operator: ComparisonOperator::Equal,
                     value: Value::String("arista".to_string()),
                 },
                 action: Action::Set {
-                    field: FieldRef { 
-                        path: vec!["custom_data".to_string(), "compliance".to_string(), "status".to_string()] 
+                    field: FieldRef {
+                        path: vec![
+                            "custom_data".to_string(),
+                            "compliance".to_string(),
+                            "status".to_string(),
+                        ],
                     },
                     value: Value::String("failed".to_string()),
                 },
@@ -1966,24 +2154,36 @@ mod tests {
         }));
 
         // Execute rules with transaction
-        let (_results, transaction) = PolicyEvaluator::execute_rules_with_transaction(
-            &rules, &context, &datastore, &node_id
-        ).await.unwrap();
+        let (_results, transaction) =
+            PolicyEvaluator::execute_rules_with_transaction(&rules, &context, &datastore, &node_id)
+                .await
+                .unwrap();
 
         // Verify modifications were applied
         let modified_node = datastore.get_node_required(&node_id).await.unwrap();
         assert_eq!(modified_node.custom_data["location"]["rack"], json!("R3"));
-        assert_eq!(modified_node.custom_data["compliance"]["status"], json!("failed"));
+        assert_eq!(
+            modified_node.custom_data["compliance"]["status"],
+            json!("failed")
+        );
 
         // Restore original state
-        PolicyEvaluator::restore_original_state(&transaction, &datastore).await.unwrap();
+        PolicyEvaluator::restore_original_state(&transaction, &datastore)
+            .await
+            .unwrap();
 
         // Verify complete restoration to original state
         let restored_node = datastore.get_node_required(&node_id).await.unwrap();
         assert_eq!(restored_node.custom_data, original_custom_data);
         assert_eq!(restored_node.custom_data["location"]["rack"], json!("R1"));
-        assert_eq!(restored_node.custom_data["compliance"]["status"], json!("pending"));
-        assert_eq!(restored_node.custom_data["monitoring"]["enabled"], json!(true));
+        assert_eq!(
+            restored_node.custom_data["compliance"]["status"],
+            json!("pending")
+        );
+        assert_eq!(
+            restored_node.custom_data["monitoring"]["enabled"],
+            json!(true)
+        );
     }
 
     #[test]
@@ -1998,9 +2198,12 @@ mod tests {
 
         let serialized = serde_json::to_string(&set_rollback).unwrap();
         let deserialized: RollbackData = serde_json::from_str(&serialized).unwrap();
-        
+
         match deserialized {
-            RollbackData::SetRollback { field, previous_value } => {
+            RollbackData::SetRollback {
+                field,
+                previous_value,
+            } => {
                 assert_eq!(field.path, vec!["custom_data", "test"]);
                 assert_eq!(previous_value, Some(json!("old_value")));
             }
@@ -2013,7 +2216,7 @@ mod tests {
 
         let serialized = serde_json::to_string(&apply_rollback).unwrap();
         let deserialized: RollbackData = serde_json::from_str(&serialized).unwrap();
-        
+
         match deserialized {
             RollbackData::ApplyRollback { template_path } => {
                 assert_eq!(template_path, "templates/test.j2");

@@ -86,7 +86,7 @@ impl PolicyLoader {
     /// Load all policy files from configured source
     pub async fn load_policies(&mut self) -> PolicyResult<LoadResult> {
         info!("Loading policy files");
-        
+
         let policies_dir = self.get_policies_directory().await?;
         self.load_policies_from_directory(&policies_dir).await
     }
@@ -101,7 +101,7 @@ impl PolicyLoader {
         }
 
         debug!("Loading policies from directory: {}", dir.display());
-        
+
         let mut loaded = Vec::new();
         let mut errors = Vec::new();
         let mut total_files = 0;
@@ -115,7 +115,7 @@ impl PolicyLoader {
         {
             total_files += 1;
             let file_path = entry.path();
-            
+
             match self.load_policy_file(file_path).await {
                 Ok(policy_file) => {
                     debug!("Loaded policy file: {}", file_path.display());
@@ -144,11 +144,9 @@ impl PolicyLoader {
 
     /// Load a single policy file with caching
     pub async fn load_policy_file(&mut self, path: &Path) -> PolicyResult<PolicyFile> {
-        let metadata = std::fs::metadata(path)
-            .map_err(|e| PolicyError::Io(e))?;
-        
-        let mtime = metadata.modified()
-            .map_err(|e| PolicyError::Io(e))?;
+        let metadata = std::fs::metadata(path).map_err(|e| PolicyError::Io(e))?;
+
+        let mtime = metadata.modified().map_err(|e| PolicyError::Io(e))?;
 
         // Check cache first
         if let Some(cached) = self.policy_cache.get(path) {
@@ -165,12 +163,11 @@ impl PolicyLoader {
 
         // Load and parse the file
         debug!("Loading policy file from disk: {}", path.display());
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| PolicyError::Io(e))?;
+        let content = std::fs::read_to_string(path).map_err(|e| PolicyError::Io(e))?;
 
         // Validate file format and parse policies
         let rules = self.parse_policy_file(&content)?;
-        
+
         // Calculate content hash for validation
         let content_hash = self.calculate_hash(&content);
 
@@ -199,7 +196,7 @@ impl PolicyLoader {
         for line in content.lines() {
             line_number += 1;
             let line = line.trim();
-            
+
             // Skip empty lines and comments
             if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
                 continue;
@@ -245,7 +242,7 @@ impl PolicyLoader {
     fn calculate_hash(&self, content: &str) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         content.hash(&mut hasher);
         hasher.finish()
@@ -269,7 +266,8 @@ impl PolicyLoader {
         }
 
         Err(PolicyError::Evaluation {
-            message: "No policies source configured (neither local directory nor Git repository)".to_string(),
+            message: "No policies source configured (neither local directory nor Git repository)"
+                .to_string(),
         })
     }
 
@@ -282,10 +280,13 @@ impl PolicyLoader {
     /// Get cache statistics
     pub fn cache_stats(&self) -> CacheStats {
         let total_entries = self.policy_cache.len();
-        let expired_entries = self.policy_cache
+        let expired_entries = self
+            .policy_cache
             .values()
             .filter(|cached| {
-                cached.cached_at.elapsed()
+                cached
+                    .cached_at
+                    .elapsed()
                     .map(|elapsed| elapsed > self.cache_ttl)
                     .unwrap_or(true)
             })
@@ -308,7 +309,7 @@ impl PolicyLoader {
             let line_num = line_number + 1;
             total_lines += 1;
             let line = line.trim();
-            
+
             // Skip empty lines and comments
             if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
                 continue;
@@ -375,8 +376,8 @@ impl ValidationResult {
 mod tests {
     use super::*;
     use crate::config::GitConfig;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_policy_loader_local_directory() {
@@ -399,17 +400,16 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             branch: "main".to_string(),
             sync_interval: 300,
         };
-        
-        let mut loader = PolicyLoader::new(git_config)
-            .with_local_dir(policies_dir);
+
+        let mut loader = PolicyLoader::new(git_config).with_local_dir(policies_dir);
 
         // Load policies
         let result = loader.load_policies().await.unwrap();
-        
+
         assert_eq!(result.loaded.len(), 1);
         assert_eq!(result.errors.len(), 0);
         assert_eq!(result.total_files, 1);
-        
+
         let policy_file = &result.loaded[0];
         assert_eq!(policy_file.rules.len(), 2);
     }
@@ -422,9 +422,9 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             branch: "main".to_string(),
             sync_interval: 300,
         };
-        
+
         let loader = PolicyLoader::new(git_config);
-        
+
         let valid_content = r#"# Valid policy file
 WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 WHEN node.role == "router" THEN SET custom_data.managed TO true
@@ -451,7 +451,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
     async fn test_policy_caching() {
         let temp_dir = TempDir::new().unwrap();
         let policy_file = temp_dir.path().join("test.policy");
-        
+
         let policy_content = r#"WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1""#;
         fs::write(&policy_file, policy_content).unwrap();
 
@@ -461,27 +461,26 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             branch: "main".to_string(),
             sync_interval: 300,
         };
-        
-        let mut loader = PolicyLoader::new(git_config)
-            .with_cache_ttl(Duration::from_secs(60));
+
+        let mut loader = PolicyLoader::new(git_config).with_cache_ttl(Duration::from_secs(60));
 
         // Load file first time
         let result1 = loader.load_policy_file(&policy_file).await.unwrap();
         assert_eq!(result1.rules.len(), 1);
-        
+
         // Check cache stats
         let stats = loader.cache_stats();
         assert_eq!(stats.total_entries, 1);
         assert_eq!(stats.valid_entries, 1);
-        
+
         // Load file second time (should use cache)
         let result2 = loader.load_policy_file(&policy_file).await.unwrap();
         assert_eq!(result2.rules.len(), 1);
-        
+
         // Modify file to invalidate cache
         std::thread::sleep(Duration::from_millis(10)); // Ensure different mtime
         fs::write(&policy_file, policy_content).unwrap();
-        
+
         // Load file third time (should reload from disk)
         let result3 = loader.load_policy_file(&policy_file).await.unwrap();
         assert_eq!(result3.rules.len(), 1);
@@ -491,10 +490,13 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
     async fn test_policy_loader_with_real_policies_directory() {
         // Test with the actual policies directory
         let policies_path = std::path::PathBuf::from("/home/bc/unet/policies");
-        
+
         if !policies_path.exists() {
             // Skip test if policies directory doesn't exist
-            println!("Skipping test: policies directory not found at {:?}", policies_path);
+            println!(
+                "Skipping test: policies directory not found at {:?}",
+                policies_path
+            );
             return;
         }
 
@@ -504,29 +506,33 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             branch: "main".to_string(),
             sync_interval: 300,
         };
-        
-        let mut loader = PolicyLoader::new(git_config)
-            .with_local_dir(&policies_path);
+
+        let mut loader = PolicyLoader::new(git_config).with_local_dir(&policies_path);
 
         // Load policies from real directory
         let result = loader.load_policies().await.unwrap();
-        
+
         // Print results for debugging
-        println!("Loaded {} policies from {:?}", result.loaded.len(), policies_path);
+        println!(
+            "Loaded {} policies from {:?}",
+            result.loaded.len(),
+            policies_path
+        );
         println!("Total files found: {}", result.total_files);
         println!("Errors: {}", result.errors.len());
-        
+
         for policy_file in &result.loaded {
-            println!("  - {}: {} rules", 
-                policy_file.path.display(), 
+            println!(
+                "  - {}: {} rules",
+                policy_file.path.display(),
                 policy_file.rules.len()
             );
         }
-        
+
         for (path, error) in &result.errors {
             println!("  ERROR in {}: {}", path.display(), error);
         }
-        
+
         // Should have at least one policy file (cisco-compliance.policy)
         if result.total_files == 0 {
             println!("No policy files found. Directory contents:");
@@ -537,7 +543,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             }
             panic!("Expected at least 1 policy file");
         }
-        
+
         if result.loaded.len() == 0 && result.errors.len() > 0 {
             // There were parsing errors, so let's see what they are
             for (path, error) in &result.errors {
@@ -545,15 +551,29 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             }
             panic!("All policy files failed to parse");
         }
-        
-        assert!(result.loaded.len() >= 1, "Expected at least 1 loaded policy, found {}", result.loaded.len());
-        
+
+        assert!(
+            result.loaded.len() >= 1,
+            "Expected at least 1 loaded policy, found {}",
+            result.loaded.len()
+        );
+
         // Check that our cisco-compliance.policy was loaded
-        let cisco_policy = result.loaded.iter()
+        let cisco_policy = result
+            .loaded
+            .iter()
             .find(|p| p.path.file_name().unwrap() == "cisco-compliance.policy");
-        assert!(cisco_policy.is_some(), "Expected to find cisco-compliance.policy");
-        
+        assert!(
+            cisco_policy.is_some(),
+            "Expected to find cisco-compliance.policy"
+        );
+
         let cisco_policy = cisco_policy.unwrap();
-        assert_eq!(cisco_policy.rules.len(), 4, "Expected 4 rules in cisco-compliance.policy, found {}", cisco_policy.rules.len());
+        assert_eq!(
+            cisco_policy.rules.len(),
+            4,
+            "Expected 4 rules in cisco-compliance.policy, found {}",
+            cisco_policy.rules.len()
+        );
     }
 }
