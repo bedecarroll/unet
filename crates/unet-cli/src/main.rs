@@ -2,6 +2,13 @@
 //!
 //! CLI tool for μNet network configuration management.
 
+#![forbid(
+    clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo
+)]
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;

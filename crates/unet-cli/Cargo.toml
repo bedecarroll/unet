@@ -20,7 +20,7 @@ path = "src/main.rs"
 unet-core = { path = "../unet-core" }
 
 # Database migrations
-migration = { path = "../../migrations" }
+migration = { path = "../../crates/migrations" }
 sea-orm = { workspace = true }
 
 # Core async runtime

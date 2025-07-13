@@ -1,0 +1,1288 @@
+warning: multiple associated functions are never used
+   --> crates/unet-core/src/policy/evaluator.rs:270:14
+    |
+184 | impl PolicyEvaluator {
+    | -------------------- associated functions in this implementation
+...
+270 |     async fn execute_action(
+    |              ^^^^^^^^^^^^^^
+...
+362 |     async fn execute_set_action(
+    |              ^^^^^^^^^^^^^^^^^^
+...
+444 |     async fn execute_apply_template_action(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+860 |     fn values_equal(actual: &JsonValue, expected: &Value) -> bool {
+    |        ^^^^^^^^^^^^
+...
+882 |     fn compare_values<F>(
+    |        ^^^^^^^^^^^^^^
+...
+932 |     fn evaluate_contains(actual: &JsonValue, expected: &Value) -> Result<bool, PolicyError> {
+    |        ^^^^^^^^^^^^^^^^^
+...
+957 |     fn evaluate_regex_match(actual: &JsonValue, expected: &Value) -> Result<bool, PolicyError> {
+    |        ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: field `content_hash` is never read
+  --> crates/unet-core/src/policy/loader.rs:36:5
+   |
+28 | struct CachedPolicy {
+   |        ------------ field in this struct
+...
+36 |     content_hash: u64,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `CachedPolicy` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: missing documentation for a struct
+  --> crates/unet-core/src/entities/interface_status.rs:8:1
+   |
+8  | pub struct Model {
+   | ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> crates/unet-core/src/lib.rs:35:9
+   |
+35 | #![warn(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:10:5
+   |
+10 |     pub id: String,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:11:5
+   |
+11 |     pub node_status_id: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:12:5
+   |
+12 |     pub index: i32,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:13:5
+   |
+13 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:14:5
+   |
+14 |     pub interface_type: i32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:15:5
+   |
+15 |     pub mtu: Option<i32>,
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:16:5
+   |
+16 |     pub speed: Option<i64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:17:5
+   |
+17 |     pub physical_address: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:18:5
+   |
+18 |     pub admin_status: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:19:5
+   |
+19 |     pub oper_status: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:20:5
+   |
+20 |     pub last_change: Option<i32>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:21:5
+   |
+21 |     pub input_stats: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/interface_status.rs:22:5
+   |
+22 |     pub output_stats: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> crates/unet-core/src/entities/interface_status.rs:26:1
+   |
+26 | pub enum Relation {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/interface_status.rs:32:5
+   |
+32 |     NodeStatus,
+   |     ^^^^^^^^^^
+
+warning: missing documentation for a struct
+ --> crates/unet-core/src/entities/links.rs:8:1
+  |
+8 | pub struct Model {
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:10:5
+   |
+10 |     pub id: String,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:11:5
+   |
+11 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:12:5
+   |
+12 |     pub node_a_id: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:13:5
+   |
+13 |     pub interface_a: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:14:5
+   |
+14 |     pub node_b_id: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:15:5
+   |
+15 |     pub interface_b: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:16:5
+   |
+16 |     pub capacity: Option<i64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:17:5
+   |
+17 |     pub utilization: Option<f64>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:18:5
+   |
+18 |     pub is_internet_circuit: i32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:19:5
+   |
+19 |     pub circuit_id: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:20:5
+   |
+20 |     pub provider: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:21:5
+   |
+21 |     pub description: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:22:5
+   |
+22 |     pub custom_data: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:23:5
+   |
+23 |     pub created_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/links.rs:24:5
+   |
+24 |     pub updated_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> crates/unet-core/src/entities/links.rs:28:1
+   |
+28 | pub enum Relation {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/links.rs:34:5
+   |
+34 |     NodeA,
+   |     ^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/links.rs:40:5
+   |
+40 |     NodeB,
+   |     ^^^^^
+
+warning: missing documentation for a struct
+ --> crates/unet-core/src/entities/locations.rs:8:1
+  |
+8 | pub struct Model {
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:10:5
+   |
+10 |     pub id: String,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:11:5
+   |
+11 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:12:5
+   |
+12 |     pub location_type: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:13:5
+   |
+13 |     pub path: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:14:5
+   |
+14 |     pub parent_id: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:15:5
+   |
+15 |     pub description: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:16:5
+   |
+16 |     pub address: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:17:5
+   |
+17 |     pub coordinates: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:18:5
+   |
+18 |     pub custom_data: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:19:5
+   |
+19 |     pub created_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/locations.rs:20:5
+   |
+20 |     pub updated_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> crates/unet-core/src/entities/locations.rs:24:1
+   |
+24 | pub enum Relation {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/locations.rs:26:5
+   |
+26 |     Nodes,
+   |     ^^^^^
+
+warning: missing documentation for a struct
+ --> crates/unet-core/src/entities/node_status.rs:8:1
+  |
+8 | pub struct Model {
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:10:5
+   |
+10 |     pub id: String,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:11:5
+   |
+11 |     pub node_id: String,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:12:5
+   |
+12 |     pub last_updated: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:13:5
+   |
+13 |     pub reachable: bool,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:14:5
+   |
+14 |     pub system_info: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:15:5
+   |
+15 |     pub performance: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:16:5
+   |
+16 |     pub environmental: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:17:5
+   |
+17 |     pub vendor_metrics: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:18:5
+   |
+18 |     pub raw_snmp_data: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:19:5
+   |
+19 |     pub last_snmp_success: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:20:5
+   |
+20 |     pub last_error: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/node_status.rs:21:5
+   |
+21 |     pub consecutive_failures: i32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> crates/unet-core/src/entities/node_status.rs:25:1
+   |
+25 | pub enum Relation {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/node_status.rs:31:5
+   |
+31 |     Node,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/node_status.rs:33:5
+   |
+33 |     InterfaceStatus,
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+ --> crates/unet-core/src/entities/nodes.rs:8:1
+  |
+8 | pub struct Model {
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:10:5
+   |
+10 |     pub id: String,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:11:5
+   |
+11 |     pub name: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:12:5
+   |
+12 |     pub fqdn: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:13:5
+   |
+13 |     pub domain: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:14:5
+   |
+14 |     pub vendor: String,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:15:5
+   |
+15 |     pub model: String,
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:16:5
+   |
+16 |     pub role: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:17:5
+   |
+17 |     pub lifecycle: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:18:5
+   |
+18 |     pub serial_number: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:19:5
+   |
+19 |     pub asset_tag: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:20:5
+   |
+20 |     pub location_id: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:21:5
+   |
+21 |     pub management_ip: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:22:5
+   |
+22 |     pub description: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:23:5
+   |
+23 |     pub custom_data: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:24:5
+   |
+24 |     pub created_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/nodes.rs:25:5
+   |
+25 |     pub updated_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> crates/unet-core/src/entities/nodes.rs:29:1
+   |
+29 | pub enum Relation {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/nodes.rs:35:5
+   |
+35 |     Location,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/nodes.rs:41:5
+   |
+41 |     LinksAsNodeA,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/nodes.rs:47:5
+   |
+47 |     LinksAsNodeB,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/nodes.rs:49:5
+   |
+49 |     NodeStatus,
+   |     ^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/nodes.rs:51:5
+   |
+51 |     PollingTasks,
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct
+ --> crates/unet-core/src/entities/polling_tasks.rs:8:1
+  |
+8 | pub struct Model {
+  | ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:10:5
+   |
+10 |     pub id: String,
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:11:5
+   |
+11 |     pub node_id: String,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:12:5
+   |
+12 |     pub target: String,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:13:5
+   |
+13 |     pub oids: String,
+   |     ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:14:5
+   |
+14 |     pub interval_seconds: i64,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:15:5
+   |
+15 |     pub session_config: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:16:5
+   |
+16 |     pub priority: i16,
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:17:5
+   |
+17 |     pub enabled: bool,
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:18:5
+   |
+18 |     pub created_at: String,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:19:5
+   |
+19 |     pub last_success: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:20:5
+   |
+20 |     pub last_error: Option<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/entities/polling_tasks.rs:21:5
+   |
+21 |     pub consecutive_failures: i32,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for an enum
+  --> crates/unet-core/src/entities/polling_tasks.rs:25:1
+   |
+25 | pub enum Relation {
+   | ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/entities/polling_tasks.rs:31:5
+   |
+31 |     Node,
+   |     ^^^^
+
+warning: missing documentation for a macro
+   --> crates/unet-core/src/logging.rs:183:1
+    |
+183 | macro_rules! log_snmp_operation {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a macro
+   --> crates/unet-core/src/logging.rs:194:1
+    |
+194 | macro_rules! log_network_operation {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:55:5
+   |
+55 |     Parse(#[from] ParseError),
+   |     ^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:58:5
+   |
+58 |     Evaluation { message: String },
+   |     ^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:58:18
+   |
+58 |     Evaluation { message: String },
+   |                  ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:61:5
+   |
+61 |     FieldNotFound { field: String },
+   |     ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:61:21
+   |
+61 |     FieldNotFound { field: String },
+   |                     ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:64:5
+   |
+64 |     TypeMismatch { expected: String, actual: String },
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:64:20
+   |
+64 |     TypeMismatch { expected: String, actual: String },
+   |                    ^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:64:38
+   |
+64 |     TypeMismatch { expected: String, actual: String },
+   |                                      ^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:67:5
+   |
+67 |     InvalidRegex { pattern: String },
+   |     ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:67:20
+   |
+67 |     InvalidRegex { pattern: String },
+   |                    ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:70:5
+   |
+70 |     ValidationError { message: String },
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:70:23
+   |
+70 |     ValidationError { message: String },
+   |                       ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:73:5
+   |
+73 |     DataStoreError { message: String },
+   |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy.rs:73:22
+   |
+73 |     DataStoreError { message: String },
+   |                      ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy.rs:76:5
+   |
+76 |     Io(#[from] std::io::Error),
+   |     ^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:14:5
+   |
+14 |     pub condition: Condition,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:15:5
+   |
+15 |     pub action: Action,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:29:9
+   |
+29 |         field: FieldRef,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:30:9
+   |
+30 |         operator: ComparisonOperator,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:31:9
+   |
+31 |         value: Value,
+   |         ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:34:17
+   |
+34 |     Existence { field: FieldRef, is_null: bool },
+   |                 ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:34:34
+   |
+34 |     Existence { field: FieldRef, is_null: bool },
+   |                                  ^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:40:5
+   |
+40 |     Equal,
+   |     ^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:41:5
+   |
+41 |     NotEqual,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:42:5
+   |
+42 |     LessThan,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:43:5
+   |
+43 |     LessThanOrEqual,
+   |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:44:5
+   |
+44 |     GreaterThan,
+   |     ^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:45:5
+   |
+45 |     GreaterThanOrEqual,
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:46:5
+   |
+46 |     Contains,
+   |     ^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:47:5
+   |
+47 |     Matches, // Regex matching
+   |     ^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:54:14
+   |
+54 |     Assert { field: FieldRef, expected: Value },
+   |              ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:54:31
+   |
+54 |     Assert { field: FieldRef, expected: Value },
+   |                               ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:56:11
+   |
+56 |     Set { field: FieldRef, value: Value },
+   |           ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:56:28
+   |
+56 |     Set { field: FieldRef, value: Value },
+   |                            ^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:58:21
+   |
+58 |     ApplyTemplate { template_path: String },
+   |                     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/ast.rs:64:5
+   |
+64 |     pub path: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:70:5
+   |
+70 |     String(String),
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:71:5
+   |
+71 |     Number(f64),
+   |     ^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:72:5
+   |
+72 |     Boolean(bool),
+   |     ^^^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:73:5
+   |
+73 |     Null,
+   |     ^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:74:5
+   |
+74 |     Regex(String),      // Regex pattern as string
+   |     ^^^^^
+
+warning: missing documentation for a variant
+  --> crates/unet-core/src/policy/ast.rs:75:5
+   |
+75 |     FieldRef(FieldRef), // Reference to another field
+   |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:18:5
+   |
+18 |     pub node_data: JsonValue,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:19:5
+   |
+19 |     pub derived_data: Option<JsonValue>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:26:17
+   |
+26 |     Satisfied { action: Action },
+   |                 ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:30:13
+   |
+30 |     Error { message: String },
+   |             ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:37:15
+   |
+37 |     Success { message: String },
+   |               ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:40:9
+   |
+40 |         field: String,
+   |         ^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:41:9
+   |
+41 |         expected: JsonValue,
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:42:9
+   |
+42 |         actual: JsonValue,
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:45:13
+   |
+45 |     Error { message: String },
+   |             ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:53:9
+   |
+53 |         field: FieldRef,
+   |         ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:54:9
+   |
+54 |         previous_value: Option<JsonValue>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/evaluator.rs:57:21
+   |
+57 |     ApplyRollback { template_path: String },
+   |                     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a variant
+   --> crates/unet-core/src/policy/evaluator.rs:113:5
+    |
+113 |     Low = 0,
+    |     ^^^
+
+warning: missing documentation for a variant
+   --> crates/unet-core/src/policy/evaluator.rs:114:5
+    |
+114 |     Medium = 1,
+    |     ^^^^^^
+
+warning: missing documentation for a variant
+   --> crates/unet-core/src/policy/evaluator.rs:115:5
+    |
+115 |     High = 2,
+    |     ^^^^
+
+warning: missing documentation for a variant
+   --> crates/unet-core/src/policy/evaluator.rs:116:5
+    |
+116 |     Critical = 3,
+    |     ^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:122:5
+    |
+122 |     pub rule: PolicyRule,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:123:5
+    |
+123 |     pub priority: PolicyPriority,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:124:5
+    |
+124 |     pub order: u32,
+    |     ^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:125:5
+    |
+125 |     pub tags: Vec<String>,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:131:5
+    |
+131 |     pub node_id: Uuid,
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:132:5
+    |
+132 |     pub context: EvaluationContext,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:133:5
+    |
+133 |     pub rules: Vec<OrchestrationRule>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:134:5
+    |
+134 |     pub batch_id: String,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:135:5
+    |
+135 |     pub created_at: Instant,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:141:5
+    |
+141 |     pub node_id: Uuid,
+    |     ^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:142:5
+    |
+142 |     pub batch_id: String,
+    |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:143:5
+    |
+143 |     pub total_rules: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:144:5
+    |
+144 |     pub satisfied_rules: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:145:5
+    |
+145 |     pub failed_rules: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:146:5
+    |
+146 |     pub error_rules: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:147:5
+    |
+147 |     pub compliance_failures: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:148:5
+    |
+148 |     pub execution_duration: Duration,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:149:5
+    |
+149 |     pub results: Vec<PolicyExecutionResult>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/evaluator.rs:150:5
+    |
+150 |     pub summary: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:342:5
+    |
+342 |     pub total_entries: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:343:5
+    |
+343 |     pub expired_entries: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:344:5
+    |
+344 |     pub valid_entries: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:350:5
+    |
+350 |     pub total_lines: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:351:5
+    |
+351 |     pub valid_rules: usize,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:352:5
+    |
+352 |     pub errors: Vec<ValidationError>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:358:5
+    |
+358 |     pub line: usize,
+    |     ^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:359:5
+    |
+359 |     pub message: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+   --> crates/unet-core/src/policy/loader.rs:360:5
+    |
+360 |     pub content: String,
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/parser.rs:17:5
+   |
+17 |     pub message: String,
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: missing documentation for a struct field
+  --> crates/unet-core/src/policy/parser.rs:18:5
+   |
+18 |     pub location: Option<(usize, usize)>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `unet-core` (lib) generated 195 warnings
+warning: unused import: `uuid::Uuid`
+ --> crates/unet-core/tests/sqlite_datastore.rs:4:5
+  |
+4 | use uuid::Uuid;
+  |     ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `unet-core` (test "sqlite_datastore") generated 1 warning (run `cargo fix --test "sqlite_datastore"` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running tests/sqlite_datastore.rs (/home/bc/code/unet/target/debug/deps/sqlite_datastore-6511e96a15362ae0)
+
+running 1 test
+
+thread 'sqlite_datastore_integration' panicked at crates/unet-core/tests/sqlite_datastore.rs:15:10:
+Failed to connect to SQLite database: ConnectionError { message: "Failed to connect to database: Connection Error: error returned from database: (code: 14) unable to open database file" }
+stack backtrace:
+   0: rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::result::unwrap_failed
+   3: core::result::Result<T,E>::expect
+             at /build/rustc-1.86.0-src/library/core/src/result.rs:1061:23
+   4: sqlite_datastore::sqlite_datastore_integration::{{closure}}
+             at ./tests/sqlite_datastore.rs:13:17
+   5: <core::pin::Pin<P> as core::future::future::Future>::poll
+             at /build/rustc-1.86.0-src/library/core/src/future/future.rs:124:9
+   6: <core::pin::Pin<P> as core::future::future::Future>::poll
+             at /build/rustc-1.86.0-src/library/core/src/future/future.rs:124:9
+   7: tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:742:54
+   8: tokio::task::coop::with_budget
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/task/coop/mod.rs:167:5
+   9: tokio::task::coop::budget
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/task/coop/mod.rs:133:5
+  10: tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:742:25
+  11: tokio::runtime::scheduler::current_thread::Context::enter
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:432:19
+  12: tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:741:36
+  13: tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:829:68
+  14: tokio::runtime::context::scoped::Scoped<T>::set
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/context/scoped.rs:40:9
+  15: tokio::runtime::context::set_scheduler::{{closure}}
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/context.rs:176:26
+  16: std::thread::local::LocalKey<T>::try_with
+             at /build/rustc-1.86.0-src/library/std/src/thread/local.rs:310:12
+  17: std::thread::local::LocalKey<T>::with
+             at /build/rustc-1.86.0-src/library/std/src/thread/local.rs:274:15
+  18: tokio::runtime::context::set_scheduler
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/context.rs:176:9
+  19: tokio::runtime::scheduler::current_thread::CoreGuard::enter
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:829:27
+  20: tokio::runtime::scheduler::current_thread::CoreGuard::block_on
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:729:19
+  21: tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:200:28
+  22: tokio::runtime::context::runtime::enter_runtime
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/context/runtime.rs:65:16
+  23: tokio::runtime::scheduler::current_thread::CurrentThread::block_on
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/scheduler/current_thread/mod.rs:188:9
+  24: tokio::runtime::runtime::Runtime::block_on_inner
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/runtime.rs:356:47
+  25: tokio::runtime::runtime::Runtime::block_on
+             at /home/bc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.46.1/src/runtime/runtime.rs:330:13
+  26: sqlite_datastore::sqlite_datastore_integration
+             at ./tests/sqlite_datastore.rs:64:5
+  27: sqlite_datastore::sqlite_datastore_integration::{{closure}}
+             at ./tests/sqlite_datastore.rs:10:40
+  28: core::ops::function::FnOnce::call_once
+             at /build/rustc-1.86.0-src/library/core/src/ops/function.rs:250:5
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+test sqlite_datastore_integration ... FAILED
+
+failures:
+
+failures:
+    sqlite_datastore_integration
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `--test sqlite_datastore`

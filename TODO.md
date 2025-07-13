@@ -91,8 +91,8 @@ mdbook 0.4+ (docs)
     ├── unet-core/      # Shared library (models, datastore, policy, template)
     ├── unet-server/    # Axum server binary
     ├── unet-cli/       # Clap CLI binary  
-    └── config-slicer/  # Config diff library + CLI
-    migrations/         # SeaORM migration files
+    ├── config-slicer/  # Config diff library + CLI
+    └── migrations/     # SeaORM migration files
     fixtures/           # Test data and demo configurations
     policies/           # Sample policy files
     templates/          # Sample template files
@@ -933,7 +933,7 @@ mdbook 0.4+ (docs)
   - **Status:** Complete PolicyLoader implementation with Git integration framework, file system traversal, caching system with TTL, comprehensive validation, and full test suite
   - **Files Created:**
     - `/crates/unet-core/src/policy/loader.rs` - Complete policy file loader (558 lines)
-    - `/policies/cisco-compliance.policy` - Sample policy file for testing
+    - `/docs/src/cisco-compliance.policy` - Sample policy file for testing
   - **Technical Notes:**
     - Git integration framework ready for repository support
     - Caching system with modification time and TTL validation

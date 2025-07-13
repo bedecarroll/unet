@@ -137,6 +137,27 @@ WHEN node.lifecycle == "live"
 THEN SET custom_data.change_mgmt.approval_required TO true
 ```
 
+## Cisco Compliance Policy Example
+
+Below is an example of a policy file for Cisco device compliance.
+
+```
+# Cisco device compliance policies
+# This file demonstrates the policy engine syntax
+
+# Ensure Cisco devices have proper IOS version
+WHEN node.vendor == "cisco" THEN ASSERT node.custom_data.ios_version IS "15.1"
+
+# Set managed flag for router devices
+WHEN node.role == "router" THEN SET custom_data.managed TO true
+
+# Ensure switches have proper VLAN configuration
+WHEN node.role == "switch" THEN ASSERT custom_data.vlans IS NOT NULL
+
+# Template assignment for edge routers
+WHEN node.role == "router" AND node.custom_data.location_type == "edge" THEN APPLY "templates/edge-router.j2"
+```
+
 ## Network Architecture
 
 ### Location-Based Configuration

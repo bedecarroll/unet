@@ -2,6 +2,13 @@
 //!
 //! REST API server for μNet network configuration management.
 
+#![forbid(
+    clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo
+)]
 mod api;
 mod background;
 mod error;

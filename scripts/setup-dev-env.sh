@@ -131,7 +131,7 @@ fi
 
 # Create database and run migrations
 print_step "Setting up database..."
-if [ -f "migrations/src/lib.rs" ]; then
+if [ -f "crates/migrations/src/lib.rs" ]; then
     if ./scripts/migrate.sh; then
         print_success "Database migration completed"
     else

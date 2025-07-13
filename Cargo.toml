@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/unet-core",
-    "crates/unet-server", 
-    "crates/unet-cli",
-    "crates/config-slicer",
-    "migrations",
+  "crates/unet-core",
+  "crates/unet-server",
+  "crates/unet-cli",
+  "crates/config-slicer",
+  "crates/migrations",
 ]
 
 [workspace.package]
@@ -35,33 +35,33 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Error handling
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 
 # Configuration management
-config = "0.14"
-toml = "0.8"
+config = "0.15"
+toml = "0.9"
 
 # Database and ORM
-sea-orm = { version = "0.12", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
-sea-orm-migration = "0.12"
+sea-orm = { version = "1", features = [
+  "sqlx-sqlite",
+  "runtime-tokio-rustls",
+  "macros",
+] }
+sea-orm-migration = "1"
 
 # HTTP client/server
-axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
-# reqwest = { version = "0.11", features = ["json"] }
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # CLI parsing
 clap = { version = "4.0", features = ["derive", "color", "suggestions"] }
 
 # Template engine
-minijinja = { version = "1.0", features = ["json"] }
+minijinja = { version = "2", features = ["json"] }
 
 # SNMP client  
 snmp2 = "0.4.8"
-
-# Git integration (will be added when needed)
-# git2 = "0.18"
 
 # Policy parsing
 pest = "2.7"
@@ -72,16 +72,16 @@ similar = "2.2"
 
 # Utility crates
 regex = "1.0"
-dashmap = "5.0"
+dashmap = "6"
 walkdir = "2.4"
 bytes = "1.0"
 futures-util = "0.3"
-strum = "0.26"
-strum_macros = "0.26"
+strum = "0.27"
+strum_macros = "0.27"
 ipnet = "2.9"
 
 # Task scheduling
-tokio-cron-scheduler = "0.10"
+tokio-cron-scheduler = "0.14"
 
 # Logging and tracing
 tracing = "0.1"
@@ -91,7 +91,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tempfile = "3.8"
 
 # Testing
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.6", features = ["html_reports"] }
 
 # Development and testing dependencies
 assert_cmd = "2.0"

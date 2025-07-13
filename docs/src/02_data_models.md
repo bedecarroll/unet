@@ -311,9 +311,8 @@ We keep migrations *idempotent*; use semver tags to mark breaking changes.
 
 ## Next Steps
 
-🔹 Implement migrations (`unet-core/migrations`).\
+🔹 Implement migrations (`crates/migrations`).\
 🔹 Write unit tests: `model::tests::roundtrip_serialization()`.\
 🔹 Update **05\_cli\_tool.md** once CRUD commands compiled.
 
 Back to [01\_architecture.md](01_architecture.md) • Forward to **03\_policy\_engine.md**
-
