@@ -306,12 +306,14 @@ impl PollingScheduler {
 
             PollingMessage::GetTaskStatus(task_id, response_tx) => {
                 let task = self.tasks.read().await.get(&task_id).cloned();
+                // Intentionally ignore send result - receiver may have dropped
                 let _ = response_tx.send(task);
             }
 
             PollingMessage::ListTasks(response_tx) => {
                 let task_list: Vec<PollingTask> =
                     self.tasks.read().await.values().cloned().collect();
+                // Intentionally ignore send result - receiver may have dropped
                 let _ = response_tx.send(task_list);
             }
 

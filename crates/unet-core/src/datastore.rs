@@ -573,6 +573,7 @@ pub trait DataStore: Send + Sync {
         result: &PolicyExecutionResult,
     ) -> DataStoreResult<()> {
         // Default implementation is a no-op for backward compatibility
+        // Parameters are intentionally unused in this default trait implementation
         let _ = (node_id, rule_id, result);
         Ok(())
     }
@@ -583,6 +584,7 @@ pub trait DataStore: Send + Sync {
         node_id: &Uuid,
     ) -> DataStoreResult<Vec<PolicyExecutionResult>> {
         // Default implementation returns empty results
+        // Parameter is intentionally unused in this default trait implementation
         let _ = node_id;
         Ok(Vec::new())
     }
@@ -602,6 +604,7 @@ pub trait DataStore: Send + Sync {
         rule_id: &str,
     ) -> DataStoreResult<Vec<(Uuid, PolicyExecutionResult)>> {
         // Default implementation returns empty results
+        // Parameter is intentionally unused in this default trait implementation
         let _ = rule_id;
         Ok(Vec::new())
     }

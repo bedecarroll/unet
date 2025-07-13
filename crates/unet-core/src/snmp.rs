@@ -463,7 +463,7 @@ impl SnmpClient {
         oids: &[&str],
         config: Option<SessionConfig>,
     ) -> SnmpResult<HashMap<String, SnmpValue>> {
-        // Acquire connection permit
+        // Acquire connection permit - must be held for duration of function to maintain semaphore limit
         let _permit =
             self.connection_semaphore
                 .acquire()
@@ -491,7 +491,7 @@ impl SnmpClient {
         start_oid: &str,
         config: Option<SessionConfig>,
     ) -> SnmpResult<HashMap<String, SnmpValue>> {
-        // Acquire connection permit
+        // Acquire connection permit - must be held for duration of function to maintain semaphore limit
         let _permit =
             self.connection_semaphore
                 .acquire()

@@ -1186,8 +1186,7 @@ impl PolicyOrchestrator {
 
             // Execute timed out batches
             if has_timed_out_batches {
-                let _results = self.execute_pending_batches(datastore).await?;
-                // Results could be logged or stored for monitoring
+                self.execute_pending_batches(datastore).await?;
             }
         }
     }
@@ -1735,7 +1734,6 @@ mod tests {
 
     #[test]
     fn test_cache_key_generation() {
-        let _orchestrator = PolicyOrchestrator::default();
         let node_id = Uuid::new_v4();
         let context = EvaluationContext::new(json!({"node": {"vendor": "cisco"}}));
 

@@ -157,6 +157,7 @@ macro_rules! log_context {
 #[macro_export]
 macro_rules! timed_operation {
     ($operation:expr, $code:block) => {{
+        // Span must be bound to variable to remain active for the duration of the operation
         let _span = $crate::log_context!($operation).entered();
         let start = std::time::Instant::now();
         tracing::info!("Operation started");
@@ -304,6 +305,7 @@ mod tests {
         use crate::{log_context, timed_operation};
 
         // Test that the macros compile and work
+        // Span must be bound to variable to remain active for testing
         let _span = log_context!("test_operation");
 
         let result: Result<i32> = timed_operation!("test_timed", { Ok(42) });

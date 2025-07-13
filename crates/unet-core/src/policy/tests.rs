@@ -9,11 +9,10 @@
 use super::*;
 use crate::policy::{
     EvaluationContext, EvaluationResult, OrchestrationRule, PolicyError, PolicyEvaluator,
-    PolicyOrchestrator, PolicyParser, PolicyPriority,
+    PolicyParser, PolicyPriority,
 };
 use serde_json::json;
 use std::time::{Duration, Instant};
-use uuid::Uuid;
 
 /// Test helper to create a sample node
 
@@ -136,8 +135,6 @@ mod performance_tests {
 
     #[test]
     fn test_orchestrator_batch_performance() {
-        let _orchestrator = PolicyOrchestrator::default();
-
         // Create 100 rules with different priorities for performance testing
         let mut rules = Vec::new();
         for i in 0..100 {
@@ -198,11 +195,8 @@ mod performance_tests {
 
     #[test]
     fn test_memory_usage_with_large_cache() {
-        let _orchestrator = PolicyOrchestrator::default();
-
         // Test cache functionality indirectly
         for i in 0..1_000 {
-            let _node_id = Uuid::new_v4();
             let _context = EvaluationContext::new(json!({"node": {"id": i}}));
             let _rule = PolicyRule {
                 id: Some(format!("cache-rule-{i}")),
@@ -748,13 +742,6 @@ mod grammar_construct_tests {
 
     #[test]
     fn test_all_action_types() {
-        let _context = EvaluationContext::new(json!({
-            "node": {
-                "vendor": "cisco",
-                "model": "2960"
-            }
-        }));
-
         // Test Assert action
         let assert_action = Action::Assert {
             field: FieldRef {
@@ -784,28 +771,6 @@ mod grammar_construct_tests {
 
     #[test]
     fn test_field_reference_variations() {
-        let _context = EvaluationContext::new(json!({
-            "node": {
-                "vendor": "cisco",
-                "custom_data": {
-                    "location": {
-                        "rack": "R42",
-                        "datacenter": "DC1"
-                    },
-                    "compliance": {
-                        "status": "passed"
-                    }
-                }
-            },
-            "derived": {
-                "interfaces": {
-                    "eth0": {
-                        "status": "up"
-                    }
-                }
-            }
-        }));
-
         // Test simple field reference
         let simple_ref = FieldRef {
             path: vec!["node".to_string(), "vendor".to_string()],
