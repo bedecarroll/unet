@@ -1,17 +1,23 @@
 // Integration test for SQLite datastore
 // Moved from root test_sqlite_datastore.rs, converted into proper cargo integration test.
 
+use migration::{Migrator, MigratorTrait};
 use unet_core::datastore::{DataStore, sqlite::SqliteStore};
 use unet_core::models::{DeviceRole, Lifecycle, Node, Vendor};
 
 /// End-to-end integration test for SQLite-based DataStore
 #[tokio::test]
 async fn sqlite_datastore_integration() {
-    // Configure a test SQLite database in the crate directory
-    let database_url = "sqlite:./test_sqlite_integration.db";
+    // Use in-memory SQLite database for testing
+    let database_url = "sqlite::memory:";
     let store = SqliteStore::new(database_url)
         .await
         .expect("Failed to connect to SQLite database");
+
+    // Run database migrations to create tables
+    Migrator::up(store.connection(), None)
+        .await
+        .expect("Failed to run database migrations");
 
     // Health check
     store.health_check().await.expect("Health check failed");

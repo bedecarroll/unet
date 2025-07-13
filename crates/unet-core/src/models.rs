@@ -2268,11 +2268,7 @@ mod tests {
 
     #[test]
     fn test_location_new_child() {
-        let location = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let location = Location::new_child("California".to_string(), "state".to_string(), "USA");
 
         assert_eq!(location.name, "California");
         assert_eq!(location.location_type, "state");
@@ -2282,11 +2278,7 @@ mod tests {
 
     #[test]
     fn test_location_new_child_empty_parent() {
-        let location = Location::new_child(
-            "RootLocation".to_string(),
-            "building".to_string(),
-            "".to_string(),
-        );
+        let location = Location::new_child("RootLocation".to_string(), "building".to_string(), "");
 
         assert_eq!(location.path, "RootLocation");
     }
@@ -2296,11 +2288,7 @@ mod tests {
         let location = Location::new_root("USA".to_string(), "country".to_string());
         assert!(location.validate().is_ok());
 
-        let mut child = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child = Location::new_child("California".to_string(), "state".to_string(), "USA");
         child.parent_id = Some(Uuid::new_v4());
         assert!(child.validate().is_ok());
     }
@@ -2345,11 +2333,8 @@ mod tests {
 
     #[test]
     fn test_location_validation_child_path_mismatch() {
-        let mut location = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut location =
+            Location::new_child("California".to_string(), "state".to_string(), "USA");
         location.parent_id = Some(Uuid::new_v4());
         location.path = "USA/WrongState".to_string();
 
@@ -2384,17 +2369,13 @@ mod tests {
         let root = Location::new_root("USA".to_string(), "country".to_string());
         assert_eq!(root.get_depth(), 0);
 
-        let child = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let child = Location::new_child("California".to_string(), "state".to_string(), "USA");
         assert_eq!(child.get_depth(), 1);
 
         let grandchild = Location::new_child(
             "San Francisco".to_string(),
             "city".to_string(),
-            "USA/California".to_string(),
+            "USA/California",
         );
         assert_eq!(grandchild.get_depth(), 2);
     }
@@ -2404,17 +2385,13 @@ mod tests {
         let root = Location::new_root("USA".to_string(), "country".to_string());
         assert_eq!(root.get_path_components(), vec!["USA"]);
 
-        let child = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let child = Location::new_child("California".to_string(), "state".to_string(), "USA");
         assert_eq!(child.get_path_components(), vec!["USA", "California"]);
 
         let grandchild = Location::new_child(
             "San Francisco".to_string(),
             "city".to_string(),
-            "USA/California".to_string(),
+            "USA/California",
         );
         assert_eq!(
             grandchild.get_path_components(),
@@ -2426,17 +2403,13 @@ mod tests {
     fn test_location_hierarchy_relationships() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
 
-        let mut child = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child = Location::new_child("California".to_string(), "state".to_string(), "USA");
         child.parent_id = Some(root.id);
 
         let mut grandchild = Location::new_child(
             "San Francisco".to_string(),
             "city".to_string(),
-            "USA/California".to_string(),
+            "USA/California",
         );
         grandchild.parent_id = Some(child.id);
 
@@ -2466,11 +2439,7 @@ mod tests {
     fn test_location_detect_circular_reference() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
 
-        let mut child = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child = Location::new_child("California".to_string(), "state".to_string(), "USA");
         child.parent_id = Some(root.id);
 
         let locations = vec![root.clone(), child.clone()];
@@ -2495,17 +2464,13 @@ mod tests {
     fn test_location_get_ancestors() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
 
-        let mut child = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child = Location::new_child("California".to_string(), "state".to_string(), "USA");
         child.parent_id = Some(root.id);
 
         let mut grandchild = Location::new_child(
             "San Francisco".to_string(),
             "city".to_string(),
-            "USA/California".to_string(),
+            "USA/California",
         );
         grandchild.parent_id = Some(child.id);
 
@@ -2531,21 +2496,16 @@ mod tests {
     fn test_location_get_descendants() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
 
-        let mut child1 = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child1 = Location::new_child("California".to_string(), "state".to_string(), "USA");
         child1.parent_id = Some(root.id);
 
-        let mut child2 =
-            Location::new_child("Texas".to_string(), "state".to_string(), "USA".to_string());
+        let mut child2 = Location::new_child("Texas".to_string(), "state".to_string(), "USA");
         child2.parent_id = Some(root.id);
 
         let mut grandchild = Location::new_child(
             "San Francisco".to_string(),
             "city".to_string(),
-            "USA/California".to_string(),
+            "USA/California",
         );
         grandchild.parent_id = Some(child1.id);
 
@@ -2578,21 +2538,16 @@ mod tests {
     fn test_location_get_children() {
         let root = Location::new_root("USA".to_string(), "country".to_string());
 
-        let mut child1 = Location::new_child(
-            "California".to_string(),
-            "state".to_string(),
-            "USA".to_string(),
-        );
+        let mut child1 = Location::new_child("California".to_string(), "state".to_string(), "USA");
         child1.parent_id = Some(root.id);
 
-        let mut child2 =
-            Location::new_child("Texas".to_string(), "state".to_string(), "USA".to_string());
+        let mut child2 = Location::new_child("Texas".to_string(), "state".to_string(), "USA");
         child2.parent_id = Some(root.id);
 
         let mut grandchild = Location::new_child(
             "San Francisco".to_string(),
             "city".to_string(),
-            "USA/California".to_string(),
+            "USA/California",
         );
         grandchild.parent_id = Some(child1.id);
 

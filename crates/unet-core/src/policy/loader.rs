@@ -502,7 +502,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         let mut loader = PolicyLoader::new(git_config).with_cache_ttl(Duration::from_secs(60));
 
         // Load file first time
-        let result1 = loader.load_policy_file(&policy_file).await.unwrap();
+        let result1 = loader.load_policy_file(&policy_file).unwrap();
         assert_eq!(result1.rules.len(), 1);
 
         // Check cache stats
@@ -511,7 +511,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         assert_eq!(stats.valid_entries, 1);
 
         // Load file second time (should use cache)
-        let result2 = loader.load_policy_file(&policy_file).await.unwrap();
+        let result2 = loader.load_policy_file(&policy_file).unwrap();
         assert_eq!(result2.rules.len(), 1);
 
         // Modify file to invalidate cache
@@ -519,7 +519,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         fs::write(&policy_file, policy_content).unwrap();
 
         // Load file third time (should reload from disk)
-        let result3 = loader.load_policy_file(&policy_file).await.unwrap();
+        let result3 = loader.load_policy_file(&policy_file).unwrap();
         assert_eq!(result3.rules.len(), 1);
     }
 

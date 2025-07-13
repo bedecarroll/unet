@@ -1556,7 +1556,7 @@ mod tests {
         };
         let expected = Value::String("15.1".to_string());
 
-        let result = PolicyEvaluator::execute_assert_action(&field, &expected, &context).await;
+        let result = PolicyEvaluator::execute_assert_action(&field, &expected, &context);
         assert!(result.is_ok());
         match result.unwrap() {
             ActionResult::Success { .. } => (),
@@ -1578,7 +1578,7 @@ mod tests {
         };
         let expected = Value::String("15.1".to_string());
 
-        let result = PolicyEvaluator::execute_assert_action(&field, &expected, &context).await;
+        let result = PolicyEvaluator::execute_assert_action(&field, &expected, &context);
         assert!(result.is_ok());
         match result.unwrap() {
             ActionResult::ComplianceFailure {
@@ -1735,7 +1735,7 @@ mod tests {
 
     #[test]
     fn test_cache_key_generation() {
-        let orchestrator = PolicyOrchestrator::default();
+        let _orchestrator = PolicyOrchestrator::default();
         let node_id = Uuid::new_v4();
         let context = EvaluationContext::new(json!({"node": {"vendor": "cisco"}}));
 
@@ -1771,8 +1771,6 @@ mod tests {
 
     #[test]
     fn test_summary_creation() {
-        let orchestrator = PolicyOrchestrator::default();
-
         let summary = PolicyOrchestrator::create_summary(10, 8, 1, 1, 2);
         assert!(summary.contains("8/10 rules satisfied"));
         assert!(summary.contains("80.0% success"));

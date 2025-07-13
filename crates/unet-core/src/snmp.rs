@@ -562,7 +562,7 @@ mod tests {
         assert_eq!(SnmpValue::Integer(42).to_string(), "42");
         assert_eq!(SnmpValue::String("test".to_string()).to_string(), "test");
         assert_eq!(
-            Self::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)).to_string(),
+            SnmpValue::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)).to_string(),
             "127.0.0.1"
         );
         assert_eq!(SnmpValue::Counter32(1000).to_string(), "1000");
