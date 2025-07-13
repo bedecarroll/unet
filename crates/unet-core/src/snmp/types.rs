@@ -29,18 +29,19 @@ pub enum SnmpType {
 
 impl SnmpType {
     /// Get string representation of the SNMP type
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            SnmpType::Integer => "INTEGER",
-            SnmpType::OctetString => "OCTET STRING",
-            SnmpType::ObjectIdentifier => "OBJECT IDENTIFIER",
-            SnmpType::IpAddress => "IpAddress",
-            SnmpType::Counter32 => "Counter32",
-            SnmpType::Counter64 => "Counter64",
-            SnmpType::Gauge32 => "Gauge32",
-            SnmpType::TimeTicks => "TimeTicks",
-            SnmpType::Opaque => "Opaque",
-            SnmpType::Null => "NULL",
+            Self::Integer => "INTEGER",
+            Self::OctetString => "OCTET STRING",
+            Self::ObjectIdentifier => "OBJECT IDENTIFIER",
+            Self::IpAddress => "IpAddress",
+            Self::Counter32 => "Counter32",
+            Self::Counter64 => "Counter64",
+            Self::Gauge32 => "Gauge32",
+            Self::TimeTicks => "TimeTicks",
+            Self::Opaque => "Opaque",
+            Self::Null => "NULL",
         }
     }
 }

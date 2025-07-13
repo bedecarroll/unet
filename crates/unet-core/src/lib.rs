@@ -33,13 +33,7 @@
 //! - [`template`] - Template rendering (Milestone 4)
 
 #![warn(missing_docs)]
-#![forbid(
-    clippy::all,
-    clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 
 // Public modules
 pub mod config;
@@ -57,10 +51,11 @@ pub mod template;
 pub use error::{Error, Result};
 
 /// Prelude module for commonly used types
+///
+/// Common imports for μNet Core
+///
+/// This module provides convenient re-exports of the most commonly used types.
 pub mod prelude {
-    //! Common imports for μNet Core
-    //!
-    //! This module provides convenient re-exports of the most commonly used types.
 
     // Core error types
     pub use crate::error::{Error, Result};

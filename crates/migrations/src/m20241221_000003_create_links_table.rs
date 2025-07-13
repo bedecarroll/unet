@@ -96,13 +96,6 @@ impl MigrationTrait for Migration {
     }
 }
 
-// Import Node from the previous migration
-#[derive(DeriveIden)]
-enum Node {
-    Table,
-    Id,
-}
-
 #[derive(DeriveIden)]
 enum Link {
     Table,

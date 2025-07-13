@@ -4,5 +4,33 @@ allow-panic-in-tests = true
 allow-dbg-in-tests = true
 allow-print-in-tests = true
 
+# These crates clash due to transitive dependencies
+allowed-duplicate-crates = [
+    "async-channel", 
+    "regex-automata", 
+    "regex-syntax",
+    "event-listener",
+    "getrandom",
+    "heck",
+    "syn",
+    "wasi",
+    "webpki-roots",
+    "windows-sys",
+    "windows-targets",
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_gnullvm",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
+    "base64",
+    "hashbrown",
+    "thiserror",
+    "thiserror-impl",
+    "toml_datetime"
+]
+
 # SNMP and network automation specific allowances
 allowed-idents-below-min-chars = ["id", "ip", "io", "tx", "rx"]

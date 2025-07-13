@@ -17,29 +17,6 @@ use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 /// Test helper to create a sample node
-fn create_test_node(id: &str, vendor: &str, model: &str) -> Node {
-    use std::str::FromStr;
-
-    let mut node = Node::new(
-        format!("test-{}", id),
-        "example.com".to_string(),
-        match vendor {
-            "cisco" => Vendor::Cisco,
-            "juniper" => Vendor::Juniper,
-            "arista" => Vendor::Arista,
-            _ => Vendor::Generic,
-        },
-        DeviceRole::Router,
-    );
-
-    node.model = model.to_string();
-    node.lifecycle = Lifecycle::Live;
-    node.serial_number = Some(format!("SN{}", id));
-    node.management_ip = Some("192.168.1.1".parse().unwrap());
-    node.custom_data = json!({});
-
-    node
-}
 
 /// Performance test module for large policy sets
 #[cfg(test)]
@@ -174,7 +151,7 @@ mod performance_tests {
 
             let rule = OrchestrationRule::with_priority(
                 PolicyRule {
-                    id: Some(format!("batch-rule-{}", i)),
+                    id: Some(format!("batch-rule-{i}")),
                     condition: Condition::Comparison {
                         field: FieldRef {
                             path: vec!["node".to_string(), "vendor".to_string()],
@@ -214,35 +191,34 @@ mod performance_tests {
         // Context creation should be fast (< 1 second for 10,000 contexts)
         assert!(
             batch_time < Duration::from_secs(1),
-            "Context creation took too long: {:?}",
-            batch_time
+            "Context creation took too long: {batch_time:?}"
         );
 
-        println!("Created 10,000 evaluation contexts in {:?}", batch_time);
+        println!("Created 10,000 evaluation contexts in {batch_time:?}");
     }
 
     #[test]
     fn test_memory_usage_with_large_cache() {
-        let orchestrator = PolicyOrchestrator::default();
+        let _orchestrator = PolicyOrchestrator::default();
 
         // Test cache functionality indirectly
         for i in 0..1_000 {
             let _node_id = Uuid::new_v4();
             let _context = EvaluationContext::new(json!({"node": {"id": i}}));
             let _rule = PolicyRule {
-                id: Some(format!("cache-rule-{}", i)),
+                id: Some(format!("cache-rule-{i}")),
                 condition: Condition::Comparison {
                     field: FieldRef {
                         path: vec!["node".to_string(), "id".to_string()],
                     },
                     operator: ComparisonOperator::Equal,
-                    value: Value::Number(i as f64),
+                    value: Value::Number(f64::from(i)),
                 },
                 action: Action::Assert {
                     field: FieldRef {
                         path: vec!["node".to_string(), "id".to_string()],
                     },
-                    expected: Value::Number(i as f64),
+                    expected: Value::Number(f64::from(i)),
                 },
             };
 
@@ -449,7 +425,7 @@ mod error_handling_tests {
                 path: vec!["node".to_string(), "name".to_string()],
             },
             operator: ComparisonOperator::Equal,
-            value: Value::String("".to_string()),
+            value: Value::String(String::new()),
         };
 
         let rule = PolicyRule {
@@ -520,7 +496,7 @@ mod error_handling_tests {
     #[test]
     fn test_malformed_policy_parsing() {
         // Test various malformed policy strings
-        let malformed_policies = vec![
+        let malformed_policies = [
             "WHEN node.vendor == THEN SET custom_data.test TO 'value'", // Missing value
             "WHEN THEN SET custom_data.test TO 'value'",                // Missing condition
             "WHEN node.vendor == 'cisco' SET custom_data.test TO 'value'", // Missing THEN
@@ -534,9 +510,7 @@ mod error_handling_tests {
             let result = PolicyParser::parse_file(policy);
             assert!(
                 result.is_err(),
-                "Expected error for malformed policy {}: {}",
-                i,
-                policy
+                "Expected error for malformed policy {i}: {policy}"
             );
         }
 
@@ -609,7 +583,7 @@ mod grammar_construct_tests {
 
             let result = PolicyEvaluator::evaluate_rule(&rule, &context).unwrap();
             let is_satisfied = matches!(result, EvaluationResult::Satisfied { .. });
-            assert_eq!(is_satisfied, expected, "Failed for operator {:?}", operator);
+            assert_eq!(is_satisfied, expected, "Failed for operator {operator:?}");
         }
     }
 

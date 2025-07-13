@@ -51,28 +51,56 @@ pub use parser::{ParseError, PolicyParser};
 /// Policy engine errors
 #[derive(Debug, thiserror::Error)]
 pub enum PolicyError {
+    /// Parse error from policy parsing
     #[error("Parse error: {0}")]
     Parse(#[from] ParseError),
 
+    /// Error during policy evaluation
     #[error("Evaluation error: {message}")]
-    Evaluation { message: String },
+    Evaluation {
+        /// Error message describing the evaluation failure
+        message: String,
+    },
 
     #[error("Field not found: {field}")]
-    FieldNotFound { field: String },
+    /// Field reference could not be resolved
+    FieldNotFound {
+        /// Name of the field that was not found
+        field: String,
+    },
 
     #[error("Type mismatch: expected {expected}, got {actual}")]
-    TypeMismatch { expected: String, actual: String },
+    /// Value type does not match expected type
+    TypeMismatch {
+        /// Expected type name
+        expected: String,
+        /// Actual type name
+        actual: String,
+    },
 
     #[error("Invalid regex: {pattern}")]
-    InvalidRegex { pattern: String },
+    /// Regular expression pattern is invalid
+    InvalidRegex {
+        /// The invalid regex pattern
+        pattern: String,
+    },
 
     #[error("Validation error: {message}")]
-    ValidationError { message: String },
+    /// Policy validation failed
+    ValidationError {
+        /// Validation error message
+        message: String,
+    },
 
     #[error("DataStore error: {message}")]
-    DataStoreError { message: String },
+    /// `DataStore` operation failed
+    DataStoreError {
+        /// `DataStore` error message
+        message: String,
+    },
 
     #[error("IO error: {0}")]
+    /// Input/output error
     Io(#[from] std::io::Error),
 }
 

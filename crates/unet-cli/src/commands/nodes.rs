@@ -168,17 +168,24 @@ pub struct StatusNodeArgs {
     /// Node ID
     id: Uuid,
 
+    /// Types of status information to show (can be specified multiple times)
+    #[arg(long, value_enum, default_value = "basic")]
+    status_type: Vec<StatusType>,
+}
+
+/// Types of status information that can be displayed
+#[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum)]
+pub enum StatusType {
+    /// Show basic node information only
+    Basic,
+    /// Show all available status information
+    All,
     /// Show detailed interface status
-    #[arg(long)]
-    interfaces: bool,
-
+    Interfaces,
     /// Show system information
-    #[arg(long)]
-    system: bool,
-
+    System,
     /// Show polling task status
-    #[arg(long)]
-    polling: bool,
+    Polling,
 }
 
 #[derive(Args)]
@@ -223,21 +230,26 @@ pub struct CompareNodeArgs {
     #[arg(short = 'b', long)]
     node_b: Option<Uuid>,
 
-    /// Compare interface status
-    #[arg(long)]
-    interfaces: bool,
-
-    /// Compare performance metrics
-    #[arg(long)]
-    metrics: bool,
-
-    /// Compare system information
-    #[arg(long)]
-    system: bool,
+    /// Types of data to compare (can be specified multiple times)
+    #[arg(long, value_enum, default_value = "all")]
+    compare_type: Vec<CompareType>,
 
     /// Show detailed differences only
     #[arg(long)]
     diff_only: bool,
+}
+
+/// Types of node data that can be compared
+#[derive(Debug, Clone, PartialEq, Eq, clap::ValueEnum)]
+pub enum CompareType {
+    /// Compare all available data
+    All,
+    /// Compare interface status
+    Interfaces,
+    /// Compare performance metrics
+    Metrics,
+    /// Compare system information
+    System,
 }
 
 #[derive(Args)]
@@ -316,7 +328,7 @@ pub async fn execute(
         NodeCommands::Update(args) => update_node(args, datastore, output_format).await,
         NodeCommands::Delete(args) => delete_node(args, datastore, output_format).await,
         NodeCommands::Status(args) => status_node(args, datastore, output_format).await,
-        NodeCommands::Monitor(args) => monitor_node(args, datastore, output_format).await,
+        NodeCommands::Monitor(args) => monitor_node(&args, datastore, output_format),
         NodeCommands::Metrics(args) => metrics_node(args, datastore, output_format).await,
         NodeCommands::Compare(args) => compare_nodes(args, datastore, output_format).await,
         NodeCommands::Polling(args) => polling_node(args, datastore, output_format).await,
@@ -426,8 +438,8 @@ async fn list_nodes(
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {
-            offset: ((args.page - 1) * args.per_page) as usize,
-            limit: args.per_page as usize,
+            offset: usize::try_from((args.page - 1) * args.per_page)?,
+            limit: usize::try_from(args.per_page)?,
         }),
     };
 
@@ -638,7 +650,14 @@ async fn status_node(
         });
     }
 
-    if args.interfaces {
+    let should_show_interfaces = args.status_type.contains(&StatusType::All)
+        || args.status_type.contains(&StatusType::Interfaces);
+    let should_show_system = args.status_type.contains(&StatusType::All)
+        || args.status_type.contains(&StatusType::System);
+    let should_show_polling = args.status_type.contains(&StatusType::All)
+        || args.status_type.contains(&StatusType::Polling);
+
+    if should_show_interfaces {
         match datastore.get_node_interfaces(&args.id).await {
             Ok(interfaces) => {
                 output["interfaces"] = serde_json::to_value(&interfaces)?;
@@ -651,7 +670,7 @@ async fn status_node(
         }
     }
 
-    if args.system {
+    if should_show_system {
         if let Some(status) = &node_status {
             output["system_info"] = serde_json::to_value(&status.system_info)?;
         } else {
@@ -662,7 +681,7 @@ async fn status_node(
         }
     }
 
-    if args.polling {
+    if should_show_polling {
         // TODO: Add polling task status when implemented
         output["polling_tasks"] = serde_json::json!({
             "message": "Polling task status display not yet implemented",
@@ -675,8 +694,8 @@ async fn status_node(
     Ok(())
 }
 
-async fn monitor_node(
-    args: MonitorNodeArgs,
+fn monitor_node(
+    args: &MonitorNodeArgs,
     _datastore: &dyn DataStore,
     output_format: crate::OutputFormat,
 ) -> Result<()> {
@@ -805,8 +824,15 @@ async fn compare_nodes(
             output["basic_differences"] = serde_json::to_value(&differences)?;
         }
 
-        // Compare derived state if requested
-        if args.interfaces {
+        // Compare derived state based on requested types
+        let should_compare_interfaces = args.compare_type.contains(&CompareType::All)
+            || args.compare_type.contains(&CompareType::Interfaces);
+        let should_compare_metrics = args.compare_type.contains(&CompareType::All)
+            || args.compare_type.contains(&CompareType::Metrics);
+        let should_compare_system = args.compare_type.contains(&CompareType::All)
+            || args.compare_type.contains(&CompareType::System);
+
+        if should_compare_interfaces {
             let interfaces_a = datastore
                 .get_node_interfaces(&args.node_a)
                 .await
@@ -823,7 +849,7 @@ async fn compare_nodes(
             });
         }
 
-        if args.metrics {
+        if should_compare_metrics {
             let metrics_a = datastore
                 .get_node_metrics(&args.node_a)
                 .await
@@ -837,7 +863,7 @@ async fn compare_nodes(
             });
         }
 
-        if args.system {
+        if should_compare_system {
             let status_a = datastore
                 .get_node_status(&args.node_a)
                 .await

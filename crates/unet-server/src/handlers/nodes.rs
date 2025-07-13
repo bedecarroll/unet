@@ -73,8 +73,8 @@ pub async fn list_nodes(
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {
-            offset: ((page - 1) * per_page) as usize,
-            limit: per_page as usize,
+            offset: usize::try_from((page - 1) * per_page).unwrap_or(0),
+            limit: usize::try_from(per_page).unwrap_or(20),
         }),
     };
 
@@ -92,10 +92,8 @@ pub async fn list_nodes(
         .map(|node| {
             if include_status {
                 // TODO: Fetch actual status from datastore - for now just use None
-                NodeResponse::from_node(node)
-            } else {
-                NodeResponse::from_node(node)
             }
+            NodeResponse::from_node(node)
         })
         .collect();
 
@@ -123,7 +121,7 @@ pub async fn get_node(
         .await
         .map_err(|e| match e {
             unet_core::datastore::DataStoreError::NotFound { .. } => {
-                ServerError::NotFound(format!("Node with ID {} not found", id))
+                ServerError::NotFound(format!("Node with ID {id} not found"))
             }
             _ => ServerError::Internal(e.to_string()),
         })?;
@@ -137,10 +135,10 @@ pub async fn create_node(
     State(app_state): State<AppState>,
     Json(payload): Json<CreateNodeRequest>,
 ) -> ServerResult<Json<ApiResponse<NodeResponse>>> {
-    // Use the existing to_node method
+    // Use the existing into_node method
     let node = payload
-        .to_node()
-        .map_err(|e| ServerError::BadRequest(format!("Node validation failed: {}", e)))?;
+        .into_node()
+        .map_err(|e| ServerError::BadRequest(format!("Node validation failed: {e}")))?;
 
     let created_node = app_state
         .datastore
@@ -164,7 +162,7 @@ pub async fn update_node(
         .await
         .map_err(|e| match e {
             unet_core::datastore::DataStoreError::NotFound { .. } => {
-                ServerError::NotFound(format!("Node with ID {} not found", id))
+                ServerError::NotFound(format!("Node with ID {id} not found"))
             }
             _ => ServerError::Internal(e.to_string()),
         })?;
@@ -201,7 +199,7 @@ pub async fn update_node(
     if let Some(management_ip_str) = payload.management_ip {
         let management_ip = management_ip_str
             .parse()
-            .map_err(|e| ServerError::BadRequest(format!("Invalid management IP: {}", e)))?;
+            .map_err(|e| ServerError::BadRequest(format!("Invalid management IP: {e}")))?;
         node.management_ip = Some(management_ip);
     }
 
@@ -230,7 +228,7 @@ pub async fn delete_node(
         .await
         .map_err(|e| match e {
             unet_core::datastore::DataStoreError::NotFound { .. } => {
-                ServerError::NotFound(format!("Node with ID {} not found", id))
+                ServerError::NotFound(format!("Node with ID {id} not found"))
             }
             _ => ServerError::Internal(e.to_string()),
         })?;
@@ -250,7 +248,7 @@ pub async fn get_node_status(
         .await
         .map_err(|e| match e {
             unet_core::datastore::DataStoreError::NotFound { .. } => {
-                ServerError::NotFound(format!("Node with ID {} not found", id))
+                ServerError::NotFound(format!("Node with ID {id} not found"))
             }
             _ => ServerError::Internal(e.to_string()),
         })?;
@@ -278,7 +276,7 @@ pub async fn get_node_interfaces(
         .await
         .map_err(|e| match e {
             unet_core::datastore::DataStoreError::NotFound { .. } => {
-                ServerError::NotFound(format!("Node with ID {} not found", id))
+                ServerError::NotFound(format!("Node with ID {id} not found"))
             }
             _ => ServerError::Internal(e.to_string()),
         })?;
@@ -305,7 +303,7 @@ pub async fn get_node_metrics(
         .await
         .map_err(|e| match e {
             unet_core::datastore::DataStoreError::NotFound { .. } => {
-                ServerError::NotFound(format!("Node with ID {} not found", id))
+                ServerError::NotFound(format!("Node with ID {id} not found"))
             }
             _ => ServerError::Internal(e.to_string()),
         })?;
@@ -316,7 +314,7 @@ pub async fn get_node_metrics(
         .get_node_metrics(&id)
         .await
         .map_err(|e| ServerError::Internal(e.to_string()))?
-        .ok_or_else(|| ServerError::NotFound(format!("No metrics available for node {}", id)))?;
+        .ok_or_else(|| ServerError::NotFound(format!("No metrics available for node {id}")))?;
 
     Ok(Json(ApiResponse::success(metrics)))
 }

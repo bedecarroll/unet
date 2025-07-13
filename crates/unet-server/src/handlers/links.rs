@@ -18,10 +18,6 @@ pub struct ListLinksQuery {
     pub page: Option<u64>,
     /// Items per page
     pub per_page: Option<u64>,
-    /// Filter by node ID (shows links involving this node)
-    pub node_id: Option<Uuid>,
-    /// Filter by bandwidth (minimum)
-    pub min_bandwidth: Option<u64>,
 }
 
 /// List all links with optional filtering and pagination
@@ -58,7 +54,7 @@ pub async fn list_links(
         total,
         page,
         per_page,
-        total_pages: (total + per_page - 1) / per_page,
+        total_pages: total.div_ceil(per_page),
         has_next: page * per_page < total,
         has_prev: page > 1,
     };
@@ -89,7 +85,7 @@ pub async fn create_link(
     Json(request): Json<CreateLinkRequest>,
 ) -> ServerResult<Json<ApiResponse<Link>>> {
     let link = request
-        .to_link()
+        .into_link()
         .map_err(|e| ServerError::Validation(e.to_string()))?;
 
     // TODO: Save to datastore
@@ -147,6 +143,6 @@ pub async fn delete_link(Path(id): Path<Uuid>) -> ServerResult<Json<ApiResponse<
 
     Ok(Json(ApiResponse::success_with_message(
         (),
-        format!("Link {} deleted successfully", id),
+        format!("Link {id} deleted successfully"),
     )))
 }

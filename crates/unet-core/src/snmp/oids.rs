@@ -58,200 +58,193 @@ pub enum StandardOid {
 
 impl StandardOid {
     /// Get the OID string for this standard OID
-    pub fn oid(&self) -> &'static str {
+    #[must_use]
+    pub const fn oid(&self) -> &'static str {
         match self {
-            StandardOid::SysDescr => "1.3.6.1.2.1.1.1.0",
-            StandardOid::SysObjectId => "1.3.6.1.2.1.1.2.0",
-            StandardOid::SysUpTime => "1.3.6.1.2.1.1.3.0",
-            StandardOid::SysContact => "1.3.6.1.2.1.1.4.0",
-            StandardOid::SysName => "1.3.6.1.2.1.1.5.0",
-            StandardOid::SysLocation => "1.3.6.1.2.1.1.6.0",
-            StandardOid::SysServices => "1.3.6.1.2.1.1.7.0",
-            StandardOid::IfNumber => "1.3.6.1.2.1.2.1.0",
-            StandardOid::IfTable => "1.3.6.1.2.1.2.2.1",
-            StandardOid::IfIndex => "1.3.6.1.2.1.2.2.1.1",
-            StandardOid::IfDescr => "1.3.6.1.2.1.2.2.1.2",
-            StandardOid::IfType => "1.3.6.1.2.1.2.2.1.3",
-            StandardOid::IfMtu => "1.3.6.1.2.1.2.2.1.4",
-            StandardOid::IfSpeed => "1.3.6.1.2.1.2.2.1.5",
-            StandardOid::IfPhysAddress => "1.3.6.1.2.1.2.2.1.6",
-            StandardOid::IfAdminStatus => "1.3.6.1.2.1.2.2.1.7",
-            StandardOid::IfOperStatus => "1.3.6.1.2.1.2.2.1.8",
-            StandardOid::IfLastChange => "1.3.6.1.2.1.2.2.1.9",
-            StandardOid::IfInOctets => "1.3.6.1.2.1.2.2.1.10",
-            StandardOid::IfInUcastPkts => "1.3.6.1.2.1.2.2.1.11",
-            StandardOid::IfInErrors => "1.3.6.1.2.1.2.2.1.14",
-            StandardOid::IfOutOctets => "1.3.6.1.2.1.2.2.1.16",
-            StandardOid::IfOutUcastPkts => "1.3.6.1.2.1.2.2.1.17",
-            StandardOid::IfOutErrors => "1.3.6.1.2.1.2.2.1.20",
+            Self::SysDescr => "1.3.6.1.2.1.1.1.0",
+            Self::SysObjectId => "1.3.6.1.2.1.1.2.0",
+            Self::SysUpTime => "1.3.6.1.2.1.1.3.0",
+            Self::SysContact => "1.3.6.1.2.1.1.4.0",
+            Self::SysName => "1.3.6.1.2.1.1.5.0",
+            Self::SysLocation => "1.3.6.1.2.1.1.6.0",
+            Self::SysServices => "1.3.6.1.2.1.1.7.0",
+            Self::IfNumber => "1.3.6.1.2.1.2.1.0",
+            Self::IfTable => "1.3.6.1.2.1.2.2.1",
+            Self::IfIndex => "1.3.6.1.2.1.2.2.1.1",
+            Self::IfDescr => "1.3.6.1.2.1.2.2.1.2",
+            Self::IfType => "1.3.6.1.2.1.2.2.1.3",
+            Self::IfMtu => "1.3.6.1.2.1.2.2.1.4",
+            Self::IfSpeed => "1.3.6.1.2.1.2.2.1.5",
+            Self::IfPhysAddress => "1.3.6.1.2.1.2.2.1.6",
+            Self::IfAdminStatus => "1.3.6.1.2.1.2.2.1.7",
+            Self::IfOperStatus => "1.3.6.1.2.1.2.2.1.8",
+            Self::IfLastChange => "1.3.6.1.2.1.2.2.1.9",
+            Self::IfInOctets => "1.3.6.1.2.1.2.2.1.10",
+            Self::IfInUcastPkts => "1.3.6.1.2.1.2.2.1.11",
+            Self::IfInErrors => "1.3.6.1.2.1.2.2.1.14",
+            Self::IfOutOctets => "1.3.6.1.2.1.2.2.1.16",
+            Self::IfOutUcastPkts => "1.3.6.1.2.1.2.2.1.17",
+            Self::IfOutErrors => "1.3.6.1.2.1.2.2.1.20",
         }
     }
 
     /// Get description of this OID
-    pub fn description(&self) -> &'static str {
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
         match self {
-            StandardOid::SysDescr => "System description",
-            StandardOid::SysObjectId => "System object identifier",
-            StandardOid::SysUpTime => "System uptime in hundredths of seconds",
-            StandardOid::SysContact => "System contact information",
-            StandardOid::SysName => "System name",
-            StandardOid::SysLocation => "System location",
-            StandardOid::SysServices => "System services",
-            StandardOid::IfNumber => "Number of network interfaces",
-            StandardOid::IfTable => "Network interface table",
-            StandardOid::IfIndex => "Interface index",
-            StandardOid::IfDescr => "Interface description",
-            StandardOid::IfType => "Interface type",
-            StandardOid::IfMtu => "Interface MTU",
-            StandardOid::IfSpeed => "Interface speed in bits per second",
-            StandardOid::IfPhysAddress => "Interface physical address",
-            StandardOid::IfAdminStatus => "Interface administrative status",
-            StandardOid::IfOperStatus => "Interface operational status",
-            StandardOid::IfLastChange => "Interface last change time",
-            StandardOid::IfInOctets => "Interface input octets",
-            StandardOid::IfInUcastPkts => "Interface input unicast packets",
-            StandardOid::IfInErrors => "Interface input errors",
-            StandardOid::IfOutOctets => "Interface output octets",
-            StandardOid::IfOutUcastPkts => "Interface output unicast packets",
-            StandardOid::IfOutErrors => "Interface output errors",
+            Self::SysDescr => "System description",
+            Self::SysObjectId => "System object identifier",
+            Self::SysUpTime => "System uptime in hundredths of seconds",
+            Self::SysContact => "System contact information",
+            Self::SysName => "System name",
+            Self::SysLocation => "System location",
+            Self::SysServices => "System services",
+            Self::IfNumber => "Number of network interfaces",
+            Self::IfTable => "Network interface table",
+            Self::IfIndex => "Interface index",
+            Self::IfDescr => "Interface description",
+            Self::IfType => "Interface type",
+            Self::IfMtu => "Interface MTU",
+            Self::IfSpeed => "Interface speed in bits per second",
+            Self::IfPhysAddress => "Interface physical address",
+            Self::IfAdminStatus => "Interface administrative status",
+            Self::IfOperStatus => "Interface operational status",
+            Self::IfLastChange => "Interface last change time",
+            Self::IfInOctets => "Interface input octets",
+            Self::IfInUcastPkts => "Interface input unicast packets",
+            Self::IfInErrors => "Interface input errors",
+            Self::IfOutOctets => "Interface output octets",
+            Self::IfOutUcastPkts => "Interface output unicast packets",
+            Self::IfOutErrors => "Interface output errors",
         }
     }
 
     /// Get all standard system OIDs for basic device information
-    pub fn system_oids() -> Vec<StandardOid> {
+    #[must_use]
+    pub fn system_oids() -> Vec<Self> {
         vec![
-            StandardOid::SysDescr,
-            StandardOid::SysObjectId,
-            StandardOid::SysUpTime,
-            StandardOid::SysContact,
-            StandardOid::SysName,
-            StandardOid::SysLocation,
-            StandardOid::SysServices,
+            Self::SysDescr,
+            Self::SysObjectId,
+            Self::SysUpTime,
+            Self::SysContact,
+            Self::SysName,
+            Self::SysLocation,
+            Self::SysServices,
         ]
     }
 
     /// Get all interface table OIDs for interface monitoring
-    pub fn interface_oids() -> Vec<StandardOid> {
+    #[must_use]
+    pub fn interface_oids() -> Vec<Self> {
         vec![
-            StandardOid::IfNumber,
-            StandardOid::IfIndex,
-            StandardOid::IfDescr,
-            StandardOid::IfType,
-            StandardOid::IfMtu,
-            StandardOid::IfSpeed,
-            StandardOid::IfPhysAddress,
-            StandardOid::IfAdminStatus,
-            StandardOid::IfOperStatus,
-            StandardOid::IfLastChange,
-            StandardOid::IfInOctets,
-            StandardOid::IfInUcastPkts,
-            StandardOid::IfInErrors,
-            StandardOid::IfOutOctets,
-            StandardOid::IfOutUcastPkts,
-            StandardOid::IfOutErrors,
+            Self::IfNumber,
+            Self::IfIndex,
+            Self::IfDescr,
+            Self::IfType,
+            Self::IfMtu,
+            Self::IfSpeed,
+            Self::IfPhysAddress,
+            Self::IfAdminStatus,
+            Self::IfOperStatus,
+            Self::IfLastChange,
+            Self::IfInOctets,
+            Self::IfInUcastPkts,
+            Self::IfInErrors,
+            Self::IfOutOctets,
+            Self::IfOutUcastPkts,
+            Self::IfOutErrors,
         ]
     }
 }
 
-/// Vendor-specific OIDs for extended device information
+/// A vendor-specific OID entry
+///
+/// This design supports any vendor without requiring code changes.
+/// Vendors can be defined at runtime through configuration.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum VendorOid {
-    /// Cisco enterprise OIDs
-    Cisco {
-        /// Specific Cisco OID
-        oid: String,
-        /// Description of what this OID represents
-        description: String,
-    },
-    /// Juniper enterprise OIDs
-    Juniper {
-        /// Specific Juniper OID
-        oid: String,
-        /// Description of what this OID represents
-        description: String,
-    },
-    /// Arista enterprise OIDs
-    Arista {
-        /// Specific Arista OID
-        oid: String,
-        /// Description of what this OID represents
-        description: String,
-    },
-    /// Generic vendor OID
-    Generic {
-        /// Vendor name
-        vendor: String,
-        /// Specific OID
-        oid: String,
-        /// Description of what this OID represents
-        description: String,
-    },
+pub struct VendorOid {
+    /// Vendor name (e.g., "Cisco", "Juniper", "Custom Corp")
+    pub vendor: String,
+    /// Specific OID string
+    pub oid: String,
+    /// Description of what this OID represents
+    pub description: String,
 }
 
 impl VendorOid {
-    /// Get the OID string
-    pub fn oid(&self) -> &str {
-        match self {
-            VendorOid::Cisco { oid, .. } => oid,
-            VendorOid::Juniper { oid, .. } => oid,
-            VendorOid::Arista { oid, .. } => oid,
-            VendorOid::Generic { oid, .. } => oid,
+    /// Create a new vendor OID entry
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // Takes String parameters
+    pub fn new(vendor: String, oid: String, description: String) -> Self {
+        Self {
+            vendor,
+            oid,
+            description,
         }
+    }
+
+    /// Get the OID string
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // String deref coercion not const
+    pub fn oid(&self) -> &str {
+        &self.oid
     }
 
     /// Get the description
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // String deref coercion not const
     pub fn description(&self) -> &str {
-        match self {
-            VendorOid::Cisco { description, .. } => description,
-            VendorOid::Juniper { description, .. } => description,
-            VendorOid::Arista { description, .. } => description,
-            VendorOid::Generic { description, .. } => description,
-        }
+        &self.description
     }
 
     /// Get the vendor name
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)] // String deref coercion not const
     pub fn vendor(&self) -> &str {
-        match self {
-            VendorOid::Cisco { .. } => "Cisco",
-            VendorOid::Juniper { .. } => "Juniper",
-            VendorOid::Arista { .. } => "Arista",
-            VendorOid::Generic { vendor, .. } => vendor,
-        }
+        &self.vendor
     }
 
     /// Create common Cisco OIDs
-    pub fn cisco_common() -> Vec<VendorOid> {
+    #[must_use]
+    pub fn cisco_common() -> Vec<Self> {
         vec![
-            VendorOid::Cisco {
-                oid: "1.3.6.1.4.1.9.2.1.3.0".to_string(),
-                description: "Cisco CPU utilization".to_string(),
-            },
-            VendorOid::Cisco {
-                oid: "1.3.6.1.4.1.9.2.1.8.0".to_string(),
-                description: "Cisco memory utilization".to_string(),
-            },
-            VendorOid::Cisco {
-                oid: "1.3.6.1.4.1.9.9.13.1.3.1.3".to_string(),
-                description: "Cisco temperature sensor".to_string(),
-            },
+            Self::new(
+                "Cisco".to_string(),
+                "1.3.6.1.4.1.9.2.1.3.0".to_string(),
+                "Cisco CPU utilization".to_string(),
+            ),
+            Self::new(
+                "Cisco".to_string(),
+                "1.3.6.1.4.1.9.2.1.8.0".to_string(),
+                "Cisco memory utilization".to_string(),
+            ),
+            Self::new(
+                "Cisco".to_string(),
+                "1.3.6.1.4.1.9.9.13.1.3.1.3".to_string(),
+                "Cisco temperature sensor".to_string(),
+            ),
         ]
     }
 
     /// Create common Juniper OIDs
-    pub fn juniper_common() -> Vec<VendorOid> {
+    #[must_use]
+    pub fn juniper_common() -> Vec<Self> {
         vec![
-            VendorOid::Juniper {
-                oid: "1.3.6.1.4.1.2636.3.1.13.1.8".to_string(),
-                description: "Juniper CPU utilization".to_string(),
-            },
-            VendorOid::Juniper {
-                oid: "1.3.6.1.4.1.2636.3.1.13.1.11".to_string(),
-                description: "Juniper memory utilization".to_string(),
-            },
-            VendorOid::Juniper {
-                oid: "1.3.6.1.4.1.2636.3.1.13.1.7".to_string(),
-                description: "Juniper temperature".to_string(),
-            },
+            Self::new(
+                "Juniper".to_string(),
+                "1.3.6.1.4.1.2636.3.1.13.1.8".to_string(),
+                "Juniper CPU utilization".to_string(),
+            ),
+            Self::new(
+                "Juniper".to_string(),
+                "1.3.6.1.4.1.2636.3.1.13.1.11".to_string(),
+                "Juniper memory utilization".to_string(),
+            ),
+            Self::new(
+                "Juniper".to_string(),
+                "1.3.6.1.4.1.2636.3.1.13.1.7".to_string(),
+                "Juniper temperature".to_string(),
+            ),
         ]
     }
 }
@@ -277,10 +270,10 @@ impl Default for OidMap {
 
         // Populate with all standard OIDs
         for oid in StandardOid::system_oids() {
-            map.standard.insert(format!("{:?}", oid), oid);
+            map.standard.insert(format!("{oid:?}"), oid);
         }
         for oid in StandardOid::interface_oids() {
-            map.standard.insert(format!("{:?}", oid), oid);
+            map.standard.insert(format!("{oid:?}"), oid);
         }
 
         // Populate with common vendor OIDs
@@ -303,6 +296,7 @@ impl Default for OidMap {
 
 impl OidMap {
     /// Create new empty OID map
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -323,34 +317,34 @@ impl OidMap {
     }
 
     /// Get standard OID by name
+    #[must_use]
     pub fn get_standard(&self, name: &str) -> Option<&StandardOid> {
         self.standard.get(name)
     }
 
     /// Get vendor OID by name
+    #[must_use]
     pub fn get_vendor(&self, name: &str) -> Option<&VendorOid> {
         self.vendor.get(name)
     }
 
     /// Get custom OID by name
+    #[must_use]
     pub fn get_custom(&self, name: &str) -> Option<&str> {
-        self.custom.get(name).map(|s| s.as_str())
+        self.custom.get(name).map(std::string::String::as_str)
     }
 
     /// Resolve any OID name to its string representation
+    #[must_use]
     pub fn resolve(&self, name: &str) -> Option<String> {
-        if let Some(oid) = self.get_standard(name) {
-            Some(oid.oid().to_string())
-        } else if let Some(oid) = self.get_vendor(name) {
-            Some(oid.oid().to_string())
-        } else if let Some(oid) = self.get_custom(name) {
-            Some(oid.to_string())
-        } else {
-            None
-        }
+        self.get_standard(name)
+            .map(|oid| oid.oid().to_string())
+            .or_else(|| self.get_vendor(name).map(|oid| oid.oid().to_string()))
+            .or_else(|| self.get_custom(name).map(str::to_string))
     }
 
     /// Get all OID names in the map
+    #[must_use]
     pub fn list_names(&self) -> Vec<String> {
         let mut names = Vec::new();
         names.extend(self.standard.keys().cloned());
@@ -361,6 +355,7 @@ impl OidMap {
     }
 
     /// Get all standard OID names
+    #[must_use]
     pub fn list_standard(&self) -> Vec<String> {
         let mut names: Vec<String> = self.standard.keys().cloned().collect();
         names.sort();
@@ -368,6 +363,7 @@ impl OidMap {
     }
 
     /// Get all vendor OID names  
+    #[must_use]
     pub fn list_vendor(&self) -> Vec<String> {
         let mut names: Vec<String> = self.vendor.keys().cloned().collect();
         names.sort();
@@ -375,6 +371,7 @@ impl OidMap {
     }
 
     /// Get all custom OID names
+    #[must_use]
     pub fn list_custom(&self) -> Vec<String> {
         let mut names: Vec<String> = self.custom.keys().cloned().collect();
         names.sort();

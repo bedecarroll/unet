@@ -10,6 +10,7 @@ homepage.workspace = true
 description = "HTTP server for μNet network configuration management"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [[bin]]
 name = "unet-server"

@@ -245,73 +245,72 @@ impl Error {
     }
 
     /// Get the error code for this error type
-    pub fn error_code(&self) -> &'static str {
+    #[must_use]
+    pub const fn error_code(&self) -> &'static str {
         match self {
-            Error::Config { .. } => "CONFIG_ERROR",
-            Error::Database { .. } => "DATABASE_ERROR",
-            Error::Policy { .. } => "POLICY_ERROR",
-            Error::Template { .. } => "TEMPLATE_ERROR",
-            Error::Snmp { .. } => "SNMP_ERROR",
-            Error::Validation { .. } => "VALIDATION_ERROR",
-            Error::Network { .. } => "NETWORK_ERROR",
-            Error::Io { .. } => "IO_ERROR",
-            Error::Serialization { .. } => "SERIALIZATION_ERROR",
-            Error::Other { .. } => "OTHER_ERROR",
+            Self::Config { .. } => "CONFIG_ERROR",
+            Self::Database { .. } => "DATABASE_ERROR",
+            Self::Policy { .. } => "POLICY_ERROR",
+            Self::Template { .. } => "TEMPLATE_ERROR",
+            Self::Snmp { .. } => "SNMP_ERROR",
+            Self::Validation { .. } => "VALIDATION_ERROR",
+            Self::Network { .. } => "NETWORK_ERROR",
+            Self::Io { .. } => "IO_ERROR",
+            Self::Serialization { .. } => "SERIALIZATION_ERROR",
+            Self::Other { .. } => "OTHER_ERROR",
         }
     }
 
     /// Get a user-friendly error message
+    #[must_use]
     pub fn user_message(&self) -> String {
         match self {
-            Error::Config { message, .. } => {
-                format!("Configuration problem: {}", message)
+            Self::Config { message, .. } => {
+                format!("Configuration problem: {message}")
             }
-            Error::Database {
+            Self::Database {
                 operation, message, ..
             } => {
-                format!("Database problem during {}: {}", operation, message)
+                format!("Database problem during {operation}: {message}")
             }
-            Error::Policy { rule, message, .. } => {
-                format!("Policy rule '{}' failed: {}", rule, message)
+            Self::Policy { rule, message, .. } => {
+                format!("Policy rule '{rule}' failed: {message}")
             }
-            Error::Template {
+            Self::Template {
                 template, message, ..
             } => {
-                format!("Template '{}' failed: {}", template, message)
+                format!("Template '{template}' failed: {message}")
             }
-            Error::Snmp {
+            Self::Snmp {
                 target, message, ..
             } => {
-                format!("SNMP error for {}: {}", target, message)
+                format!("SNMP error for {target}: {message}")
             }
-            Error::Validation {
+            Self::Validation {
                 field,
                 message,
                 value,
-            } => {
-                if let Some(val) = value {
-                    format!("Invalid value '{}' for {}: {}", val, field, message)
-                } else {
-                    format!("Invalid {}: {}", field, message)
-                }
-            }
-            Error::Network {
+            } => value.as_ref().map_or_else(
+                || format!("Invalid {field}: {message}"),
+                |val| format!("Invalid value '{val}' for {field}: {message}"),
+            ),
+            Self::Network {
                 endpoint, message, ..
             } => {
-                format!("Network error connecting to {}: {}", endpoint, message)
+                format!("Network error connecting to {endpoint}: {message}")
             }
-            Error::Io { path, message, .. } => {
-                format!("File error with '{}': {}", path, message)
+            Self::Io { path, message, .. } => {
+                format!("File error with '{path}': {message}")
             }
-            Error::Serialization {
+            Self::Serialization {
                 format, message, ..
             } => {
-                format!("{} format error: {}", format, message)
+                format!("{format} format error: {message}")
             }
-            Error::Other {
+            Self::Other {
                 context, message, ..
             } => {
-                format!("Error in {}: {}", context, message)
+                format!("Error in {context}: {message}")
             }
         }
     }
@@ -319,108 +318,128 @@ impl Error {
     /// Log this error with appropriate level and context
     pub fn log(&self) {
         match self {
-            Error::Config { message, .. } => {
-                error!(error_code = self.error_code(), message = %message, "Configuration error");
-            }
-            Error::Database {
+            Self::Config { message, .. } => self.log_config_error(message),
+            Self::Database {
                 operation, message, ..
-            } => {
-                error!(
-                    error_code = self.error_code(),
-                    operation = %operation,
-                    message = %message,
-                    "Database error"
-                );
-            }
-            Error::Policy { rule, message, .. } => {
-                error!(
-                    error_code = self.error_code(),
-                    rule = %rule,
-                    message = %message,
-                    "Policy error"
-                );
-            }
-            Error::Template {
+            } => self.log_database_error(operation, message),
+            Self::Policy { rule, message, .. } => self.log_policy_error(rule, message),
+            Self::Template {
                 template, message, ..
-            } => {
-                error!(
-                    error_code = self.error_code(),
-                    template = %template,
-                    message = %message,
-                    "Template error"
-                );
-            }
-            Error::Snmp {
+            } => self.log_template_error(template, message),
+            Self::Snmp {
                 target, message, ..
-            } => {
-                error!(
-                    error_code = self.error_code(),
-                    target = %target,
-                    message = %message,
-                    "SNMP error"
-                );
-            }
-            Error::Validation {
+            } => self.log_snmp_error(target, message),
+            Self::Validation {
                 field,
                 message,
                 value,
-            } => {
-                if let Some(val) = value {
-                    error!(
-                        error_code = self.error_code(),
-                        field = %field,
-                        value = %val,
-                        message = %message,
-                        "Validation error"
-                    );
-                } else {
-                    error!(
-                        error_code = self.error_code(),
-                        field = %field,
-                        message = %message,
-                        "Validation error"
-                    );
-                }
-            }
-            Error::Network {
+            } => self.log_validation_error(field, message, value.as_ref()),
+            Self::Network {
                 endpoint, message, ..
-            } => {
-                error!(
-                    error_code = self.error_code(),
-                    endpoint = %endpoint,
-                    message = %message,
-                    "Network error"
-                );
-            }
-            Error::Io { path, message, .. } => {
-                error!(
-                    error_code = self.error_code(),
-                    path = %path,
-                    message = %message,
-                    "I/O error"
-                );
-            }
-            Error::Serialization {
+            } => self.log_network_error(endpoint, message),
+            Self::Io { path, message, .. } => self.log_io_error(path, message),
+            Self::Serialization {
                 format, message, ..
-            } => {
-                error!(
-                    error_code = self.error_code(),
-                    format = %format,
-                    message = %message,
-                    "Serialization error"
-                );
-            }
-            Error::Other {
+            } => self.log_serialization_error(format, message),
+            Self::Other {
                 context, message, ..
-            } => {
-                error!(
-                    error_code = self.error_code(),
-                    context = %context,
-                    message = %message,
-                    "Other error"
-                );
-            }
+            } => self.log_other_error(context, message),
         }
+    }
+
+    fn log_config_error(&self, message: &str) {
+        error!(error_code = self.error_code(), message = %message, "Configuration error");
+    }
+
+    fn log_database_error(&self, operation: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            operation = %operation,
+            message = %message,
+            "Database error"
+        );
+    }
+
+    fn log_policy_error(&self, rule: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            rule = %rule,
+            message = %message,
+            "Policy error"
+        );
+    }
+
+    fn log_template_error(&self, template: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            template = %template,
+            message = %message,
+            "Template error"
+        );
+    }
+
+    fn log_snmp_error(&self, target: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            target = %target,
+            message = %message,
+            "SNMP error"
+        );
+    }
+
+    fn log_validation_error(&self, field: &str, message: &str, value: Option<&String>) {
+        if let Some(val) = value {
+            error!(
+                error_code = self.error_code(),
+                field = %field,
+                value = %val,
+                message = %message,
+                "Validation error"
+            );
+        } else {
+            error!(
+                error_code = self.error_code(),
+                field = %field,
+                message = %message,
+                "Validation error"
+            );
+        }
+    }
+
+    fn log_network_error(&self, endpoint: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            endpoint = %endpoint,
+            message = %message,
+            "Network error"
+        );
+    }
+
+    fn log_io_error(&self, path: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            path = %path,
+            message = %message,
+            "I/O error"
+        );
+    }
+
+    fn log_serialization_error(&self, format: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            format = %format,
+            message = %message,
+            "Serialization error"
+        );
+    }
+
+    fn log_other_error(&self, context: &str, message: &str) {
+        error!(
+            error_code = self.error_code(),
+            context = %context,
+            message = %message,
+            "Other error"
+        );
     }
 }
 
@@ -451,12 +470,17 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Extension trait for Results to add error logging
 pub trait ErrorReporting<T> {
     /// Log the error if present and return the result
+    #[must_use]
     fn log_error(self) -> Self;
 
     /// Log the error with custom context and return the result
+    #[must_use]
     fn log_error_with_context(self, context: &str) -> Self;
 
     /// Convert error to user-friendly message
+    ///
+    /// # Errors
+    /// Returns an error with a user-friendly message if the original result was an error
     fn user_friendly(self) -> std::result::Result<T, String>;
 }
 

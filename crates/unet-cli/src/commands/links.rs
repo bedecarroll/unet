@@ -156,11 +156,11 @@ async fn add_link(
     // Build link
     let mut builder = LinkBuilder::new()
         .name(args.name)
-        .node_a_id(args.node_a_id)
+        .source_node_id(args.node_a_id)
         .node_a_interface(args.node_a_interface);
 
     if let Some(node_z_id) = args.node_z_id {
-        builder = builder.node_z_id(node_z_id);
+        builder = builder.dest_node_id(node_z_id);
     }
 
     if let Some(node_z_interface) = args.node_z_interface {
@@ -218,8 +218,8 @@ async fn list_links(
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {
-            offset: ((args.page - 1) * args.per_page) as usize,
-            limit: args.per_page as usize,
+            offset: usize::try_from((args.page - 1) * args.per_page)?,
+            limit: usize::try_from(args.per_page)?,
         }),
     };
 
@@ -255,7 +255,7 @@ async fn update_link(
     }
 
     if let Some(node_a_id) = args.node_a_id {
-        link.node_a_id = node_a_id;
+        link.source_node_id = node_a_id;
     }
 
     if let Some(node_a_interface) = args.node_a_interface {
@@ -263,7 +263,7 @@ async fn update_link(
     }
 
     if let Some(node_z_id) = args.node_z_id {
-        link.node_z_id = Some(node_z_id);
+        link.dest_node_id = Some(node_z_id);
     }
 
     if let Some(node_z_interface) = args.node_z_interface {

@@ -2,15 +2,11 @@
 //!
 //! CLI tool for μNet network configuration management.
 
-#![forbid(
-    clippy::all,
-    clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use migration::{Migrator, MigratorTrait as _};
+use sea_orm::{ConnectOptions, Database};
 use std::path::PathBuf;
 use tracing::{error, info};
 use unet_core::{config::Config, prelude::*};
@@ -65,7 +61,7 @@ impl core::str::FromStr for OutputFormat {
             "table" => Ok(Self::Table),
             "json" => Ok(Self::Json),
             "yaml" => Ok(Self::Yaml),
-            _ => return Err(format!("Invalid output format: {s}")),
+            _ => Err(format!("Invalid output format: {s}")),
         }
     }
 }
@@ -104,7 +100,7 @@ async fn main() -> Result<()> {
 
     // Override log level based on verbose flag
     if cli.verbose {
-        config.logging.level = "debug".to_owned();
+        "debug".clone_into(&mut config.logging.level);
     }
 
     // Initialize tracing with config
@@ -125,8 +121,6 @@ async fn main() -> Result<()> {
     }
 
     // Ensure database is initialized by running migrations
-    use migration::{Migrator, MigratorTrait as _};
-    use sea_orm::{ConnectOptions, Database};
 
     if cli.verbose {
         info!("Running database migrations...");
@@ -169,7 +163,7 @@ async fn main() -> Result<()> {
             commands::links::execute(link_cmd, datastore.as_ref(), cli.output).await
         }
         Commands::Policy(policy_cmd) => {
-            commands::policy::execute(policy_cmd, datastore.as_ref(), cli.output).await
+            commands::policy::execute(policy_cmd, datastore.as_ref()).await
         }
         Commands::Import(import_args) => {
             commands::import::execute(import_args, datastore.as_ref(), cli.output).await

@@ -215,8 +215,8 @@ async fn list_locations(
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {
-            offset: ((args.page - 1) * args.per_page) as usize,
-            limit: args.per_page as usize,
+            offset: usize::try_from((args.page - 1) * args.per_page)?,
+            limit: usize::try_from(args.per_page)?,
         }),
     };
 

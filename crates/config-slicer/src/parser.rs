@@ -3,8 +3,8 @@
 /// Placeholder for config parsers - will be implemented in Milestone 5
 pub mod placeholder {
     /// Placeholder function
-    #[expect(clippy::missing_const_for_fn)]
-    pub fn placeholder() {
+    #[inline]
+    pub const fn placeholder() {
         // Implementation pending
     }
 }

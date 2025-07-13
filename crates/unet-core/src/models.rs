@@ -197,7 +197,7 @@ impl From<String> for Vendor {
 }
 
 /// Network node/device representation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     /// Unique identifier for the node
     pub id: Uuid,
@@ -237,11 +237,12 @@ pub struct Node {
 
 impl Node {
     /// Creates a new node with minimal required fields
+    #[must_use]
     pub fn new(name: String, domain: String, vendor: Vendor, role: DeviceRole) -> Self {
         let fqdn = if domain.is_empty() {
             name.clone()
         } else {
-            format!("{}.{}", name, domain)
+            format!("{name}.{domain}")
         };
 
         Self {
@@ -266,6 +267,10 @@ impl Node {
     }
 
     /// Validates the node configuration
+    ///
+    /// # Errors
+    /// Returns an error if the node name is empty, contains invalid characters,
+    /// or if the domain format is invalid.
     pub fn validate(&self) -> Result<(), String> {
         // Validate name
         if self.name.is_empty() {
@@ -316,7 +321,8 @@ impl Node {
         };
     }
 
-    /// Gets a value from custom_data by path
+    /// Gets a value from `custom_data` by path
+    #[must_use]
     pub fn get_custom_data(&self, path: &str) -> Option<&Value> {
         // Simple dot-notation path traversal
         let parts: Vec<&str> = path.split('.').collect();
@@ -333,7 +339,11 @@ impl Node {
         Some(current)
     }
 
-    /// Sets a value in custom_data by path
+    /// Sets a value in `custom_data` by path
+    ///
+    /// # Errors
+    /// Returns an error if the path is empty, cannot navigate through non-object,
+    /// or cannot set value on non-object.
     pub fn set_custom_data(&mut self, path: &str, value: Value) -> Result<(), String> {
         let parts: Vec<&str> = path.split('.').collect();
         if parts.is_empty() {
@@ -351,21 +361,19 @@ impl Node {
             if i == parts.len() - 1 {
                 // Last part - set the value
                 if let Value::Object(obj) = current {
-                    obj.insert(part.to_string(), value);
+                    obj.insert((*part).to_string(), value);
                     return Ok(());
-                } else {
-                    return Err("Cannot set value on non-object".to_string());
                 }
+                return Err("Cannot set value on non-object".to_string());
+            }
+            // Navigate deeper, creating objects as needed
+            if let Value::Object(obj) = current {
+                let entry = obj
+                    .entry((*part).to_string())
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                current = entry;
             } else {
-                // Navigate deeper, creating objects as needed
-                if let Value::Object(obj) = current {
-                    let entry = obj
-                        .entry(part.to_string())
-                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
-                    current = entry;
-                } else {
-                    return Err("Cannot navigate through non-object".to_string());
-                }
+                return Err("Cannot navigate through non-object".to_string());
             }
         }
 
@@ -396,107 +404,128 @@ pub struct NodeBuilder {
 
 impl NodeBuilder {
     /// Creates a new node builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Sets the node ID (optional, will generate UUID if not provided)
-    pub fn id(mut self, id: Uuid) -> Self {
+    #[must_use]
+    pub const fn id(mut self, id: Uuid) -> Self {
         self.id = Some(id);
         self
     }
 
     /// Sets the node name (required)
+    #[must_use]
     pub fn name<S: Into<String>>(mut self, name: S) -> Self {
         self.name = Some(name.into());
         self
     }
 
     /// Sets the domain (required)
+    #[must_use]
     pub fn domain<S: Into<String>>(mut self, domain: S) -> Self {
         self.domain = Some(domain.into());
         self
     }
 
     /// Sets the vendor (required)
-    pub fn vendor(mut self, vendor: Vendor) -> Self {
+    #[must_use]
+    pub const fn vendor(mut self, vendor: Vendor) -> Self {
         self.vendor = Some(vendor);
         self
     }
 
     /// Sets the model (required)
+    #[must_use]
     pub fn model<S: Into<String>>(mut self, model: S) -> Self {
         self.model = Some(model.into());
         self
     }
 
     /// Sets the device role (required)
-    pub fn role(mut self, role: DeviceRole) -> Self {
+    #[must_use]
+    pub const fn role(mut self, role: DeviceRole) -> Self {
         self.role = Some(role);
         self
     }
 
     /// Sets the lifecycle state (optional, defaults to Planned)
-    pub fn lifecycle(mut self, lifecycle: Lifecycle) -> Self {
+    #[must_use]
+    pub const fn lifecycle(mut self, lifecycle: Lifecycle) -> Self {
         self.lifecycle = Some(lifecycle);
         self
     }
 
     /// Sets the management IP address (optional)
-    pub fn management_ip(mut self, ip: IpAddr) -> Self {
+    #[must_use]
+    pub const fn management_ip(mut self, ip: IpAddr) -> Self {
         self.management_ip = Some(ip);
         self
     }
 
     /// Sets the location ID (optional)
-    pub fn location_id(mut self, location_id: Uuid) -> Self {
+    #[must_use]
+    pub const fn location_id(mut self, location_id: Uuid) -> Self {
         self.location_id = Some(location_id);
         self
     }
 
     /// Sets the platform (optional)
+    #[must_use]
     pub fn platform<S: Into<String>>(mut self, platform: S) -> Self {
         self.platform = Some(platform.into());
         self
     }
 
     /// Sets the version (optional)
+    #[must_use]
     pub fn version<S: Into<String>>(mut self, version: S) -> Self {
         self.version = Some(version.into());
         self
     }
 
     /// Sets the serial number (optional)
+    #[must_use]
     pub fn serial_number<S: Into<String>>(mut self, serial_number: S) -> Self {
         self.serial_number = Some(serial_number.into());
         self
     }
 
     /// Sets the asset tag (optional)
+    #[must_use]
     pub fn asset_tag<S: Into<String>>(mut self, asset_tag: S) -> Self {
         self.asset_tag = Some(asset_tag.into());
         self
     }
 
     /// Sets the purchase date (optional)
+    #[must_use]
     pub fn purchase_date<S: Into<String>>(mut self, purchase_date: S) -> Self {
         self.purchase_date = Some(purchase_date.into());
         self
     }
 
     /// Sets the warranty expiration date (optional)
+    #[must_use]
     pub fn warranty_expires<S: Into<String>>(mut self, warranty_expires: S) -> Self {
         self.warranty_expires = Some(warranty_expires.into());
         self
     }
 
     /// Sets custom data (optional)
+    #[must_use]
     pub fn custom_data(mut self, custom_data: Value) -> Self {
         self.custom_data = Some(custom_data);
         self
     }
 
     /// Builds the node with validation
+    ///
+    /// # Errors
+    /// Returns an error if required fields (name, vendor, model, role) are missing,
+    /// or if the created node fails validation.
     pub fn build(self) -> Result<Node, String> {
         let name = self.name.ok_or("Name is required")?;
         let domain = self.domain.unwrap_or_default();
@@ -507,7 +536,7 @@ impl NodeBuilder {
         let fqdn = if domain.is_empty() {
             name.clone()
         } else {
-            format!("{}.{}", name, domain)
+            format!("{name}.{domain}")
         };
 
         let node = Node {
@@ -536,19 +565,18 @@ impl NodeBuilder {
 }
 
 /// Network link/connection between nodes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[allow(clippy::similar_names)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Link {
     /// Unique identifier for the link
     pub id: Uuid,
     /// Human-readable name/description for the link
     pub name: String,
     /// Node A identifier (required)
-    pub node_a_id: Uuid,
+    pub source_node_id: Uuid,
     /// Node A interface name
     pub node_a_interface: String,
     /// Node Z identifier (optional for internet circuits)
-    pub node_z_id: Option<Uuid>,
+    pub dest_node_id: Option<Uuid>,
     /// Node Z interface name (optional for internet circuits)
     pub node_z_interface: Option<String>,
     /// Link description
@@ -565,20 +593,21 @@ pub struct Link {
 
 impl Link {
     /// Creates a new link between two nodes
+    #[must_use]
     pub fn new(
         name: String,
-        node_a_id: Uuid,
-        node_a_interface: String,
-        node_z_id: Uuid,
-        node_z_interface: String,
+        source_node_id: Uuid,
+        source_interface: String,
+        target_node_id: Uuid,
+        target_interface: String,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
             name,
-            node_a_id,
-            node_a_interface,
-            node_z_id: Some(node_z_id),
-            node_z_interface: Some(node_z_interface),
+            source_node_id,
+            node_a_interface: source_interface,
+            dest_node_id: Some(target_node_id),
+            node_z_interface: Some(target_interface),
             description: None,
             bandwidth: None,
             link_type: None,
@@ -588,13 +617,18 @@ impl Link {
     }
 
     /// Creates a new internet circuit (single-ended link)
-    pub fn new_internet_circuit(name: String, node_a_id: Uuid, node_a_interface: String) -> Self {
+    #[must_use]
+    pub fn new_internet_circuit(
+        name: String,
+        source_node_id: Uuid,
+        node_a_interface: String,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             name,
-            node_a_id,
+            source_node_id,
             node_a_interface,
-            node_z_id: None,
+            dest_node_id: None,
             node_z_interface: None,
             description: None,
             bandwidth: None,
@@ -605,6 +639,10 @@ impl Link {
     }
 
     /// Validates the link configuration
+    ///
+    /// # Errors
+    /// Returns an error if the link name is empty, node interfaces are empty,
+    /// or if interface names have invalid format.
     pub fn validate(&self) -> Result<(), String> {
         // Validate name
         if self.name.is_empty() {
@@ -623,7 +661,7 @@ impl Link {
 
         // Check consistency for internet circuits
         if self.is_internet_circuit {
-            if self.node_z_id.is_some() {
+            if self.dest_node_id.is_some() {
                 return Err("Internet circuits cannot have node Z".to_string());
             }
             if self.node_z_interface.is_some() {
@@ -631,7 +669,7 @@ impl Link {
             }
         } else {
             // For regular links, both ends must be specified
-            if self.node_z_id.is_none() {
+            if self.dest_node_id.is_none() {
                 return Err("Regular links must have node Z".to_string());
             }
             if self.node_z_interface.is_none() {
@@ -649,7 +687,7 @@ impl Link {
             }
 
             // Prevent self-links
-            if Some(self.node_a_id) == self.node_z_id {
+            if Some(self.source_node_id) == self.dest_node_id {
                 return Err("Links cannot connect a node to itself".to_string());
             }
         }
@@ -658,21 +696,23 @@ impl Link {
     }
 
     /// Returns the other node ID if this is a bidirectional link
+    #[must_use]
     pub fn get_other_node_id(&self, node_id: Uuid) -> Option<Uuid> {
-        if self.node_a_id == node_id {
-            self.node_z_id
-        } else if Some(node_id) == self.node_z_id {
-            Some(self.node_a_id)
+        if self.source_node_id == node_id {
+            self.dest_node_id
+        } else if Some(node_id) == self.dest_node_id {
+            Some(self.source_node_id)
         } else {
             None
         }
     }
 
     /// Returns the interface name for the given node
+    #[must_use]
     pub fn get_interface_for_node(&self, node_id: Uuid) -> Option<&str> {
-        if self.node_a_id == node_id {
+        if self.source_node_id == node_id {
             Some(&self.node_a_interface)
-        } else if Some(node_id) == self.node_z_id {
+        } else if Some(node_id) == self.dest_node_id {
             self.node_z_interface.as_deref()
         } else {
             None
@@ -680,17 +720,20 @@ impl Link {
     }
 
     /// Checks if this link connects the two specified nodes
+    #[must_use]
     pub fn connects_nodes(&self, node1_id: Uuid, node2_id: Uuid) -> bool {
-        (self.node_a_id == node1_id && Some(node2_id) == self.node_z_id)
-            || (self.node_a_id == node2_id && Some(node1_id) == self.node_z_id)
+        (self.source_node_id == node1_id && Some(node2_id) == self.dest_node_id)
+            || (self.source_node_id == node2_id && Some(node1_id) == self.dest_node_id)
     }
 
     /// Checks if this link involves the specified node
+    #[must_use]
     pub fn involves_node(&self, node_id: Uuid) -> bool {
-        self.node_a_id == node_id || Some(node_id) == self.node_z_id
+        self.source_node_id == node_id || Some(node_id) == self.dest_node_id
     }
 
-    /// Gets a value from custom_data by path
+    /// Gets a value from `custom_data` by path
+    #[must_use]
     pub fn get_custom_data(&self, path: &str) -> Option<&Value> {
         // Simple dot-notation path traversal (same as Node)
         let parts: Vec<&str> = path.split('.').collect();
@@ -707,7 +750,11 @@ impl Link {
         Some(current)
     }
 
-    /// Sets a value in custom_data by path
+    /// Sets a value in `custom_data` by path
+    ///
+    /// # Errors
+    /// Returns an error if the path is empty, cannot navigate through non-object,
+    /// or cannot set value on non-object.
     pub fn set_custom_data(&mut self, path: &str, value: Value) -> Result<(), String> {
         let parts: Vec<&str> = path.split('.').collect();
         if parts.is_empty() {
@@ -725,21 +772,19 @@ impl Link {
             if i == parts.len() - 1 {
                 // Last part - set the value
                 if let Value::Object(obj) = current {
-                    obj.insert(part.to_string(), value);
+                    obj.insert((*part).to_string(), value);
                     return Ok(());
-                } else {
-                    return Err("Cannot set value on non-object".to_string());
                 }
+                return Err("Cannot set value on non-object".to_string());
+            }
+            // Navigate deeper, creating objects as needed
+            if let Value::Object(obj) = current {
+                let entry = obj
+                    .entry((*part).to_string())
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                current = entry;
             } else {
-                // Navigate deeper, creating objects as needed
-                if let Value::Object(obj) = current {
-                    let entry = obj
-                        .entry(part.to_string())
-                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
-                    current = entry;
-                } else {
-                    return Err("Cannot navigate through non-object".to_string());
-                }
+                return Err("Cannot navigate through non-object".to_string());
             }
         }
 
@@ -752,9 +797,9 @@ impl Link {
 pub struct LinkBuilder {
     id: Option<Uuid>,
     name: Option<String>,
-    node_a_id: Option<Uuid>,
+    source_node_id: Option<Uuid>,
     node_a_interface: Option<String>,
-    node_z_id: Option<Uuid>,
+    dest_node_id: Option<Uuid>,
     node_z_interface: Option<String>,
     description: Option<String>,
     bandwidth: Option<u64>,
@@ -765,80 +810,96 @@ pub struct LinkBuilder {
 
 impl LinkBuilder {
     /// Creates a new link builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Sets the link ID (optional, will generate UUID if not provided)
-    pub fn id(mut self, id: Uuid) -> Self {
+    #[must_use]
+    pub const fn id(mut self, id: Uuid) -> Self {
         self.id = Some(id);
         self
     }
 
     /// Sets the link name (required)
+    #[must_use]
     pub fn name<S: Into<String>>(mut self, name: S) -> Self {
         self.name = Some(name.into());
         self
     }
 
     /// Sets node A ID (required)
-    pub fn node_a_id(mut self, node_a_id: Uuid) -> Self {
-        self.node_a_id = Some(node_a_id);
+    #[must_use]
+    pub const fn source_node_id(mut self, source_node_id: Uuid) -> Self {
+        self.source_node_id = Some(source_node_id);
         self
     }
 
     /// Sets node A interface (required)
+    #[must_use]
     pub fn node_a_interface<S: Into<String>>(mut self, interface: S) -> Self {
         self.node_a_interface = Some(interface.into());
         self
     }
 
     /// Sets node Z ID (optional for internet circuits)
-    pub fn node_z_id(mut self, node_z_id: Uuid) -> Self {
-        self.node_z_id = Some(node_z_id);
+    #[must_use]
+    pub const fn dest_node_id(mut self, dest_node_id: Uuid) -> Self {
+        self.dest_node_id = Some(dest_node_id);
         self
     }
 
     /// Sets node Z interface (optional for internet circuits)
+    #[must_use]
     pub fn node_z_interface<S: Into<String>>(mut self, interface: S) -> Self {
         self.node_z_interface = Some(interface.into());
         self
     }
 
     /// Sets the description (optional)
+    #[must_use]
     pub fn description<S: Into<String>>(mut self, description: S) -> Self {
         self.description = Some(description.into());
         self
     }
 
     /// Sets the bandwidth (optional)
-    pub fn bandwidth(mut self, bandwidth: u64) -> Self {
+    #[must_use]
+    pub const fn bandwidth(mut self, bandwidth: u64) -> Self {
         self.bandwidth = Some(bandwidth);
         self
     }
 
     /// Sets the link type (optional)
+    #[must_use]
     pub fn link_type<S: Into<String>>(mut self, link_type: S) -> Self {
         self.link_type = Some(link_type.into());
         self
     }
 
     /// Sets whether this is an internet circuit (optional, defaults to false)
-    pub fn is_internet_circuit(mut self, is_internet_circuit: bool) -> Self {
+    #[must_use]
+    pub const fn is_internet_circuit(mut self, is_internet_circuit: bool) -> Self {
         self.is_internet_circuit = Some(is_internet_circuit);
         self
     }
 
     /// Sets custom data (optional)
+    #[must_use]
     pub fn custom_data(mut self, custom_data: Value) -> Self {
         self.custom_data = Some(custom_data);
         self
     }
 
     /// Builds the link with validation
+    ///
+    /// # Errors
+    /// Returns an error if required fields (name, `source_node_id`, `node_a_interface`) are missing,
+    /// or if the created link fails validation.
     pub fn build(self) -> Result<Link, String> {
         let name = self.name.ok_or("Name is required")?;
-        let node_a_id = self.node_a_id.ok_or("Node A ID is required")?;
+        let source_node_id = self.source_node_id.ok_or("Node A ID is required")?;
         let node_a_interface = self
             .node_a_interface
             .ok_or("Node A interface is required")?;
@@ -847,9 +908,9 @@ impl LinkBuilder {
         let link = Link {
             id: self.id.unwrap_or_else(Uuid::new_v4),
             name,
-            node_a_id,
+            source_node_id,
             node_a_interface,
-            node_z_id: self.node_z_id,
+            dest_node_id: self.dest_node_id,
             node_z_interface: self.node_z_interface,
             description: self.description,
             bandwidth: self.bandwidth,
@@ -864,7 +925,7 @@ impl LinkBuilder {
 }
 
 /// Physical or logical location in a hierarchy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Location {
     /// Unique identifier for the location
     pub id: Uuid,
@@ -886,6 +947,7 @@ pub struct Location {
 
 impl Location {
     /// Creates a new root location (no parent)
+    #[must_use]
     pub fn new_root(name: String, location_type: String) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -900,11 +962,12 @@ impl Location {
     }
 
     /// Creates a new child location with the given parent
-    pub fn new_child(name: String, location_type: String, parent_path: String) -> Self {
+    #[must_use]
+    pub fn new_child(name: String, location_type: String, parent_path: &str) -> Self {
         let path = if parent_path.is_empty() {
             name.clone()
         } else {
-            format!("{}/{}", parent_path, name)
+            format!("{parent_path}/{name}")
         };
 
         Self {
@@ -920,6 +983,10 @@ impl Location {
     }
 
     /// Validates the location configuration
+    ///
+    /// # Errors
+    /// Returns an error if the location name or type is empty, path is inconsistent,
+    /// or hierarchy constraints are violated.
     pub fn validate(&self) -> Result<(), String> {
         // Validate name
         if self.name.is_empty() {
@@ -962,6 +1029,7 @@ impl Location {
     }
 
     /// Gets the depth level in the hierarchy (0 for root)
+    #[must_use]
     pub fn get_depth(&self) -> usize {
         if self.path.is_empty() {
             0
@@ -971,6 +1039,7 @@ impl Location {
     }
 
     /// Gets all path components as a vector
+    #[must_use]
     pub fn get_path_components(&self) -> Vec<&str> {
         if self.path.is_empty() {
             Vec::new()
@@ -980,7 +1049,8 @@ impl Location {
     }
 
     /// Checks if this location is an ancestor of another location
-    pub fn is_ancestor_of(&self, other: &Location) -> bool {
+    #[must_use]
+    pub fn is_ancestor_of(&self, other: &Self) -> bool {
         other.path.starts_with(&format!("{}/", self.path))
             || (self.parent_id.is_none()
                 && other.parent_id.is_some()
@@ -988,21 +1058,25 @@ impl Location {
     }
 
     /// Checks if this location is a descendant of another location
-    pub fn is_descendant_of(&self, other: &Location) -> bool {
+    #[must_use]
+    pub fn is_descendant_of(&self, other: &Self) -> bool {
         other.is_ancestor_of(self)
     }
 
     /// Checks if this location is a direct child of another location
-    pub fn is_child_of(&self, other: &Location) -> bool {
+    #[must_use]
+    pub fn is_child_of(&self, other: &Self) -> bool {
         self.parent_id == Some(other.id)
     }
 
     /// Checks if this location is the direct parent of another location
-    pub fn is_parent_of(&self, other: &Location) -> bool {
+    #[must_use]
+    pub fn is_parent_of(&self, other: &Self) -> bool {
         other.is_child_of(self)
     }
 
-    /// Gets a value from custom_data by path
+    /// Gets a value from `custom_data` by path
+    #[must_use]
     pub fn get_custom_data(&self, path: &str) -> Option<&Value> {
         // Simple dot-notation path traversal (same as Node and Link)
         let parts: Vec<&str> = path.split('.').collect();
@@ -1019,7 +1093,11 @@ impl Location {
         Some(current)
     }
 
-    /// Sets a value in custom_data by path
+    /// Sets a value in `custom_data` by path
+    ///
+    /// # Errors
+    /// Returns an error if the path is empty, cannot navigate through non-object,
+    /// or cannot set value on non-object.
     pub fn set_custom_data(&mut self, path: &str, value: Value) -> Result<(), String> {
         let parts: Vec<&str> = path.split('.').collect();
         if parts.is_empty() {
@@ -1037,21 +1115,19 @@ impl Location {
             if i == parts.len() - 1 {
                 // Last part - set the value
                 if let Value::Object(obj) = current {
-                    obj.insert(part.to_string(), value);
+                    obj.insert((*part).to_string(), value);
                     return Ok(());
-                } else {
-                    return Err("Cannot set value on non-object".to_string());
                 }
+                return Err("Cannot set value on non-object".to_string());
+            }
+            // Navigate deeper, creating objects as needed
+            if let Value::Object(obj) = current {
+                let entry = obj
+                    .entry((*part).to_string())
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                current = entry;
             } else {
-                // Navigate deeper, creating objects as needed
-                if let Value::Object(obj) = current {
-                    let entry = obj
-                        .entry(part.to_string())
-                        .or_insert_with(|| Value::Object(serde_json::Map::new()));
-                    current = entry;
-                } else {
-                    return Err("Cannot navigate through non-object".to_string());
-                }
+                return Err("Cannot navigate through non-object".to_string());
             }
         }
 
@@ -1074,66 +1150,79 @@ pub struct LocationBuilder {
 
 impl LocationBuilder {
     /// Creates a new location builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Sets the location ID (optional, will generate UUID if not provided)
-    pub fn id(mut self, id: Uuid) -> Self {
+    #[must_use]
+    pub const fn id(mut self, id: Uuid) -> Self {
         self.id = Some(id);
         self
     }
 
     /// Sets the location name (required)
+    #[must_use]
     pub fn name<S: Into<String>>(mut self, name: S) -> Self {
         self.name = Some(name.into());
         self
     }
 
     /// Sets the location type (required)
+    #[must_use]
     pub fn location_type<S: Into<String>>(mut self, location_type: S) -> Self {
         self.location_type = Some(location_type.into());
         self
     }
 
     /// Sets the parent location ID (optional for root locations)
-    pub fn parent_id(mut self, parent_id: Uuid) -> Self {
+    #[must_use]
+    pub const fn parent_id(mut self, parent_id: Uuid) -> Self {
         self.parent_id = Some(parent_id);
         self
     }
 
     /// Sets the parent path for building the full path (optional for root locations)
+    #[must_use]
     pub fn parent_path<S: Into<String>>(mut self, parent_path: S) -> Self {
         self.parent_path = Some(parent_path.into());
         self
     }
 
     /// Sets the description (optional)
+    #[must_use]
     pub fn description<S: Into<String>>(mut self, description: S) -> Self {
         self.description = Some(description.into());
         self
     }
 
     /// Sets the address (optional)
+    #[must_use]
     pub fn address<S: Into<String>>(mut self, address: S) -> Self {
         self.address = Some(address.into());
         self
     }
 
     /// Sets custom data (optional)
+    #[must_use]
     pub fn custom_data(mut self, custom_data: Value) -> Self {
         self.custom_data = Some(custom_data);
         self
     }
 
     /// Builds the location with validation
+    ///
+    /// # Errors
+    /// Returns an error if required fields (name, `location_type`) are missing,
+    /// or if the created location fails validation.
     pub fn build(self) -> Result<Location, String> {
         let name = self.name.ok_or("Name is required")?;
         let location_type = self.location_type.ok_or("Location type is required")?;
 
         let path = match self.parent_path {
             Some(parent_path) if !parent_path.is_empty() => {
-                format!("{}/{}", parent_path, name)
+                format!("{parent_path}/{name}")
             }
             _ => name.clone(),
         };
@@ -1157,8 +1246,9 @@ impl LocationBuilder {
 /// Location hierarchy operations
 impl Location {
     /// Detects circular references in a location hierarchy
+    #[must_use]
     pub fn detect_circular_reference(
-        locations: &[Location],
+        locations: &[Self],
         potential_parent_id: Uuid,
         child_id: Uuid,
     ) -> bool {
@@ -1180,7 +1270,8 @@ impl Location {
     }
 
     /// Gets all ancestors of a location
-    pub fn get_ancestors<'a>(&self, all_locations: &'a [Location]) -> Vec<&'a Location> {
+    #[must_use]
+    pub fn get_ancestors<'a>(&self, all_locations: &'a [Self]) -> Vec<&'a Self> {
         let mut ancestors = Vec::new();
         let mut current = self;
 
@@ -1197,7 +1288,8 @@ impl Location {
     }
 
     /// Gets all descendants of a location
-    pub fn get_descendants<'a>(&self, all_locations: &'a [Location]) -> Vec<&'a Location> {
+    #[must_use]
+    pub fn get_descendants<'a>(&self, all_locations: &'a [Self]) -> Vec<&'a Self> {
         let mut descendants = Vec::new();
         let mut to_check = vec![self.id];
 
@@ -1214,7 +1306,8 @@ impl Location {
     }
 
     /// Gets direct children of a location
-    pub fn get_children<'a>(&self, all_locations: &'a [Location]) -> Vec<&'a Location> {
+    #[must_use]
+    pub fn get_children<'a>(&self, all_locations: &'a [Self]) -> Vec<&'a Self> {
         all_locations
             .iter()
             .filter(|l| l.parent_id == Some(self.id))
@@ -1740,21 +1833,21 @@ mod tests {
     // Link tests
     #[test]
     fn test_link_new() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
         assert_eq!(link.name, "link1");
-        assert_eq!(link.node_a_id, node_a_id);
+        assert_eq!(link.source_node_id, source_node_id);
         assert_eq!(link.node_a_interface, "eth0");
-        assert_eq!(link.node_z_id, Some(node_z_id));
+        assert_eq!(link.dest_node_id, Some(dest_node_id));
         assert_eq!(link.node_z_interface, Some("eth1".to_string()));
         assert!(!link.is_internet_circuit);
         assert!(link.custom_data.is_null());
@@ -1762,29 +1855,32 @@ mod tests {
 
     #[test]
     fn test_link_new_internet_circuit() {
-        let node_a_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
 
-        let link =
-            Link::new_internet_circuit("internet-link".to_string(), node_a_id, "eth0".to_string());
+        let link = Link::new_internet_circuit(
+            "internet-link".to_string(),
+            source_node_id,
+            "eth0".to_string(),
+        );
 
         assert_eq!(link.name, "internet-link");
-        assert_eq!(link.node_a_id, node_a_id);
+        assert_eq!(link.source_node_id, source_node_id);
         assert_eq!(link.node_a_interface, "eth0");
-        assert_eq!(link.node_z_id, None);
+        assert_eq!(link.dest_node_id, None);
         assert_eq!(link.node_z_interface, None);
         assert!(link.is_internet_circuit);
     }
 
     #[test]
     fn test_link_validation_success() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
@@ -1793,24 +1889,27 @@ mod tests {
 
     #[test]
     fn test_link_validation_internet_circuit_success() {
-        let node_a_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
 
-        let link =
-            Link::new_internet_circuit("internet-link".to_string(), node_a_id, "eth0".to_string());
+        let link = Link::new_internet_circuit(
+            "internet-link".to_string(),
+            source_node_id,
+            "eth0".to_string(),
+        );
 
         assert!(link.validate().is_ok());
     }
 
     #[test]
     fn test_link_validation_empty_name() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
@@ -1824,14 +1923,14 @@ mod tests {
 
     #[test]
     fn test_link_validation_empty_interface() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
@@ -1845,14 +1944,14 @@ mod tests {
 
     #[test]
     fn test_link_validation_invalid_interface() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "invalid@interface".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
@@ -1886,14 +1985,17 @@ mod tests {
 
     #[test]
     fn test_link_validation_internet_circuit_with_node_z() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
-        let mut link =
-            Link::new_internet_circuit("internet-link".to_string(), node_a_id, "eth0".to_string());
+        let mut link = Link::new_internet_circuit(
+            "internet-link".to_string(),
+            source_node_id,
+            "eth0".to_string(),
+        );
 
-        // Manually set node_z_id (invalid for internet circuit)
-        link.node_z_id = Some(node_z_id);
+        // Manually set dest_node_id (invalid for internet circuit)
+        link.dest_node_id = Some(dest_node_id);
 
         assert!(link.validate().is_err());
         assert!(
@@ -1905,12 +2007,15 @@ mod tests {
 
     #[test]
     fn test_link_validation_regular_link_missing_node_z() {
-        let node_a_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
 
-        let mut link =
-            Link::new_internet_circuit("regular-link".to_string(), node_a_id, "eth0".to_string());
+        let mut link = Link::new_internet_circuit(
+            "regular-link".to_string(),
+            source_node_id,
+            "eth0".to_string(),
+        );
 
-        // Make it not an internet circuit but leave node_z_id as None
+        // Make it not an internet circuit but leave dest_node_id as None
         link.is_internet_circuit = false;
 
         assert!(link.validate().is_err());
@@ -1923,91 +2028,91 @@ mod tests {
 
     #[test]
     fn test_link_get_other_node_id() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
-        assert_eq!(link.get_other_node_id(node_a_id), Some(node_z_id));
-        assert_eq!(link.get_other_node_id(node_z_id), Some(node_a_id));
+        assert_eq!(link.get_other_node_id(source_node_id), Some(dest_node_id));
+        assert_eq!(link.get_other_node_id(dest_node_id), Some(source_node_id));
         assert_eq!(link.get_other_node_id(other_node_id), None);
     }
 
     #[test]
     fn test_link_get_interface_for_node() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
-        assert_eq!(link.get_interface_for_node(node_a_id), Some("eth0"));
-        assert_eq!(link.get_interface_for_node(node_z_id), Some("eth1"));
+        assert_eq!(link.get_interface_for_node(source_node_id), Some("eth0"));
+        assert_eq!(link.get_interface_for_node(dest_node_id), Some("eth1"));
         assert_eq!(link.get_interface_for_node(other_node_id), None);
     }
 
     #[test]
     fn test_link_connects_nodes() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
-        assert!(link.connects_nodes(node_a_id, node_z_id));
-        assert!(link.connects_nodes(node_z_id, node_a_id));
-        assert!(!link.connects_nodes(node_a_id, other_node_id));
-        assert!(!link.connects_nodes(other_node_id, node_z_id));
+        assert!(link.connects_nodes(source_node_id, dest_node_id));
+        assert!(link.connects_nodes(dest_node_id, source_node_id));
+        assert!(!link.connects_nodes(source_node_id, other_node_id));
+        assert!(!link.connects_nodes(other_node_id, dest_node_id));
     }
 
     #[test]
     fn test_link_involves_node() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
         let other_node_id = Uuid::new_v4();
 
         let link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
-        assert!(link.involves_node(node_a_id));
-        assert!(link.involves_node(node_z_id));
+        assert!(link.involves_node(source_node_id));
+        assert!(link.involves_node(dest_node_id));
         assert!(!link.involves_node(other_node_id));
     }
 
     #[test]
     fn test_link_custom_data() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let mut link = Link::new(
             "link1".to_string(),
-            node_a_id,
+            source_node_id,
             "eth0".to_string(),
-            node_z_id,
+            dest_node_id,
             "eth1".to_string(),
         );
 
@@ -2026,14 +2131,14 @@ mod tests {
 
     #[test]
     fn test_link_builder_success() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = LinkBuilder::new()
             .name("core-link")
-            .node_a_id(node_a_id)
+            .source_node_id(source_node_id)
             .node_a_interface("GigabitEthernet0/0/1")
-            .node_z_id(node_z_id)
+            .dest_node_id(dest_node_id)
             .node_z_interface("GigabitEthernet0/0/2")
             .description("Core network link")
             .bandwidth(1_000_000_000) // 1 Gbps
@@ -2042,9 +2147,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(link.name, "core-link");
-        assert_eq!(link.node_a_id, node_a_id);
+        assert_eq!(link.source_node_id, source_node_id);
         assert_eq!(link.node_a_interface, "GigabitEthernet0/0/1");
-        assert_eq!(link.node_z_id, Some(node_z_id));
+        assert_eq!(link.dest_node_id, Some(dest_node_id));
         assert_eq!(
             link.node_z_interface,
             Some("GigabitEthernet0/0/2".to_string())
@@ -2057,11 +2162,11 @@ mod tests {
 
     #[test]
     fn test_link_builder_internet_circuit() {
-        let node_a_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
 
         let link = LinkBuilder::new()
             .name("internet-circuit")
-            .node_a_id(node_a_id)
+            .source_node_id(source_node_id)
             .node_a_interface("eth0")
             .is_internet_circuit(true)
             .bandwidth(100_000_000) // 100 Mbps
@@ -2069,9 +2174,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(link.name, "internet-circuit");
-        assert_eq!(link.node_a_id, node_a_id);
+        assert_eq!(link.source_node_id, source_node_id);
         assert_eq!(link.node_a_interface, "eth0");
-        assert_eq!(link.node_z_id, None);
+        assert_eq!(link.dest_node_id, None);
         assert_eq!(link.node_z_interface, None);
         assert!(link.is_internet_circuit);
         assert_eq!(link.bandwidth, Some(100_000_000));
@@ -2081,7 +2186,7 @@ mod tests {
     fn test_link_builder_missing_required_fields() {
         let result = LinkBuilder::new()
             .name("incomplete-link")
-            // Missing node_a_id and node_a_interface
+            // Missing source_node_id and node_a_interface
             .build();
 
         assert!(result.is_err());
@@ -2090,11 +2195,11 @@ mod tests {
 
     #[test]
     fn test_link_builder_validation_failure() {
-        let node_a_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
 
         let result = LinkBuilder::new()
             .name("") // Invalid empty name
-            .node_a_id(node_a_id)
+            .source_node_id(source_node_id)
             .node_a_interface("eth0")
             .build();
 
@@ -2104,14 +2209,14 @@ mod tests {
 
     #[test]
     fn test_link_serde() {
-        let node_a_id = Uuid::new_v4();
-        let node_z_id = Uuid::new_v4();
+        let source_node_id = Uuid::new_v4();
+        let dest_node_id = Uuid::new_v4();
 
         let link = LinkBuilder::new()
             .name("test-link")
-            .node_a_id(node_a_id)
+            .source_node_id(source_node_id)
             .node_a_interface("eth0")
-            .node_z_id(node_z_id)
+            .dest_node_id(dest_node_id)
             .node_z_interface("eth1")
             .build()
             .unwrap();
@@ -2120,9 +2225,9 @@ mod tests {
         let deserialized: Link = serde_json::from_str(&json).unwrap();
 
         assert_eq!(link.name, deserialized.name);
-        assert_eq!(link.node_a_id, deserialized.node_a_id);
+        assert_eq!(link.source_node_id, deserialized.source_node_id);
         assert_eq!(link.node_a_interface, deserialized.node_a_interface);
-        assert_eq!(link.node_z_id, deserialized.node_z_id);
+        assert_eq!(link.dest_node_id, deserialized.dest_node_id);
         assert_eq!(link.node_z_interface, deserialized.node_z_interface);
     }
 

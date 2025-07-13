@@ -15,7 +15,9 @@ use uuid::Uuid;
 /// Context for policy evaluation containing node data
 #[derive(Debug, Clone)]
 pub struct EvaluationContext {
+    /// Node data from the datastore
     pub node_data: JsonValue,
+    /// Optional derived data from SNMP polling or other sources
     pub derived_data: Option<JsonValue>,
 }
 
@@ -23,26 +25,41 @@ pub struct EvaluationContext {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EvaluationResult {
     /// Policy condition was met and action should be executed
-    Satisfied { action: Action },
+    Satisfied {
+        /// Action to execute
+        action: Action,
+    },
     /// Policy condition was not met
     NotSatisfied,
     /// Policy evaluation failed due to an error
-    Error { message: String },
+    Error {
+        /// Error message describing the failure
+        message: String,
+    },
 }
 
 /// Result of action execution
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ActionResult {
     /// Action executed successfully
-    Success { message: String },
+    Success {
+        /// Success message
+        message: String,
+    },
     /// Action failed compliance check
     ComplianceFailure {
+        /// Field that failed compliance
         field: String,
+        /// Expected value
         expected: JsonValue,
+        /// Actual value found
         actual: JsonValue,
     },
     /// Action failed due to an error
-    Error { message: String },
+    Error {
+        /// Error message describing the failure
+        message: String,
+    },
 }
 
 /// Rollback information for reversing an action
@@ -50,11 +67,16 @@ pub enum ActionResult {
 pub enum RollbackData {
     /// SET action rollback - contains the previous value of the field
     SetRollback {
+        /// Field that was modified
         field: FieldRef,
+        /// Previous value before modification
         previous_value: Option<JsonValue>,
     },
     /// APPLY action rollback - contains template that was applied
-    ApplyRollback { template_path: String },
+    ApplyRollback {
+        /// Template path that was applied
+        template_path: String,
+    },
     /// ASSERT action rollback - no rollback needed (read-only)
     AssertRollback,
 }
@@ -110,43 +132,66 @@ pub struct PolicyExecutionResult {
 /// Priority level for policy rules
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PolicyPriority {
+    /// Low priority execution
     Low = 0,
+    /// Medium priority execution
     Medium = 1,
+    /// High priority execution
     High = 2,
+    /// Critical priority execution (highest)
     Critical = 3,
 }
 
-/// Policy rule with metadata for orchestration
+/// Policy rule with orchestration metadata for execution ordering
 #[derive(Debug, Clone)]
 pub struct OrchestrationRule {
+    /// The policy rule to execute
     pub rule: PolicyRule,
+    /// Priority level for execution ordering
     pub priority: PolicyPriority,
+    /// Numeric order within priority level
     pub order: u32,
+    /// Tags for categorization and filtering
     pub tags: Vec<String>,
 }
 
 /// Batch of policy evaluations for a node
 #[derive(Debug, Clone)]
 pub struct EvaluationBatch {
+    /// Unique identifier of the node being evaluated
     pub node_id: Uuid,
+    /// Evaluation context with node data and state
     pub context: EvaluationContext,
+    /// List of policy rules to evaluate in order
     pub rules: Vec<OrchestrationRule>,
+    /// Unique identifier for this evaluation batch
     pub batch_id: String,
+    /// Timestamp when the batch was created
     pub created_at: Instant,
 }
 
 /// Aggregated results for a node's policy evaluation
 #[derive(Debug, Clone)]
 pub struct AggregatedResult {
+    /// Unique identifier of the evaluated node
     pub node_id: Uuid,
+    /// Unique identifier of the evaluation batch
     pub batch_id: String,
+    /// Total number of policy rules evaluated
     pub total_rules: usize,
+    /// Number of rules that passed/were satisfied
     pub satisfied_rules: usize,
+    /// Number of rules that failed compliance checks
     pub failed_rules: usize,
+    /// Number of rules that encountered execution errors
     pub error_rules: usize,
+    /// Number of compliance violations found
     pub compliance_failures: usize,
+    /// Total time taken to execute all rules
     pub execution_duration: Duration,
+    /// Detailed results for each policy rule execution
     pub results: Vec<PolicyExecutionResult>,
+    /// Human-readable summary of the evaluation
     pub summary: String,
 }
 
@@ -178,24 +223,42 @@ pub struct PolicyOrchestrator {
     pending_batches: HashMap<Uuid, EvaluationBatch>,
 }
 
+impl Default for PolicyOrchestrator {
+    fn default() -> Self {
+        Self::new(OrchestrationConfig {
+            max_concurrent: 10,
+            cache_ttl: Duration::from_secs(300), // 5 minutes
+            batch_timeout: Duration::from_secs(30),
+            enable_caching: true,
+        })
+    }
+}
+
 /// Policy evaluation engine
 pub struct PolicyEvaluator;
 
 impl PolicyEvaluator {
     /// Evaluate a single policy rule against the given context
+    ///
+    /// # Errors
+    /// Returns an error if condition evaluation fails.
     pub fn evaluate_rule(
         rule: &PolicyRule,
         context: &EvaluationContext,
     ) -> Result<EvaluationResult, PolicyError> {
-        match Self::evaluate_condition(&rule.condition, context)? {
-            true => Ok(EvaluationResult::Satisfied {
+        if Self::evaluate_condition(&rule.condition, context)? {
+            Ok(EvaluationResult::Satisfied {
                 action: rule.action.clone(),
-            }),
-            false => Ok(EvaluationResult::NotSatisfied),
+            })
+        } else {
+            Ok(EvaluationResult::NotSatisfied)
         }
     }
 
     /// Execute a single policy rule (evaluate condition and execute action if satisfied)
+    ///
+    /// # Errors
+    /// Returns an error if condition evaluation or action execution fails.
     pub async fn execute_rule(
         rule: &PolicyRule,
         context: &EvaluationContext,
@@ -219,6 +282,9 @@ impl PolicyEvaluator {
     }
 
     /// Execute multiple policy rules against the given context
+    ///
+    /// # Errors
+    /// Returns an error if rule execution fails for any rule.
     pub async fn execute_rules(
         rules: &[PolicyRule],
         context: &EvaluationContext,
@@ -244,7 +310,7 @@ impl PolicyEvaluator {
     ) -> Result<ActionExecutionResult, PolicyError> {
         match action {
             Action::Assert { field, expected } => {
-                let result = Self::execute_assert_action(field, expected, context).await?;
+                let result = Self::execute_assert_action(field, expected, context)?;
                 Ok(ActionExecutionResult {
                     result,
                     rollback_data: Some(RollbackData::AssertRollback),
@@ -266,20 +332,8 @@ impl PolicyEvaluator {
         }
     }
 
-    /// Execute a specific action (legacy method for compatibility)
-    async fn execute_action(
-        action: &Action,
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
-    ) -> Result<ActionResult, PolicyError> {
-        let result =
-            Self::execute_action_with_rollback(action, context, datastore, node_id).await?;
-        Ok(result.result)
-    }
-
     /// Execute ASSERT action - checks compliance by verifying field has expected value
-    async fn execute_assert_action(
+    fn execute_assert_action(
         field: &FieldRef,
         expected: &Value,
         context: &EvaluationContext,
@@ -289,7 +343,7 @@ impl PolicyEvaluator {
 
         if Self::json_values_equal(&actual_value, &expected_value) {
             Ok(ActionResult::Success {
-                message: format!("Compliance check passed: {} == {}", field, expected),
+                message: format!("Compliance check passed: {field} == {expected}"),
             })
         } else {
             Ok(ActionResult::ComplianceFailure {
@@ -300,7 +354,10 @@ impl PolicyEvaluator {
         }
     }
 
-    /// Execute SET action with rollback support - updates custom_data field with new value
+    /// Execute SET action with rollback support - updates `custom_data` field with new value
+    ///
+    /// # Errors
+    /// Returns an error if datastore operations fail or field validation fails.
     pub async fn execute_set_action_with_rollback(
         field: &FieldRef,
         value: &Value,
@@ -312,10 +369,7 @@ impl PolicyEvaluator {
         if field.path.is_empty() || field.path[0] != "custom_data" {
             return Ok(ActionExecutionResult {
                 result: ActionResult::Error {
-                    message: format!(
-                        "SET action only supports custom_data fields, got: {}",
-                        field
-                    ),
+                    message: format!("SET action only supports custom_data fields, got: {field}"),
                 },
                 rollback_data: None,
             });
@@ -349,7 +403,7 @@ impl PolicyEvaluator {
 
         Ok(ActionExecutionResult {
             result: ActionResult::Success {
-                message: format!("Successfully set {} to {}", field, value),
+                message: format!("Successfully set {field} to {value}"),
             },
             rollback_data: Some(RollbackData::SetRollback {
                 field: field.clone(),
@@ -358,21 +412,14 @@ impl PolicyEvaluator {
         })
     }
 
-    /// Execute SET action - updates custom_data field with new value (legacy method)
-    async fn execute_set_action(
-        field: &FieldRef,
-        value: &Value,
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
-    ) -> Result<ActionResult, PolicyError> {
-        let result =
-            Self::execute_set_action_with_rollback(field, value, context, datastore, node_id)
-                .await?;
-        Ok(result.result)
-    }
-
     /// Execute APPLY action with rollback support - assigns template to node for configuration generation
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The node cannot be found in the datastore
+    /// - The datastore operation fails
+    /// - Template assignment fails
     pub async fn execute_apply_template_action_with_rollback(
         template_path: &str,
         _context: &EvaluationContext,
@@ -425,9 +472,9 @@ impl PolicyEvaluator {
         Ok(ActionExecutionResult {
             result: ActionResult::Success {
                 message: if template_was_already_assigned {
-                    format!("Template '{}' was already assigned to node", template_path)
+                    format!("Template '{template_path}' was already assigned to node")
                 } else {
-                    format!("Successfully applied template '{}' to node", template_path)
+                    format!("Successfully applied template '{template_path}' to node")
                 },
             },
             rollback_data: if template_was_already_assigned {
@@ -438,23 +485,6 @@ impl PolicyEvaluator {
                 })
             },
         })
-    }
-
-    /// Execute APPLY action - assigns template to node for configuration generation (legacy method)
-    async fn execute_apply_template_action(
-        template_path: &str,
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
-    ) -> Result<ActionResult, PolicyError> {
-        let result = Self::execute_apply_template_action_with_rollback(
-            template_path,
-            context,
-            datastore,
-            node_id,
-        )
-        .await?;
-        Ok(result.result)
     }
 
     /// Helper function to set a nested field in JSON data
@@ -504,6 +534,13 @@ impl PolicyEvaluator {
     }
 
     /// Execute rollback operation for a single action
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The node cannot be found in the datastore
+    /// - The datastore operation fails
+    /// - Rollback data is invalid or corrupted
     pub async fn execute_rollback(
         rollback_data: &RollbackData,
         datastore: &dyn DataStore,
@@ -513,7 +550,9 @@ impl PolicyEvaluator {
             RollbackData::SetRollback {
                 field,
                 previous_value,
-            } => Self::rollback_set_action(field, previous_value, datastore, node_id).await,
+            } => {
+                Self::rollback_set_action(field, previous_value.as_ref(), datastore, node_id).await
+            }
             RollbackData::ApplyRollback { template_path } => {
                 Self::rollback_apply_action(template_path, datastore, node_id).await
             }
@@ -527,7 +566,7 @@ impl PolicyEvaluator {
     /// Rollback a SET action by restoring the previous value
     async fn rollback_set_action(
         field: &FieldRef,
-        previous_value: &Option<JsonValue>,
+        previous_value: Option<&JsonValue>,
         datastore: &dyn DataStore,
         node_id: &Uuid,
     ) -> Result<(), PolicyError> {
@@ -644,6 +683,13 @@ impl PolicyEvaluator {
     }
 
     /// Execute multiple rules with transaction support for rollback
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - Any rule evaluation fails
+    /// - Datastore operations fail
+    /// - Transaction creation or management fails
     pub async fn execute_rules_with_transaction(
         rules: &[PolicyRule],
         context: &EvaluationContext,
@@ -692,6 +738,11 @@ impl PolicyEvaluator {
     }
 
     /// Rollback a complete transaction
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if critical rollback operations fail
+    /// Note: Individual rollback failures are collected but don't stop the process
     pub async fn rollback_transaction(
         transaction: &PolicyTransaction,
         datastore: &dyn DataStore,
@@ -706,7 +757,7 @@ impl PolicyEvaluator {
                 Ok(()) => actions_rolled_back += 1,
                 Err(e) => {
                     rollback_failures += 1;
-                    error_messages.push(format!("Rollback failed: {}", e));
+                    error_messages.push(format!("Rollback failed: {e}"));
                 }
             }
         }
@@ -720,6 +771,12 @@ impl PolicyEvaluator {
     }
 
     /// Restore node to its original state before the transaction
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - Original state cannot be deserialized
+    /// - Datastore update operation fails
     pub async fn restore_original_state(
         transaction: &PolicyTransaction,
         datastore: &dyn DataStore,
@@ -743,6 +800,13 @@ impl PolicyEvaluator {
     }
 
     /// Evaluate multiple policy rules against the given context
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if any rule evaluation fails due to:
+    /// - Invalid field references
+    /// - Type mismatches in comparisons
+    /// - Invalid regex patterns
     pub fn evaluate_rules(
         rules: &[PolicyRule],
         context: &EvaluationContext,
@@ -778,7 +842,7 @@ impl PolicyEvaluator {
                 value,
             } => Self::evaluate_comparison(field, operator, value, context),
             Condition::Existence { field, is_null } => {
-                Self::evaluate_existence(field, *is_null, context)
+                Ok(Self::evaluate_existence(field, *is_null, context))
             }
         }
     }
@@ -818,15 +882,9 @@ impl PolicyEvaluator {
         }
     }
 
-    fn evaluate_existence(
-        field: &FieldRef,
-        is_null: bool,
-        context: &EvaluationContext,
-    ) -> Result<bool, PolicyError> {
-        match Self::resolve_field(field, context) {
-            Ok(value) => Ok(is_null == matches!(value, JsonValue::Null)),
-            Err(_) => Ok(is_null), // Field not found counts as null
-        }
+    fn evaluate_existence(field: &FieldRef, is_null: bool, context: &EvaluationContext) -> bool {
+        Self::resolve_field(field, context)
+            .map_or(is_null, |value| is_null == matches!(value, JsonValue::Null))
     }
 
     fn resolve_field(
@@ -857,18 +915,6 @@ impl PolicyEvaluator {
         }
     }
 
-    fn values_equal(actual: &JsonValue, expected: &Value) -> bool {
-        match (actual, expected) {
-            (JsonValue::String(a), Value::String(e)) => a == e,
-            (JsonValue::Number(a), Value::Number(e)) => a.as_f64() == Some(*e),
-            (JsonValue::Bool(a), Value::Boolean(e)) => a == e,
-            (JsonValue::Null, Value::Null) => true,
-            // FieldRef values need to be resolved before comparison
-            (_, Value::FieldRef(_)) => false, // This should be resolved before calling this function
-            _ => false,
-        }
-    }
-
     fn json_values_equal(actual: &JsonValue, expected: &JsonValue) -> bool {
         match (actual, expected) {
             (JsonValue::String(a), JsonValue::String(e)) => a == e,
@@ -876,29 +922,6 @@ impl PolicyEvaluator {
             (JsonValue::Bool(a), JsonValue::Bool(e)) => a == e,
             (JsonValue::Null, JsonValue::Null) => true,
             _ => false,
-        }
-    }
-
-    fn compare_values<F>(
-        actual: &JsonValue,
-        expected: &Value,
-        compare: F,
-    ) -> Result<bool, PolicyError>
-    where
-        F: Fn(f64, f64) -> bool,
-    {
-        match (actual, expected) {
-            (JsonValue::Number(a), Value::Number(e)) => {
-                let a_val = a.as_f64().ok_or_else(|| PolicyError::TypeMismatch {
-                    expected: "number".to_string(),
-                    actual: "invalid number".to_string(),
-                })?;
-                Ok(compare(a_val, *e))
-            }
-            _ => Err(PolicyError::TypeMismatch {
-                expected: "number".to_string(),
-                actual: format!("{:?}", actual),
-            }),
         }
     }
 
@@ -924,17 +947,7 @@ impl PolicyEvaluator {
             }
             _ => Err(PolicyError::TypeMismatch {
                 expected: "number".to_string(),
-                actual: format!("{:?}", actual),
-            }),
-        }
-    }
-
-    fn evaluate_contains(actual: &JsonValue, expected: &Value) -> Result<bool, PolicyError> {
-        match (actual, expected) {
-            (JsonValue::String(haystack), Value::String(needle)) => Ok(haystack.contains(needle)),
-            _ => Err(PolicyError::TypeMismatch {
-                expected: "string".to_string(),
-                actual: format!("{:?}", actual),
+                actual: format!("{actual:?}"),
             }),
         }
     }
@@ -949,22 +962,7 @@ impl PolicyEvaluator {
             }
             _ => Err(PolicyError::TypeMismatch {
                 expected: "string".to_string(),
-                actual: format!("{:?}", actual),
-            }),
-        }
-    }
-
-    fn evaluate_regex_match(actual: &JsonValue, expected: &Value) -> Result<bool, PolicyError> {
-        match (actual, expected) {
-            (JsonValue::String(text), Value::Regex(pattern)) => {
-                let regex = regex::Regex::new(pattern).map_err(|_| PolicyError::InvalidRegex {
-                    pattern: pattern.clone(),
-                })?;
-                Ok(regex.is_match(text))
-            }
-            _ => Err(PolicyError::TypeMismatch {
-                expected: "string".to_string(),
-                actual: format!("{:?}", actual),
+                actual: format!("{actual:?}"),
             }),
         }
     }
@@ -982,7 +980,7 @@ impl PolicyEvaluator {
             }
             _ => Err(PolicyError::TypeMismatch {
                 expected: "string".to_string(),
-                actual: format!("{:?}", actual),
+                actual: format!("{actual:?}"),
             }),
         }
     }
@@ -990,22 +988,13 @@ impl PolicyEvaluator {
 
 impl PolicyOrchestrator {
     /// Create a new policy orchestrator with the given configuration
+    #[must_use]
     pub fn new(config: OrchestrationConfig) -> Self {
         Self {
             config,
             cache: HashMap::new(),
             pending_batches: HashMap::new(),
         }
-    }
-
-    /// Create a default policy orchestrator with reasonable settings
-    pub fn default() -> Self {
-        Self::new(OrchestrationConfig {
-            max_concurrent: 10,
-            cache_ttl: Duration::from_secs(300), // 5 minutes
-            batch_timeout: Duration::from_secs(30),
-            enable_caching: true,
-        })
     }
 
     /// Add a batch of policy rules for evaluation
@@ -1034,6 +1023,12 @@ impl PolicyOrchestrator {
     }
 
     /// Execute all pending batches
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - Any batch execution fails
+    /// - Datastore operations fail during evaluation
     pub async fn execute_pending_batches(
         &mut self,
         datastore: &dyn DataStore,
@@ -1044,7 +1039,7 @@ impl PolicyOrchestrator {
         for (_node_id, batch) in batches {
             // Check cache first if enabled
             if self.config.enable_caching {
-                let cache_key = self.create_cache_key(&batch);
+                let cache_key = Self::create_cache_key(&batch);
                 if let Some(cached_result) = self.get_cached_result(&cache_key) {
                     results.push(cached_result);
                     continue;
@@ -1055,7 +1050,7 @@ impl PolicyOrchestrator {
 
             // Cache the result if enabled
             if self.config.enable_caching {
-                let cache_key = self.create_cache_key(&batch);
+                let cache_key = Self::create_cache_key(&batch);
                 self.cache_result(cache_key, &result);
             }
 
@@ -1066,6 +1061,13 @@ impl PolicyOrchestrator {
     }
 
     /// Execute a single evaluation batch
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - Rule evaluation fails
+    /// - Context creation fails
+    /// - Datastore operations fail
     pub async fn execute_batch(
         &self,
         batch: &EvaluationBatch,
@@ -1108,7 +1110,7 @@ impl PolicyOrchestrator {
         let execution_duration = start_time.elapsed();
         let total_rules = batch.rules.len();
 
-        let summary = self.create_summary(
+        let summary = Self::create_summary(
             total_rules,
             satisfied_count,
             failed_count,
@@ -1131,6 +1133,13 @@ impl PolicyOrchestrator {
     }
 
     /// Execute policies for a single node with orchestration
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - Batch scheduling fails
+    /// - Policy evaluation fails
+    /// - Datastore operations fail
     pub async fn evaluate_node_policies(
         &mut self,
         node_id: Uuid,
@@ -1150,6 +1159,12 @@ impl PolicyOrchestrator {
     }
 
     /// Start a background scheduler for automatic policy evaluation
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - Batch execution fails during scheduled runs
+    /// - Timer or interval management fails
     pub async fn start_scheduler(
         &mut self,
         interval_duration: Duration,
@@ -1163,16 +1178,14 @@ impl PolicyOrchestrator {
             // Clean expired cache entries
             self.clean_expired_cache();
 
-            // Check for batches that have timed out
-            let timed_out_nodes: Vec<Uuid> = self
+            // Check for batches that have timed out and execute them if any exist
+            let has_timed_out_batches = self
                 .pending_batches
                 .iter()
-                .filter(|(_, batch)| batch.created_at.elapsed() > self.config.batch_timeout)
-                .map(|(&node_id, _)| node_id)
-                .collect();
+                .any(|(_, batch)| batch.created_at.elapsed() > self.config.batch_timeout);
 
             // Execute timed out batches
-            if !timed_out_nodes.is_empty() {
+            if has_timed_out_batches {
                 let _results = self.execute_pending_batches(datastore).await?;
                 // Results could be logged or stored for monitoring
             }
@@ -1192,7 +1205,7 @@ impl PolicyOrchestrator {
     }
 
     /// Create a cache key for a batch
-    fn create_cache_key(&self, batch: &EvaluationBatch) -> String {
+    fn create_cache_key(batch: &EvaluationBatch) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -1238,7 +1251,6 @@ impl PolicyOrchestrator {
 
     /// Create a summary string for the aggregated result
     fn create_summary(
-        &self,
         total: usize,
         satisfied: usize,
         _failed: usize,
@@ -1246,18 +1258,21 @@ impl PolicyOrchestrator {
         compliance_failures: usize,
     ) -> String {
         let success_rate = if total > 0 {
-            (satisfied as f64 / total as f64) * 100.0
+            // Convert to f64 safely - usize fits in f64 for reasonable values
+            let satisfied_f64 = f64::from(u32::try_from(satisfied).unwrap_or(u32::MAX));
+            let total_f64 = f64::from(u32::try_from(total).unwrap_or(u32::MAX));
+            (satisfied_f64 / total_f64) * 100.0
         } else {
             0.0
         };
 
         format!(
-            "Policy evaluation: {}/{} rules satisfied ({:.1}% success). Failures: {} compliance, {} errors",
-            satisfied, total, success_rate, compliance_failures, error
+            "Policy evaluation: {satisfied}/{total} rules satisfied ({success_rate:.1}% success). Failures: {compliance_failures} compliance, {error} errors"
         )
     }
 
     /// Get current cache statistics
+    #[must_use]
     pub fn cache_stats(&self) -> HashMap<String, usize> {
         let mut stats = HashMap::new();
         stats.insert("total_entries".to_string(), self.cache.len());
@@ -1287,7 +1302,8 @@ impl Default for OrchestrationConfig {
 
 impl OrchestrationRule {
     /// Create a new orchestration rule with default priority and order
-    pub fn new(rule: PolicyRule) -> Self {
+    #[must_use]
+    pub const fn new(rule: PolicyRule) -> Self {
         Self {
             rule,
             priority: PolicyPriority::Medium,
@@ -1297,7 +1313,8 @@ impl OrchestrationRule {
     }
 
     /// Create a new orchestration rule with specified priority
-    pub fn with_priority(rule: PolicyRule, priority: PolicyPriority) -> Self {
+    #[must_use]
+    pub const fn with_priority(rule: PolicyRule, priority: PolicyPriority) -> Self {
         Self {
             rule,
             priority,
@@ -1307,7 +1324,12 @@ impl OrchestrationRule {
     }
 
     /// Create a new orchestration rule with priority and order
-    pub fn with_priority_and_order(rule: PolicyRule, priority: PolicyPriority, order: u32) -> Self {
+    #[must_use]
+    pub const fn with_priority_and_order(
+        rule: PolicyRule,
+        priority: PolicyPriority,
+        order: u32,
+    ) -> Self {
         Self {
             rule,
             priority,
@@ -1317,6 +1339,7 @@ impl OrchestrationRule {
     }
 
     /// Add tags to the orchestration rule
+    #[must_use]
     pub fn with_tags(mut self, tags: Vec<String>) -> Self {
         self.tags = tags;
         self
@@ -1325,7 +1348,8 @@ impl OrchestrationRule {
 
 impl EvaluationContext {
     /// Create a new evaluation context from node data
-    pub fn new(node_data: JsonValue) -> Self {
+    #[must_use]
+    pub const fn new(node_data: JsonValue) -> Self {
         Self {
             node_data,
             derived_data: None,
@@ -1333,7 +1357,8 @@ impl EvaluationContext {
     }
 
     /// Create a new evaluation context with both node and derived data
-    pub fn with_derived_data(node_data: JsonValue, derived_data: JsonValue) -> Self {
+    #[must_use]
+    pub const fn with_derived_data(node_data: JsonValue, derived_data: JsonValue) -> Self {
         Self {
             node_data,
             derived_data: Some(derived_data),
@@ -1343,6 +1368,7 @@ impl EvaluationContext {
 
 impl PolicyExecutionResult {
     /// Creates a new error result for a policy rule
+    #[must_use]
     pub fn new_error(rule_id: &str, message: String) -> Self {
         Self {
             rule: PolicyRule {
@@ -1365,39 +1391,41 @@ impl PolicyExecutionResult {
                 message: message.clone(),
             },
             action_result: Some(ActionExecutionResult {
-                result: ActionResult::Error {
-                    message: message.clone(),
-                },
+                result: ActionResult::Error { message },
                 rollback_data: None,
             }),
         }
     }
 
     /// Gets the rule ID if available
-    pub fn rule_id(&self) -> Option<&String> {
+    #[must_use]
+    pub const fn rule_id(&self) -> Option<&String> {
         self.rule.id.as_ref()
     }
 
     /// Checks if this result represents an error
-    pub fn is_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
         matches!(self.evaluation_result, EvaluationResult::Error { .. })
     }
 
     /// Checks if this result represents a satisfied policy
-    pub fn is_satisfied(&self) -> bool {
+    #[must_use]
+    pub const fn is_satisfied(&self) -> bool {
         matches!(self.evaluation_result, EvaluationResult::Satisfied { .. })
     }
 
     /// Checks if this result represents a compliance failure
+    #[must_use]
     pub fn is_compliance_failure(&self) -> bool {
-        if let Some(action_exec_result) = &self.action_result {
-            matches!(
-                action_exec_result.result,
-                ActionResult::ComplianceFailure { .. }
-            )
-        } else {
-            false
-        }
+        self.action_result
+            .as_ref()
+            .is_some_and(|action_exec_result| {
+                matches!(
+                    action_exec_result.result,
+                    ActionResult::ComplianceFailure { .. }
+                )
+            })
     }
 }
 
@@ -1736,7 +1764,7 @@ mod tests {
             created_at: Instant::now(),
         };
 
-        let cache_key = orchestrator.create_cache_key(&batch);
+        let cache_key = PolicyOrchestrator::create_cache_key(&batch);
         assert!(cache_key.starts_with("cache_"));
         assert!(cache_key.len() > 10); // Should be a reasonable length hash
     }
@@ -1745,7 +1773,7 @@ mod tests {
     fn test_summary_creation() {
         let orchestrator = PolicyOrchestrator::default();
 
-        let summary = orchestrator.create_summary(10, 8, 1, 1, 2);
+        let summary = PolicyOrchestrator::create_summary(10, 8, 1, 1, 2);
         assert!(summary.contains("8/10 rules satisfied"));
         assert!(summary.contains("80.0% success"));
         assert!(summary.contains("2 compliance"));
@@ -1816,7 +1844,7 @@ mod tests {
     #[tokio::test]
     async fn test_apply_action_rollback() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
+        use crate::models::{DeviceRole, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
 
@@ -1881,7 +1909,7 @@ mod tests {
     #[tokio::test]
     async fn test_transaction_rollback() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
+        use crate::models::{DeviceRole, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
 
@@ -2019,7 +2047,7 @@ mod tests {
     #[tokio::test]
     async fn test_rollback_with_missing_fields() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
+        use crate::models::{DeviceRole, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
 
@@ -2077,7 +2105,7 @@ mod tests {
     #[tokio::test]
     async fn test_original_state_restoration() {
         use crate::datastore::csv::CsvStore;
-        use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
+        use crate::models::{DeviceRole, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
 

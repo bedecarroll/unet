@@ -6,6 +6,32 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        Self::create_node_status_table(manager).await?;
+        Self::create_interface_status_table(manager).await?;
+        Self::create_polling_tasks_table(manager).await?;
+        Ok(())
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        // Drop tables in reverse order of creation
+        manager
+            .drop_table(Table::drop().table(PollingTasks::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(InterfaceStatus::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(NodeStatus::Table).to_owned())
+            .await?;
+
+        Ok(())
+    }
+}
+
+impl Migration {
+    async fn create_node_status_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         // Create node_status table
         manager
             .create_table(
@@ -65,6 +91,10 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        Ok(())
+    }
+
+    async fn create_interface_status_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         // Create interface_status table
         manager
             .create_table(
@@ -84,11 +114,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(InterfaceStatus::Index).integer().not_null())
                     .col(ColumnDef::new(InterfaceStatus::Name).text().not_null())
-                    .col(
-                        ColumnDef::new(InterfaceStatus::InterfaceType)
-                            .integer()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(InterfaceStatus::Type).integer().not_null())
                     .col(ColumnDef::new(InterfaceStatus::Mtu).integer())
                     .col(ColumnDef::new(InterfaceStatus::Speed).big_integer())
                     .col(ColumnDef::new(InterfaceStatus::PhysicalAddress).text())
@@ -142,6 +168,10 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        Ok(())
+    }
+
+    async fn create_polling_tasks_table(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         // Create polling_tasks table
         manager
             .create_table(
@@ -215,23 +245,6 @@ impl MigrationTrait for Migration {
 
         Ok(())
     }
-
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Drop tables in reverse order of creation
-        manager
-            .drop_table(Table::drop().table(PollingTasks::Table).to_owned())
-            .await?;
-
-        manager
-            .drop_table(Table::drop().table(InterfaceStatus::Table).to_owned())
-            .await?;
-
-        manager
-            .drop_table(Table::drop().table(NodeStatus::Table).to_owned())
-            .await?;
-
-        Ok(())
-    }
 }
 
 #[derive(DeriveIden)]
@@ -258,7 +271,7 @@ enum InterfaceStatus {
     NodeStatusId,
     Index,
     Name,
-    InterfaceType,
+    Type,
     Mtu,
     Speed,
     PhysicalAddress,
@@ -284,10 +297,4 @@ enum PollingTasks {
     LastSuccess,
     LastError,
     ConsecutiveFailures,
-}
-
-#[derive(DeriveIden)]
-enum Nodes {
-    Table,
-    Id,
 }

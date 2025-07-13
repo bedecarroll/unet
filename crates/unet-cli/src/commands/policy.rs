@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use unet_core::config::GitConfig;
 use unet_core::datastore::DataStore;
 use unet_core::policy::{EvaluationContext, PolicyEvaluator, PolicyLoader, PolicyParser};
+use unet_core::prelude::QueryOptions;
 use uuid::Uuid;
 
 #[derive(Subcommand)]
@@ -93,24 +94,17 @@ pub struct ShowPolicyArgs {
 }
 
 /// Execute policy commands
-pub async fn execute(
-    command: PolicyCommands,
-    datastore: &dyn DataStore,
-    output_format: crate::OutputFormat,
-) -> Result<()> {
+pub async fn execute(command: PolicyCommands, datastore: &dyn DataStore) -> Result<()> {
     match command {
-        PolicyCommands::Validate(args) => validate_policy(args, output_format).await,
-        PolicyCommands::Eval(args) => eval_policy(args, datastore, output_format).await,
-        PolicyCommands::Diff(args) => diff_policy(args, datastore, output_format).await,
-        PolicyCommands::List(args) => list_policies(args, output_format).await,
-        PolicyCommands::Show(args) => show_policy(args, output_format).await,
+        PolicyCommands::Validate(args) => validate_policy(&args),
+        PolicyCommands::Eval(args) => eval_policy(args, datastore).await,
+        PolicyCommands::Diff(args) => diff_policy(args, datastore).await,
+        PolicyCommands::List(args) => list_policies(&args),
+        PolicyCommands::Show(args) => show_policy(&args),
     }
 }
 
-async fn validate_policy(
-    args: ValidatePolicyArgs,
-    _output_format: crate::OutputFormat,
-) -> Result<()> {
+fn validate_policy(args: &ValidatePolicyArgs) -> Result<()> {
     println!("Validating policy file: {}", args.path.display());
 
     // Create a default GitConfig for the loader
@@ -143,7 +137,7 @@ async fn validate_policy(
         }
     } else if args.path.is_dir() {
         // Validate directory
-        let load_result = loader.load_policies_from_directory(&args.path).await?;
+        let load_result = loader.load_policies_from_directory(&args.path)?;
 
         println!("Validation summary:");
         println!("  Files processed: {}", load_result.total_files);
@@ -184,13 +178,35 @@ async fn validate_policy(
     Ok(())
 }
 
-async fn eval_policy(
-    args: EvalPolicyArgs,
-    datastore: &dyn DataStore,
-    output_format: crate::OutputFormat,
-) -> Result<()> {
+async fn eval_policy(args: EvalPolicyArgs, datastore: &dyn DataStore) -> Result<()> {
     println!("Evaluating policies from: {}", args.path.display());
 
+    let policies = load_policies_from_path(&args.path)?;
+    let nodes = get_evaluation_nodes(args.node_id, datastore).await?;
+
+    if nodes.is_empty() {
+        println!("No nodes found to evaluate policies against");
+        return Ok(());
+    }
+
+    println!(
+        "Evaluating {} policies against {} nodes...",
+        policies.iter().map(std::vec::Vec::len).sum::<usize>(),
+        nodes.len()
+    );
+
+    // Evaluate policies for each node
+    for node in &nodes {
+        evaluate_node_policies(node, &policies, &args)?;
+    }
+
+    Ok(())
+}
+
+/// Load policies from a file or directory path
+fn load_policies_from_path(
+    path: &std::path::Path,
+) -> Result<Vec<Vec<unet_core::policy::PolicyRule>>> {
     // Create a default GitConfig for the loader
     let git_config = GitConfig {
         policies_repo: None,
@@ -201,116 +217,118 @@ async fn eval_policy(
 
     let mut loader = PolicyLoader::new(git_config);
 
-    // Load policies
-    let policies = if args.path.is_file() {
-        let content = std::fs::read_to_string(&args.path)?;
+    if path.is_file() {
+        let content = std::fs::read_to_string(path)?;
         let rules = PolicyParser::parse_file(&content)?;
-        vec![rules]
-    } else if args.path.is_dir() {
-        let load_result = loader.load_policies_from_directory(&args.path).await?;
+        Ok(vec![rules])
+    } else if path.is_dir() {
+        let load_result = loader.load_policies_from_directory(path)?;
         if !load_result.errors.is_empty() {
             for (file_path, error) in &load_result.errors {
                 println!("\u{274c} Failed to load {}: {}", file_path.display(), error);
             }
             return Err(anyhow::anyhow!("Failed to load some policy files"));
         }
-        load_result.loaded.into_iter().map(|f| f.rules).collect()
+        Ok(load_result.loaded.into_iter().map(|f| f.rules).collect())
     } else {
-        return Err(anyhow::anyhow!(
-            "Path does not exist: {}",
-            args.path.display()
-        ));
-    };
+        Err(anyhow::anyhow!("Path does not exist: {}", path.display()))
+    }
+}
 
-    // Get nodes to evaluate against
-    let nodes = if let Some(node_id) = args.node_id {
+/// Get nodes to evaluate policies against
+async fn get_evaluation_nodes(
+    node_id: Option<uuid::Uuid>,
+    datastore: &dyn DataStore,
+) -> Result<Vec<unet_core::models::Node>> {
+    if let Some(node_id) = node_id {
         match datastore.get_node(&node_id).await {
-            Ok(Some(node)) => vec![node],
-            Ok(None) => {
-                return Err(anyhow::anyhow!("Node not found: {}", node_id));
-            }
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to get node: {}", e));
-            }
+            Ok(Some(node)) => Ok(vec![node]),
+            Ok(None) => Err(anyhow::anyhow!("Node not found: {}", node_id)),
+            Err(e) => Err(anyhow::anyhow!("Failed to get node: {}", e)),
         }
     } else {
         // Get all nodes
-        match datastore.list_nodes(&Default::default()).await {
-            Ok(paged_result) => paged_result.items,
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to list nodes: {}", e));
-            }
+        match datastore.list_nodes(&QueryOptions::default()).await {
+            Ok(paged_result) => Ok(paged_result.items),
+            Err(e) => Err(anyhow::anyhow!("Failed to list nodes: {}", e)),
         }
+    }
+}
+
+/// Evaluate policies for a single node
+fn evaluate_node_policies(
+    node: &unet_core::models::Node,
+    policies: &[Vec<unet_core::policy::PolicyRule>],
+    args: &EvalPolicyArgs,
+) -> Result<()> {
+    println!("\n--- Node: {} ({}) ---", node.name, node.id);
+
+    // Create evaluation context from node data
+    let node_json = serde_json::to_value(node)?;
+    let context = EvaluationContext {
+        node_data: node_json,
+        derived_data: None,
     };
 
-    if nodes.is_empty() {
-        println!("No nodes found to evaluate policies against");
-        return Ok(());
-    }
-
-    println!(
-        "Evaluating {} policies against {} nodes...",
-        policies.iter().map(|p| p.len()).sum::<usize>(),
-        nodes.len()
-    );
-
-    // Evaluate policies for each node
-    for node in &nodes {
-        println!("\n--- Node: {} ({}) ---", node.name, node.id);
-
-        // Create evaluation context from node data
-        let node_json = serde_json::to_value(node)?;
-        let context = EvaluationContext {
-            node_data: node_json,
-            derived_data: None,
-        };
-
-        for policy_rules in &policies {
-            for (rule_idx, rule) in policy_rules.iter().enumerate() {
-                if args.verbose {
-                    println!("Evaluating rule {}: {}", rule_idx + 1, rule);
-                }
-
-                match PolicyEvaluator::evaluate_rule(rule, &context) {
-                    Ok(evaluation_result) => {
-                        match evaluation_result {
-                            unet_core::policy::EvaluationResult::Satisfied { action } => {
-                                println!("  \u{2705} Rule {} condition matched", rule_idx + 1);
-
-                                if args.dry_run {
-                                    println!("  \u{1f50d} Would execute: {action}");
-                                } else {
-                                    // Note: For now, we'll just show what would be executed
-                                    // Full action execution requires additional integration
-                                    println!("  \u{1f50d} Would execute: {action}");
-                                }
-                            }
-                            unet_core::policy::EvaluationResult::NotSatisfied => {
-                                if args.verbose {
-                                    println!("  \u{23ed}\u{fe0f}  Rule {} condition not matched", rule_idx + 1);
-                                }
-                            }
-                            unet_core::policy::EvaluationResult::Error { message } => {
-                                println!("  \u{1f4a5} Rule {} error: {}", rule_idx + 1, message);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        println!("  \u{1f4a5} Failed to evaluate rule {}: {}", rule_idx + 1, e);
-                    }
-                }
+    for policy_rules in policies {
+        for (rule_idx, rule) in policy_rules.iter().enumerate() {
+            if args.verbose {
+                println!("Evaluating rule {}: {}", rule_idx + 1, rule);
             }
+
+            evaluate_single_rule(rule, rule_idx, &context, args);
         }
     }
 
     Ok(())
 }
 
-async fn diff_policy(
-    args: DiffPolicyArgs,
-    datastore: &dyn DataStore,
-    output_format: crate::OutputFormat,
-) -> Result<()> {
+/// Evaluate a single policy rule
+fn evaluate_single_rule(
+    rule: &unet_core::policy::PolicyRule,
+    rule_idx: usize,
+    context: &EvaluationContext,
+    args: &EvalPolicyArgs,
+) {
+    match PolicyEvaluator::evaluate_rule(rule, context) {
+        Ok(evaluation_result) => {
+            match evaluation_result {
+                unet_core::policy::EvaluationResult::Satisfied { action } => {
+                    println!("  \u{2705} Rule {} condition matched", rule_idx + 1);
+
+                    // Note: For now, we'll just show what would be executed
+                    // Full action execution requires additional integration
+                    let action_prefix = if args.dry_run {
+                        "Would execute (dry run)"
+                    } else {
+                        "Would execute"
+                    };
+                    println!("  \u{1f50d} {action_prefix}: {action}");
+                }
+                unet_core::policy::EvaluationResult::NotSatisfied => {
+                    if args.verbose {
+                        println!(
+                            "  \u{23ed}\u{fe0f}  Rule {} condition not matched",
+                            rule_idx + 1
+                        );
+                    }
+                }
+                unet_core::policy::EvaluationResult::Error { message } => {
+                    println!("  \u{1f4a5} Rule {} error: {}", rule_idx + 1, message);
+                }
+            }
+        }
+        Err(e) => {
+            println!(
+                "  \u{1f4a5} Failed to evaluate rule {}: {}",
+                rule_idx + 1,
+                e
+            );
+        }
+    }
+}
+
+async fn diff_policy(args: DiffPolicyArgs, datastore: &dyn DataStore) -> Result<()> {
     println!("Checking compliance for node: {}", args.node_id);
 
     // Get the specific node
@@ -340,7 +358,7 @@ async fn diff_policy(
         let rules = PolicyParser::parse_file(&content)?;
         vec![rules]
     } else if args.path.is_dir() {
-        let load_result = loader.load_policies_from_directory(&args.path).await?;
+        let load_result = loader.load_policies_from_directory(&args.path)?;
         if !load_result.errors.is_empty() {
             for (file_path, error) in &load_result.errors {
                 println!("\u{274c} Failed to load {}: {}", file_path.display(), error);
@@ -404,7 +422,11 @@ async fn diff_policy(
                     }
                     Err(e) => {
                         failed_checks += 1;
-                        println!("  \u{1f4a5} Rule {}: Error evaluating - {}", rule_idx + 1, e);
+                        println!(
+                            "  \u{1f4a5} Rule {}: Error evaluating - {}",
+                            rule_idx + 1,
+                            e
+                        );
                     }
                 }
             }
@@ -427,7 +449,7 @@ async fn diff_policy(
     Ok(())
 }
 
-async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat) -> Result<()> {
+fn list_policies(args: &ListPolicyArgs) -> Result<()> {
     println!("Listing policy files in: {}", args.directory.display());
 
     if !args.directory.exists() {
@@ -446,7 +468,7 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     };
 
     let mut loader = PolicyLoader::new(git_config);
-    let load_result = loader.load_policies_from_directory(&args.directory).await?;
+    let load_result = loader.load_policies_from_directory(&args.directory)?;
 
     if load_result.loaded.is_empty() && load_result.errors.is_empty() {
         println!("No policy files found in directory");
@@ -454,21 +476,15 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     }
 
     for policy_file in load_result.loaded {
+        println!(
+            "\u{1f4c4} {} ({} rules)",
+            policy_file.path.display(),
+            policy_file.rules.len()
+        );
         if args.verbose {
-            println!(
-                "\u{1f4c4} {} ({} rules)",
-                policy_file.path.display(),
-                policy_file.rules.len()
-            );
             for (i, rule) in policy_file.rules.iter().enumerate() {
                 println!("    Rule {}: {}", i + 1, rule);
             }
-        } else {
-            println!(
-                "\u{1f4c4} {} ({} rules)",
-                policy_file.path.display(),
-                policy_file.rules.len()
-            );
         }
     }
 
@@ -479,7 +495,7 @@ async fn list_policies(args: ListPolicyArgs, _output_format: crate::OutputFormat
     Ok(())
 }
 
-async fn show_policy(args: ShowPolicyArgs, _output_format: crate::OutputFormat) -> Result<()> {
+fn show_policy(args: &ShowPolicyArgs) -> Result<()> {
     println!("Policy file: {}", args.path.display());
 
     if !args.path.exists() {
@@ -512,25 +528,4 @@ async fn show_policy(args: ShowPolicyArgs, _output_format: crate::OutputFormat) 
     }
 
     Ok(())
-}
-
-// Helper functions for formatting
-fn format_condition(condition: &unet_core::policy::Condition) -> String {
-    condition.to_string()
-}
-
-fn format_action(action: &unet_core::policy::Action) -> String {
-    action.to_string()
-}
-
-fn format_field_ref(field_ref: &unet_core::policy::FieldRef) -> String {
-    field_ref.to_string()
-}
-
-fn format_comparison_op(op: &unet_core::policy::ComparisonOperator) -> String {
-    op.to_string()
-}
-
-fn format_value(value: &unet_core::policy::Value) -> String {
-    value.to_string()
 }

@@ -17,7 +17,7 @@ pub struct ApiResponse<T> {
 
 impl<T> ApiResponse<T> {
     /// Create a successful response
-    pub fn success(data: T) -> Self {
+    pub const fn success(data: T) -> Self {
         Self {
             data,
             success: true,
@@ -26,7 +26,7 @@ impl<T> ApiResponse<T> {
     }
 
     /// Create a successful response with message
-    pub fn success_with_message(data: T, message: String) -> Self {
+    pub const fn success_with_message(data: T, message: String) -> Self {
         Self {
             data,
             success: true,
@@ -48,27 +48,12 @@ pub struct ApiError {
 
 impl ApiError {
     /// Create a new API error
-    pub fn new(error: String, code: String) -> Self {
+    pub const fn new(error: String, code: String) -> Self {
         Self {
             error,
             code,
             success: false,
         }
-    }
-
-    /// Create a validation error
-    pub fn validation(message: String) -> Self {
-        Self::new(message, "VALIDATION_ERROR".to_string())
-    }
-
-    /// Create a not found error
-    pub fn not_found(resource: String) -> Self {
-        Self::new(format!("{} not found", resource), "NOT_FOUND".to_string())
-    }
-
-    /// Create an internal server error
-    pub fn internal(message: String) -> Self {
-        Self::new(message, "INTERNAL_ERROR".to_string())
     }
 }
 
@@ -83,13 +68,8 @@ pub struct NodeResponse {
 }
 
 impl NodeResponse {
-    /// Create from node and optional status
-    pub fn new(node: Node, status: Option<NodeStatus>) -> Self {
-        Self { node, status }
-    }
-
     /// Create from node only
-    pub fn from_node(node: Node) -> Self {
+    pub const fn from_node(node: Node) -> Self {
         Self { node, status: None }
     }
 }
@@ -119,7 +99,7 @@ pub struct CreateNodeRequest {
 
 impl CreateNodeRequest {
     /// Convert to Node using builder
-    pub fn to_node(self) -> Result<Node> {
+    pub fn into_node(self) -> Result<Node> {
         let mut builder = NodeBuilder::new()
             .name(self.name)
             .vendor(self.vendor)
@@ -197,7 +177,7 @@ pub struct CreateLocationRequest {
 
 impl CreateLocationRequest {
     /// Convert to Location using builder
-    pub fn to_location(self) -> Result<Location> {
+    pub fn into_location(self) -> Result<Location> {
         let mut builder = LocationBuilder::new()
             .name(self.name)
             .location_type(self.location_type);
@@ -225,10 +205,6 @@ pub struct UpdateLocationRequest {
     pub name: Option<String>,
     /// Location type (optional)
     pub location_type: Option<String>,
-    /// Parent location ID (optional)
-    pub parent_id: Option<Uuid>,
-    /// Custom data (optional)
-    pub custom_data: Option<serde_json::Value>,
 }
 
 /// Request to create a new link
@@ -252,14 +228,14 @@ pub struct CreateLinkRequest {
 
 impl CreateLinkRequest {
     /// Convert to Link using builder
-    pub fn to_link(self) -> Result<Link> {
+    pub fn into_link(self) -> Result<Link> {
         let mut builder = LinkBuilder::new()
             .name(self.name)
-            .node_a_id(self.node_a_id)
+            .source_node_id(self.node_a_id)
             .node_a_interface(self.interface_a);
 
         if let Some(node_z_id) = self.node_z_id {
-            builder = builder.node_z_id(node_z_id);
+            builder = builder.dest_node_id(node_z_id);
         }
 
         if let Some(interface_z) = self.interface_z {
@@ -295,10 +271,6 @@ pub struct UpdateLinkRequest {
     pub node_z_id: Option<Uuid>,
     /// Destination interface (optional)
     pub interface_z: Option<String>,
-    /// Link bandwidth in bits per second (optional)
-    pub bandwidth_bps: Option<u64>,
-    /// Custom data (optional)
-    pub custom_data: Option<serde_json::Value>,
 }
 
 /// Paginated response wrapper
@@ -320,17 +292,4 @@ pub struct PaginatedResponse<T> {
     pub has_prev: bool,
 }
 
-impl<T> PaginatedResponse<T> {
-    /// Create from PagedResult
-    pub fn from_paged_result(result: PagedResult<T>) -> Self {
-        Self {
-            data: result.items,
-            total: result.total_count as u64,
-            page: result.page as u64,
-            per_page: result.page_size as u64,
-            total_pages: result.total_pages as u64,
-            has_next: result.has_next,
-            has_prev: result.has_previous,
-        }
-    }
-}
+impl<T> PaginatedResponse<T> {}

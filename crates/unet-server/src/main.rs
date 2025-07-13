@@ -2,13 +2,7 @@
 //!
 //! REST API server for μNet network configuration management.
 
-#![forbid(
-    clippy::all,
-    clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 mod api;
 mod background;
 mod error;
@@ -39,7 +33,7 @@ struct Args {
     #[arg(short, long)]
     port: Option<u16>,
 
-    /// Database URL (SQLite)
+    /// Database URL (`SQLite`)
     #[arg(short, long, default_value = "sqlite://unet.db")]
     database_url: String,
 
@@ -76,10 +70,10 @@ async fn main() -> Result<()> {
     }
 
     // Override database URL from command line or use config
-    let database_url = if args.database_url != "sqlite://unet.db" {
-        args.database_url
-    } else {
+    let database_url = if args.database_url == "sqlite://unet.db" {
         config.database_url()
+    } else {
+        args.database_url
     };
 
     // Validate configuration before starting

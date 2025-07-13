@@ -102,13 +102,6 @@ impl MigrationTrait for Migration {
     }
 }
 
-// Import Location from the previous migration
-#[derive(DeriveIden)]
-enum Location {
-    Table,
-    Id,
-}
-
 #[derive(DeriveIden)]
 enum Node {
     Table,

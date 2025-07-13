@@ -14,7 +14,9 @@ pub struct PolicyParser;
 /// Errors that can occur during parsing
 #[derive(Debug)]
 pub struct ParseError {
+    /// Error message describing what went wrong
     pub message: String,
+    /// Optional location in source where error occurred (line, column)
     pub location: Option<(usize, usize)>,
 }
 
@@ -35,6 +37,13 @@ impl std::error::Error for ParseError {}
 
 impl PolicyParser {
     /// Parse a single policy rule from text
+    ///
+    /// # Errors
+    ///
+    /// Returns `ParseError` if:
+    /// - The input contains invalid syntax
+    /// - The rule structure is malformed
+    /// - Required components are missing
     pub fn parse_rule(input: &str) -> Result<PolicyRule, ParseError> {
         let pairs = PolicyGrammar::parse(Rule::rule, input).map_err(|e| ParseError {
             message: e.to_string(),
@@ -50,6 +59,13 @@ impl PolicyParser {
     }
 
     /// Parse multiple policy rules from a policy file
+    ///
+    /// # Errors
+    ///
+    /// Returns `ParseError` if:
+    /// - The file contains invalid syntax
+    /// - Any rule structure is malformed
+    /// - Required components are missing
     pub fn parse_file(input: &str) -> Result<Vec<PolicyRule>, ParseError> {
         let pairs = PolicyGrammar::parse(Rule::policy_file, input).map_err(|e| ParseError {
             message: e.to_string(),
@@ -158,8 +174,8 @@ impl PolicyParser {
 
     fn parse_comparison(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
-        let field = Self::parse_field_ref(inner.next().unwrap())?;
-        let operator = Self::parse_operator(inner.next().unwrap())?;
+        let field = Self::parse_field_ref(inner.next().unwrap());
+        let operator = Self::parse_operator(&inner.next().unwrap())?;
         let value = Self::parse_value(inner.next().unwrap())?;
 
         Ok(Condition::Comparison {
@@ -171,7 +187,7 @@ impl PolicyParser {
 
     fn parse_existence_check(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
-        let field = Self::parse_field_ref(inner.next().unwrap())?;
+        let field = Self::parse_field_ref(inner.next().unwrap());
 
         // Skip "IS" token - it's implicit in the grammar
         let mut is_null = true; // Default to IS NULL
@@ -216,7 +232,7 @@ impl PolicyParser {
         Ok(Condition::Existence { field, is_null })
     }
 
-    fn parse_operator(pair: Pair<Rule>) -> Result<ComparisonOperator, ParseError> {
+    fn parse_operator(pair: &Pair<Rule>) -> Result<ComparisonOperator, ParseError> {
         match pair.as_str() {
             "==" => Ok(ComparisonOperator::Equal),
             "!=" => Ok(ComparisonOperator::NotEqual),
@@ -233,9 +249,9 @@ impl PolicyParser {
         }
     }
 
-    fn parse_field_ref(pair: Pair<Rule>) -> Result<FieldRef, ParseError> {
+    fn parse_field_ref(pair: Pair<Rule>) -> FieldRef {
         let path = pair.into_inner().map(|p| p.as_str().to_string()).collect();
-        Ok(FieldRef { path })
+        FieldRef { path }
     }
 
     fn parse_value(pair: Pair<Rule>) -> Result<Value, ParseError> {
@@ -243,12 +259,10 @@ impl PolicyParser {
         match inner.as_rule() {
             Rule::string_literal => {
                 // Check if there's an inner string content
-                if let Some(content_pair) = inner.into_inner().next() {
-                    Ok(Value::String(content_pair.as_str().to_string()))
-                } else {
-                    // Empty string
-                    Ok(Value::String(String::new()))
-                }
+                inner.into_inner().next().map_or_else(
+                    || Ok(Value::String(String::new())),
+                    |content_pair| Ok(Value::String(content_pair.as_str().to_string())),
+                )
             }
             Rule::number_literal => {
                 let num = inner.as_str().parse::<f64>().map_err(|_| ParseError {
@@ -268,7 +282,7 @@ impl PolicyParser {
             }
             Rule::null_literal => Ok(Value::Null),
             Rule::field_ref => {
-                let field_ref = Self::parse_field_ref(inner)?;
+                let field_ref = Self::parse_field_ref(inner);
                 Ok(Value::FieldRef(field_ref))
             }
             _ => Err(ParseError {
@@ -293,7 +307,7 @@ impl PolicyParser {
 
     fn parse_assert_action(pair: Pair<Rule>) -> Result<Action, ParseError> {
         let mut inner = pair.into_inner();
-        let field = Self::parse_field_ref(inner.next().unwrap())?;
+        let field = Self::parse_field_ref(inner.next().unwrap());
         // "IS" token is implicit in the grammar
         let expected = Self::parse_value(inner.next().unwrap())?;
 
@@ -302,7 +316,7 @@ impl PolicyParser {
 
     fn parse_set_action(pair: Pair<Rule>) -> Result<Action, ParseError> {
         let mut inner = pair.into_inner();
-        let field = Self::parse_field_ref(inner.next().unwrap())?;
+        let field = Self::parse_field_ref(inner.next().unwrap());
         // "TO" token is implicit in the grammar
         let value = Self::parse_value(inner.next().unwrap())?;
 
@@ -316,16 +330,18 @@ impl PolicyParser {
         match inner.as_rule() {
             Rule::string_literal => {
                 // Extract the string content
-                if let Some(content_pair) = inner.into_inner().next() {
-                    Ok(Action::ApplyTemplate {
-                        template_path: content_pair.as_str().to_string(),
-                    })
-                } else {
-                    // Empty string
-                    Ok(Action::ApplyTemplate {
-                        template_path: String::new(),
-                    })
-                }
+                inner.into_inner().next().map_or_else(
+                    || {
+                        Ok(Action::ApplyTemplate {
+                            template_path: String::new(),
+                        })
+                    },
+                    |content_pair| {
+                        Ok(Action::ApplyTemplate {
+                            template_path: content_pair.as_str().to_string(),
+                        })
+                    },
+                )
             }
             _ => Err(ParseError {
                 message: format!(
@@ -387,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_parse_null_check() {
-        let input = r#"WHEN custom_data.location IS NOT NULL THEN SET node.location_id TO custom_data.location"#;
+        let input = r"WHEN custom_data.location IS NOT NULL THEN SET node.location_id TO custom_data.location";
         let result = PolicyParser::parse_rule(input);
         assert!(result.is_ok(), "Failed to parse null check: {:?}", result);
     }

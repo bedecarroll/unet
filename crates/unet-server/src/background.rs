@@ -29,7 +29,7 @@ impl BackgroundTasks {
     }
 
     /// Start all background tasks
-    pub async fn start(&self) {
+    pub fn start(&self) {
         info!("Starting background tasks");
 
         // Start policy evaluation task
@@ -87,7 +87,7 @@ impl PolicyEvaluationTask {
             .datastore
             .get_nodes_for_policy_evaluation()
             .await
-            .map_err(|e| format!("Failed to get nodes: {}", e))?;
+            .map_err(|e| format!("Failed to get nodes: {e}"))?;
 
         if nodes.is_empty() {
             debug!("No nodes found for policy evaluation");
@@ -102,8 +102,7 @@ impl PolicyEvaluationTask {
         // Load policies
         let policies = policy_service
             .load_policies()
-            .await
-            .map_err(|e| format!("Failed to load policies: {}", e))?;
+            .map_err(|e| format!("Failed to load policies: {e}"))?;
 
         if policies.is_empty() {
             debug!("No policies loaded for evaluation");
@@ -158,67 +157,6 @@ impl PolicyEvaluationTask {
             total_results,
             duration
         );
-
-        Ok(())
-    }
-}
-
-/// Background task for SNMP polling (existing functionality)
-pub struct SnmpPollingTask {
-    datastore: Arc<dyn DataStore + Send + Sync>,
-    interval_seconds: u64,
-}
-
-impl SnmpPollingTask {
-    /// Create a new SNMP polling task
-    pub fn new(datastore: Arc<dyn DataStore + Send + Sync>, interval_seconds: u64) -> Self {
-        Self {
-            datastore,
-            interval_seconds,
-        }
-    }
-
-    /// Run the SNMP polling task
-    pub async fn run(&self) {
-        info!(
-            "Starting SNMP polling background task with interval: {}s",
-            self.interval_seconds
-        );
-
-        // Wait a bit before starting the first poll
-        sleep(Duration::from_secs(15)).await;
-
-        let mut interval = interval(Duration::from_secs(self.interval_seconds));
-
-        loop {
-            interval.tick().await;
-
-            debug!("Running periodic SNMP polling");
-
-            if let Err(e) = self.poll_all_nodes().await {
-                error!("SNMP polling failed: {}", e);
-            }
-        }
-    }
-
-    /// Poll all nodes for SNMP data
-    async fn poll_all_nodes(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Get all nodes that need SNMP polling
-        let nodes = self
-            .datastore
-            .get_nodes_for_policy_evaluation()
-            .await
-            .map_err(|e| format!("Failed to get nodes: {}", e))?;
-
-        if nodes.is_empty() {
-            debug!("No nodes found for SNMP polling");
-            return Ok(());
-        }
-
-        info!("Polling {} nodes for SNMP data", nodes.len());
-
-        // TODO: Implement actual SNMP polling here
-        // For now, this is a placeholder for future SNMP integration
 
         Ok(())
     }

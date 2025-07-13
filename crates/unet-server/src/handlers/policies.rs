@@ -14,6 +14,7 @@ use crate::{
     server::AppState,
 };
 use unet_core::policy::{PolicyExecutionResult, PolicyRule};
+use unet_core::prelude::{DataStore, Node, PolicyService};
 
 /// Request to evaluate policies against a node
 #[derive(Debug, Deserialize)]
@@ -61,8 +62,6 @@ pub struct PolicyEvaluationSummary {
 pub struct PolicyResultsQuery {
     /// Filter by node ID
     pub node_id: Option<Uuid>,
-    /// Filter by rule ID
-    pub rule_id: Option<String>,
     /// Limit number of results
     pub limit: Option<usize>,
     /// Offset for pagination
@@ -80,6 +79,95 @@ pub struct PolicyResultsResponse {
     pub returned_count: usize,
 }
 
+/// Get nodes for policy evaluation based on request
+async fn get_nodes_for_evaluation(
+    datastore: &dyn DataStore,
+    node_ids: Option<&Vec<Uuid>>,
+) -> Result<Vec<Node>, ServerError> {
+    if let Some(node_ids) = node_ids {
+        let mut nodes = Vec::new();
+        for node_id in node_ids {
+            match datastore.get_node(node_id).await {
+                Ok(Some(node)) => nodes.push(node),
+                Ok(None) => {
+                    warn!("Node {} not found for policy evaluation", node_id);
+                }
+                Err(e) => {
+                    error!("Failed to get node {}: {}", node_id, e);
+                    return Err(ServerError::Internal(format!(
+                        "Failed to get node {node_id}: {e}"
+                    )));
+                }
+            }
+        }
+        Ok(nodes)
+    } else {
+        // Evaluate all nodes
+        match datastore.get_nodes_for_policy_evaluation().await {
+            Ok(nodes) => Ok(nodes),
+            Err(e) => {
+                error!("Failed to get nodes for policy evaluation: {}", e);
+                Err(ServerError::Internal(format!(
+                    "Failed to get nodes for policy evaluation: {e}"
+                )))
+            }
+        }
+    }
+}
+
+/// Process evaluation results for a single node
+async fn process_node_evaluation(
+    policy_service: &mut PolicyService,
+    datastore: &dyn DataStore,
+    node: &Node,
+    store_results: bool,
+    summary: &mut PolicyEvaluationSummary,
+    all_results: &mut HashMap<Uuid, Vec<PolicyExecutionResult>>,
+) {
+    match policy_service.evaluate_node(datastore, node).await {
+        Ok(results) => {
+            // Update summary statistics
+            for result in &results {
+                summary.total_rules += 1;
+
+                if result.is_error() {
+                    summary.error_rules += 1;
+                } else if result.is_satisfied() {
+                    summary.satisfied_rules += 1;
+                } else {
+                    summary.unsatisfied_rules += 1;
+                }
+
+                if result.is_compliance_failure() {
+                    summary.compliance_failures += 1;
+                }
+            }
+
+            // Store results if requested
+            if store_results {
+                if let Err(e) = policy_service
+                    .store_results(datastore, &node.id, &results)
+                    .await
+                {
+                    warn!("Failed to store policy results for node {}: {}", node.id, e);
+                }
+            }
+
+            all_results.insert(node.id, results);
+        }
+        Err(e) => {
+            error!("Failed to evaluate policies for node {}: {}", node.id, e);
+            // Create error result for this node
+            let error_result = PolicyExecutionResult::new_error(
+                "evaluation",
+                format!("Failed to evaluate policies: {e}"),
+            );
+            all_results.insert(node.id, vec![error_result]);
+            summary.error_rules += 1;
+        }
+    }
+}
+
 /// Evaluate policies against nodes
 pub async fn evaluate_policies(
     State(state): State<AppState>,
@@ -87,7 +175,7 @@ pub async fn evaluate_policies(
 ) -> ServerResult<Json<PolicyEvaluationResponse>> {
     info!(
         "Evaluating policies for {} nodes",
-        request.node_ids.as_ref().map(|ids| ids.len()).unwrap_or(0)
+        request.node_ids.as_ref().map_or(0, std::vec::Vec::len)
     );
 
     let start_time = std::time::Instant::now();
@@ -96,45 +184,14 @@ pub async fn evaluate_policies(
     let mut policy_service = state.policy_service.clone();
 
     // Determine which nodes to evaluate
-    let nodes = if let Some(node_ids) = &request.node_ids {
-        let mut nodes = Vec::new();
-        for node_id in node_ids {
-            match state.datastore.get_node(node_id).await {
-                Ok(Some(node)) => nodes.push(node),
-                Ok(None) => {
-                    warn!("Node {} not found for policy evaluation", node_id);
-                    continue;
-                }
-                Err(e) => {
-                    error!("Failed to get node {}: {}", node_id, e);
-                    return Err(ServerError::Internal(format!(
-                        "Failed to get node {}: {}",
-                        node_id, e
-                    )));
-                }
-            }
-        }
-        nodes
-    } else {
-        // Evaluate all nodes
-        match state.datastore.get_nodes_for_policy_evaluation().await {
-            Ok(nodes) => nodes,
-            Err(e) => {
-                error!("Failed to get nodes for policy evaluation: {}", e);
-                return Err(ServerError::Internal(format!(
-                    "Failed to get nodes for policy evaluation: {}",
-                    e
-                )));
-            }
-        }
-    };
+    let nodes = get_nodes_for_evaluation(&*state.datastore, request.node_ids.as_ref()).await?;
 
     if nodes.is_empty() {
         return Ok(Json(PolicyEvaluationResponse {
             results: HashMap::new(),
             nodes_evaluated: 0,
             policies_evaluated: 0,
-            evaluation_time_ms: start_time.elapsed().as_millis() as u64,
+            evaluation_time_ms: u64::try_from(start_time.elapsed().as_millis()).unwrap_or(0),
             summary: PolicyEvaluationSummary {
                 total_rules: 0,
                 satisfied_rules: 0,
@@ -149,13 +206,12 @@ pub async fn evaluate_policies(
     let policies = if let Some(policies) = request.policies {
         policies
     } else {
-        match policy_service.load_policies().await {
+        match policy_service.load_policies() {
             Ok(policies) => policies,
             Err(e) => {
                 error!("Failed to load policies: {}", e);
                 return Err(ServerError::Internal(format!(
-                    "Failed to load policies: {}",
-                    e
+                    "Failed to load policies: {e}"
                 )));
             }
         }
@@ -167,7 +223,7 @@ pub async fn evaluate_policies(
             results: HashMap::new(),
             nodes_evaluated: 0,
             policies_evaluated: 0,
-            evaluation_time_ms: start_time.elapsed().as_millis() as u64,
+            evaluation_time_ms: u64::try_from(start_time.elapsed().as_millis()).unwrap_or(0),
             summary: PolicyEvaluationSummary {
                 total_rules: 0,
                 satisfied_rules: 0,
@@ -189,48 +245,15 @@ pub async fn evaluate_policies(
 
     // Evaluate policies for each node
     for node in &nodes {
-        match policy_service.evaluate_node(&*state.datastore, node).await {
-            Ok(results) => {
-                // Update summary statistics
-                for result in &results {
-                    summary.total_rules += 1;
-
-                    if result.is_error() {
-                        summary.error_rules += 1;
-                    } else if result.is_satisfied() {
-                        summary.satisfied_rules += 1;
-                    } else {
-                        summary.unsatisfied_rules += 1;
-                    }
-
-                    if result.is_compliance_failure() {
-                        summary.compliance_failures += 1;
-                    }
-                }
-
-                // Store results if requested
-                if request.store_results.unwrap_or(true) {
-                    if let Err(e) = policy_service
-                        .store_results(&*state.datastore, &node.id, &results)
-                        .await
-                    {
-                        warn!("Failed to store policy results for node {}: {}", node.id, e);
-                    }
-                }
-
-                all_results.insert(node.id, results);
-            }
-            Err(e) => {
-                error!("Failed to evaluate policies for node {}: {}", node.id, e);
-                // Create error result for this node
-                let error_result = PolicyExecutionResult::new_error(
-                    "evaluation",
-                    format!("Failed to evaluate policies: {}", e),
-                );
-                all_results.insert(node.id, vec![error_result]);
-                summary.error_rules += 1;
-            }
-        }
+        process_node_evaluation(
+            &mut policy_service,
+            &*state.datastore,
+            node,
+            request.store_results.unwrap_or(true),
+            &mut summary,
+            &mut all_results,
+        )
+        .await;
     }
 
     let evaluation_time = start_time.elapsed();
@@ -246,7 +269,7 @@ pub async fn evaluate_policies(
         results: all_results,
         nodes_evaluated: nodes.len(),
         policies_evaluated: policies.len(),
-        evaluation_time_ms: evaluation_time.as_millis() as u64,
+        evaluation_time_ms: u64::try_from(evaluation_time.as_millis()).unwrap_or(0),
         summary,
     }))
 }
@@ -280,8 +303,7 @@ pub async fn get_policy_results(
             Err(e) => {
                 error!("Failed to get policy results for node {}: {}", node_id, e);
                 Err(ServerError::Internal(format!(
-                    "Failed to get policy results: {}",
-                    e
+                    "Failed to get policy results: {e}"
                 )))
             }
         }
@@ -297,7 +319,7 @@ pub async fn get_policy_results(
 
 /// Validate policy rules
 pub async fn validate_policies(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Json(policies): Json<Vec<PolicyRule>>,
 ) -> ServerResult<Json<serde_json::Value>> {
     info!("Validating {} policy rules", policies.len());
@@ -353,7 +375,7 @@ pub async fn get_policy_status(
     };
 
     let mut policy_service = state.policy_service.clone();
-    let policies_count = match policy_service.load_policies().await {
+    let policies_count = match policy_service.load_policies() {
         Ok(policies) => policies.len(),
         Err(e) => {
             warn!("Failed to load policies for status: {}", e);

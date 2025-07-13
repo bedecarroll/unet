@@ -42,6 +42,7 @@ pub struct NodeStatus {
 
 impl NodeStatus {
     /// Create new node status for a node
+    #[must_use]
     pub fn new(node_id: Uuid) -> Self {
         Self {
             node_id,
@@ -68,7 +69,7 @@ impl NodeStatus {
         self.last_error = None;
 
         // Store raw SNMP data
-        self.raw_snmp_data = snmp_data.clone();
+        self.raw_snmp_data.clone_from(&snmp_data);
 
         // Extract system information
         self.system_info = SystemInfo::from_snmp(&snmp_data);
@@ -102,6 +103,7 @@ impl NodeStatus {
     }
 
     /// Check if node status is stale (hasn't been updated recently)
+    #[must_use]
     pub fn is_stale(&self, max_age: std::time::Duration) -> bool {
         SystemTime::now()
             .duration_since(self.last_updated)
@@ -109,6 +111,7 @@ impl NodeStatus {
     }
 
     /// Get uptime from system info if available
+    #[must_use]
     pub fn uptime_seconds(&self) -> Option<u32> {
         self.system_info
             .as_ref()?
@@ -117,11 +120,13 @@ impl NodeStatus {
     }
 
     /// Get interface by name
+    #[must_use]
     pub fn get_interface(&self, name: &str) -> Option<&InterfaceStatus> {
         self.interfaces.iter().find(|iface| iface.name == name)
     }
 
     /// Get operational interfaces (admin up and oper up)
+    #[must_use]
     pub fn operational_interfaces(&self) -> Vec<&InterfaceStatus> {
         self.interfaces
             .iter()
@@ -134,7 +139,7 @@ impl NodeStatus {
 }
 
 /// System information derived from SNMP system group
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemInfo {
     /// System description (sysDescr)
     pub description: Option<String>,
@@ -154,8 +159,9 @@ pub struct SystemInfo {
 
 impl SystemInfo {
     /// Extract system information from SNMP data
+    #[must_use]
     pub fn from_snmp(snmp_data: &HashMap<String, SnmpValue>) -> Option<Self> {
-        let mut system_info = SystemInfo {
+        let mut system_info = Self {
             description: None,
             object_id: None,
             uptime_ticks: None,
@@ -168,57 +174,45 @@ impl SystemInfo {
         let mut has_data = false;
 
         // Extract system description
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.1.0") {
-            if let SnmpValue::String(desc) = value {
-                system_info.description = Some(desc.clone());
-                has_data = true;
-            }
+        if let Some(SnmpValue::String(desc)) = snmp_data.get("1.3.6.1.2.1.1.1.0") {
+            system_info.description = Some(desc.clone());
+            has_data = true;
         }
 
         // Extract system object ID
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.2.0") {
-            if let SnmpValue::Oid(oid) = value {
-                system_info.object_id = Some(oid.clone());
-                has_data = true;
-            }
+        if let Some(SnmpValue::Oid(oid)) = snmp_data.get("1.3.6.1.2.1.1.2.0") {
+            system_info.object_id = Some(oid.clone());
+            has_data = true;
         }
 
         // Extract system uptime
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.3.0") {
-            if let SnmpValue::TimeTicks(ticks) = value {
-                system_info.uptime_ticks = Some(*ticks);
-                has_data = true;
-            }
+        if let Some(SnmpValue::TimeTicks(ticks)) = snmp_data.get("1.3.6.1.2.1.1.3.0") {
+            system_info.uptime_ticks = Some(*ticks);
+            has_data = true;
         }
 
         // Extract system contact
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.4.0") {
-            if let SnmpValue::String(contact) = value {
-                system_info.contact = Some(contact.clone());
-                has_data = true;
-            }
+        if let Some(SnmpValue::String(contact)) = snmp_data.get("1.3.6.1.2.1.1.4.0") {
+            system_info.contact = Some(contact.clone());
+            has_data = true;
         }
 
         // Extract system name
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.5.0") {
-            if let SnmpValue::String(name) = value {
-                system_info.name = Some(name.clone());
-                has_data = true;
-            }
+        if let Some(SnmpValue::String(name)) = snmp_data.get("1.3.6.1.2.1.1.5.0") {
+            system_info.name = Some(name.clone());
+            has_data = true;
         }
 
         // Extract system location
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.6.0") {
-            if let SnmpValue::String(location) = value {
-                system_info.location = Some(location.clone());
-                has_data = true;
-            }
+        if let Some(SnmpValue::String(location)) = snmp_data.get("1.3.6.1.2.1.1.6.0") {
+            system_info.location = Some(location.clone());
+            has_data = true;
         }
 
         // Extract system services
-        if let Some(value) = snmp_data.get("1.3.6.1.2.1.1.7.0") {
-            if let SnmpValue::Integer(services) = value {
-                system_info.services = Some(*services as u32);
+        if let Some(SnmpValue::Integer(services)) = snmp_data.get("1.3.6.1.2.1.1.7.0") {
+            if let Ok(services_u32) = u32::try_from(*services) {
+                system_info.services = Some(services_u32);
                 has_data = true;
             }
         }
@@ -228,7 +222,7 @@ impl SystemInfo {
 }
 
 /// Status of a network interface
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InterfaceStatus {
     /// Interface index
     pub index: u32,
@@ -256,12 +250,13 @@ pub struct InterfaceStatus {
 
 impl InterfaceStatus {
     /// Extract interface statuses from SNMP data
+    #[must_use]
     pub fn from_snmp(snmp_data: &HashMap<String, SnmpValue>) -> Vec<Self> {
         let mut interfaces = Vec::new();
         let mut interface_indexes = std::collections::BTreeSet::new();
 
         // First, collect all interface indexes
-        for (oid, _) in snmp_data {
+        for oid in snmp_data.keys() {
             if oid.starts_with("1.3.6.1.2.1.2.2.1.1.") {
                 if let Some(index_str) = oid.strip_prefix("1.3.6.1.2.1.2.2.1.1.") {
                     if let Ok(index) = index_str.parse::<u32>() {
@@ -273,9 +268,9 @@ impl InterfaceStatus {
 
         // For each interface index, extract all available data
         for index in interface_indexes {
-            let mut interface = InterfaceStatus {
+            let mut interface = Self {
                 index,
-                name: format!("Interface {}", index),
+                name: format!("Interface {index}"),
                 interface_type: 1, // Default to other
                 mtu: None,
                 speed: None,
@@ -288,87 +283,95 @@ impl InterfaceStatus {
             };
 
             // Extract interface description
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.2.{}", index)) {
-                if let SnmpValue::String(desc) = value {
-                    interface.name = desc.clone();
-                }
+            if let Some(SnmpValue::String(desc)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.2.{index}"))
+            {
+                interface.name.clone_from(desc);
             }
 
             // Extract interface type
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.3.{}", index)) {
-                if let SnmpValue::Integer(iface_type) = value {
-                    interface.interface_type = *iface_type as u32;
+            if let Some(SnmpValue::Integer(iface_type)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.3.{index}"))
+            {
+                if let Ok(iface_type_u32) = u32::try_from(*iface_type) {
+                    interface.interface_type = iface_type_u32;
                 }
             }
 
             // Extract MTU
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.4.{}", index)) {
-                if let SnmpValue::Integer(mtu) = value {
-                    interface.mtu = Some(*mtu as u32);
+            if let Some(SnmpValue::Integer(mtu)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.4.{index}"))
+            {
+                if let Ok(mtu_u32) = u32::try_from(*mtu) {
+                    interface.mtu = Some(mtu_u32);
                 }
             }
 
             // Extract speed
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.5.{}", index)) {
-                if let SnmpValue::Gauge32(speed) = value {
-                    interface.speed = Some(*speed as u64);
-                }
+            if let Some(SnmpValue::Gauge32(speed)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.5.{index}"))
+            {
+                interface.speed = Some(u64::from(*speed));
             }
 
             // Extract administrative status
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.7.{}", index)) {
-                if let SnmpValue::Integer(status) = value {
-                    interface.admin_status = InterfaceAdminStatus::from(*status as u8);
+            if let Some(SnmpValue::Integer(status)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.7.{index}"))
+            {
+                if let Ok(status_u8) = u8::try_from(*status) {
+                    interface.admin_status = InterfaceAdminStatus::from(status_u8);
                 }
             }
 
             // Extract operational status
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.8.{}", index)) {
-                if let SnmpValue::Integer(status) = value {
-                    interface.oper_status = InterfaceOperStatus::from(*status as u8);
+            if let Some(SnmpValue::Integer(status)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.8.{index}"))
+            {
+                if let Ok(status_u8) = u8::try_from(*status) {
+                    interface.oper_status = InterfaceOperStatus::from(status_u8);
                 }
             }
 
             // Extract input octets
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.10.{}", index)) {
-                if let SnmpValue::Counter32(octets) = value {
-                    interface.input_stats.octets = *octets as u64;
-                }
+            if let Some(SnmpValue::Counter32(octets)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.10.{index}"))
+            {
+                interface.input_stats.octets = u64::from(*octets);
             }
 
             // Extract input packets
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.11.{}", index)) {
-                if let SnmpValue::Counter32(packets) = value {
-                    interface.input_stats.packets = *packets as u64;
-                }
+            if let Some(SnmpValue::Counter32(packets)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.11.{index}"))
+            {
+                interface.input_stats.packets = u64::from(*packets);
             }
 
             // Extract input errors
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.14.{}", index)) {
-                if let SnmpValue::Counter32(errors) = value {
-                    interface.input_stats.errors = *errors as u64;
-                }
+            if let Some(SnmpValue::Counter32(errors)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.14.{index}"))
+            {
+                interface.input_stats.errors = u64::from(*errors);
             }
 
             // Extract output octets
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.16.{}", index)) {
-                if let SnmpValue::Counter32(octets) = value {
-                    interface.output_stats.octets = *octets as u64;
-                }
+            if let Some(SnmpValue::Counter32(octets)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.16.{index}"))
+            {
+                interface.output_stats.octets = u64::from(*octets);
             }
 
             // Extract output packets
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.17.{}", index)) {
-                if let SnmpValue::Counter32(packets) = value {
-                    interface.output_stats.packets = *packets as u64;
-                }
+            if let Some(SnmpValue::Counter32(packets)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.17.{index}"))
+            {
+                interface.output_stats.packets = u64::from(*packets);
             }
 
             // Extract output errors
-            if let Some(value) = snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.20.{}", index)) {
-                if let SnmpValue::Counter32(errors) = value {
-                    interface.output_stats.errors = *errors as u64;
-                }
+            if let Some(SnmpValue::Counter32(errors)) =
+                snmp_data.get(&format!("1.3.6.1.2.1.2.2.1.20.{index}"))
+            {
+                interface.output_stats.errors = u64::from(*errors);
             }
 
             interfaces.push(interface);
@@ -394,10 +397,10 @@ pub enum InterfaceAdminStatus {
 impl From<u8> for InterfaceAdminStatus {
     fn from(value: u8) -> Self {
         match value {
-            1 => InterfaceAdminStatus::Up,
-            2 => InterfaceAdminStatus::Down,
-            3 => InterfaceAdminStatus::Testing,
-            _ => InterfaceAdminStatus::Unknown,
+            1 => Self::Up,
+            2 => Self::Down,
+            3 => Self::Testing,
+            _ => Self::Unknown,
         }
     }
 }
@@ -424,20 +427,19 @@ pub enum InterfaceOperStatus {
 impl From<u8> for InterfaceOperStatus {
     fn from(value: u8) -> Self {
         match value {
-            1 => InterfaceOperStatus::Up,
-            2 => InterfaceOperStatus::Down,
-            3 => InterfaceOperStatus::Testing,
-            4 => InterfaceOperStatus::Unknown,
-            5 => InterfaceOperStatus::Dormant,
-            6 => InterfaceOperStatus::NotPresent,
-            7 => InterfaceOperStatus::LowerLayerDown,
-            _ => InterfaceOperStatus::Unknown,
+            1 => Self::Up,
+            2 => Self::Down,
+            3 => Self::Testing,
+            5 => Self::Dormant,
+            6 => Self::NotPresent,
+            7 => Self::LowerLayerDown,
+            _ => Self::Unknown,
         }
     }
 }
 
 /// Interface traffic statistics
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct InterfaceStats {
     /// Number of octets (bytes)
     pub octets: u64,
@@ -449,24 +451,13 @@ pub struct InterfaceStats {
     pub discards: u64,
 }
 
-impl Default for InterfaceStats {
-    fn default() -> Self {
-        Self {
-            octets: 0,
-            packets: 0,
-            errors: 0,
-            discards: 0,
-        }
-    }
-}
-
 /// Performance metrics for a device
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
     /// CPU utilization percentage (0-100)
-    pub cpu_utilization: Option<f32>,
+    pub cpu_utilization: Option<u8>,
     /// Memory utilization percentage (0-100)
-    pub memory_utilization: Option<f32>,
+    pub memory_utilization: Option<u8>,
     /// Total memory in bytes
     pub total_memory: Option<u64>,
     /// Used memory in bytes
@@ -476,9 +467,24 @@ pub struct PerformanceMetrics {
 }
 
 impl PerformanceMetrics {
+    /// Convert an integer percentage value to u8 safely
+    ///
+    /// Clamps the input to valid percentage range (0-100) and converts
+    /// to u8 without any precision loss.
+    #[must_use]
+    fn percentage_to_u8(value: i64) -> Option<u8> {
+        // Try to convert i64 to u8, clamping to valid percentage range
+        if value < 0 {
+            Some(0)
+        } else {
+            u8::try_from(value.min(100)).ok()
+        }
+    }
+
     /// Extract performance metrics from SNMP data
+    #[must_use]
     pub fn from_snmp(snmp_data: &HashMap<String, SnmpValue>) -> Option<Self> {
-        let mut metrics = PerformanceMetrics {
+        let mut metrics = Self {
             cpu_utilization: None,
             memory_utilization: None,
             total_memory: None,
@@ -490,19 +496,15 @@ impl PerformanceMetrics {
 
         // Try to extract vendor-specific CPU metrics
         // Cisco CPU utilization (example)
-        if let Some(value) = snmp_data.get("1.3.6.1.4.1.9.2.1.3.0") {
-            if let SnmpValue::Integer(cpu) = value {
-                metrics.cpu_utilization = Some(*cpu as f32);
-                has_data = true;
-            }
+        if let Some(SnmpValue::Integer(cpu)) = snmp_data.get("1.3.6.1.4.1.9.2.1.3.0") {
+            metrics.cpu_utilization = Self::percentage_to_u8(*cpu);
+            has_data = true;
         }
 
         // Cisco memory utilization (example)
-        if let Some(value) = snmp_data.get("1.3.6.1.4.1.9.2.1.8.0") {
-            if let SnmpValue::Integer(mem) = value {
-                metrics.memory_utilization = Some(*mem as f32);
-                has_data = true;
-            }
+        if let Some(SnmpValue::Integer(mem)) = snmp_data.get("1.3.6.1.4.1.9.2.1.8.0") {
+            metrics.memory_utilization = Self::percentage_to_u8(*mem);
+            has_data = true;
         }
 
         if has_data { Some(metrics) } else { None }
@@ -522,7 +524,8 @@ pub struct EnvironmentalMetrics {
 
 impl EnvironmentalMetrics {
     /// Extract environmental metrics from SNMP data
-    pub fn from_snmp(_snmp_data: &HashMap<String, SnmpValue>) -> Option<Self> {
+    #[must_use]
+    pub const fn from_snmp(_snmp_data: &HashMap<String, SnmpValue>) -> Option<Self> {
         // TODO: Implement environmental metrics extraction
         // This would require vendor-specific MIB knowledge
         None
@@ -543,7 +546,7 @@ pub struct TemperatureSensor {
 }
 
 /// Fan sensor reading
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FanSensor {
     /// Fan name/location
     pub name: String,
@@ -666,7 +669,7 @@ mod tests {
         );
         snmp_data.insert(
             "1.3.6.1.2.1.1.3.0".to_string(),
-            SnmpValue::TimeTicks(12345678),
+            SnmpValue::TimeTicks(12_345_678),
         );
         snmp_data.insert(
             "1.3.6.1.2.1.1.5.0".to_string(),
@@ -678,7 +681,7 @@ mod tests {
 
         let info = system_info.unwrap();
         assert_eq!(info.description, Some("Test Device v1.0".to_string()));
-        assert_eq!(info.uptime_ticks, Some(12345678));
+        assert_eq!(info.uptime_ticks, Some(12_345_678));
         assert_eq!(info.name, Some("test-router".to_string()));
     }
 
@@ -740,7 +743,7 @@ mod tests {
         status.system_info = Some(SystemInfo {
             description: None,
             object_id: None,
-            uptime_ticks: Some(123456), // 1234.56 seconds
+            uptime_ticks: Some(123_456), // 1234.56 seconds
             contact: None,
             name: None,
             location: None,
@@ -762,7 +765,7 @@ mod tests {
                 name: "eth0".to_string(),
                 interface_type: 6,
                 mtu: Some(1500),
-                speed: Some(1000000000),
+                speed: Some(1_000_000_000),
                 physical_address: None,
                 admin_status: InterfaceAdminStatus::Up,
                 oper_status: InterfaceOperStatus::Up,
@@ -775,7 +778,7 @@ mod tests {
                 name: "eth1".to_string(),
                 interface_type: 6,
                 mtu: Some(1500),
-                speed: Some(1000000000),
+                speed: Some(1_000_000_000),
                 physical_address: None,
                 admin_status: InterfaceAdminStatus::Down,
                 oper_status: InterfaceOperStatus::Down,

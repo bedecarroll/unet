@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Args;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 use unet_core::datastore::DataStore;
 use unet_core::prelude::*;
@@ -131,7 +131,7 @@ struct ImportSummary {
     dry_run: bool,
 }
 
-async fn load_locations(base_path: &PathBuf) -> Result<Option<Vec<Location>>> {
+async fn load_locations(base_path: &Path) -> Result<Option<Vec<Location>>> {
     let locations_file = base_path.join("locations.json");
     if !locations_file.exists() {
         return Ok(None);
@@ -142,7 +142,7 @@ async fn load_locations(base_path: &PathBuf) -> Result<Option<Vec<Location>>> {
     Ok(Some(locations))
 }
 
-async fn load_nodes(base_path: &PathBuf) -> Result<Option<Vec<Node>>> {
+async fn load_nodes(base_path: &Path) -> Result<Option<Vec<Node>>> {
     let nodes_file = base_path.join("nodes.json");
     if !nodes_file.exists() {
         return Ok(None);
@@ -153,7 +153,7 @@ async fn load_nodes(base_path: &PathBuf) -> Result<Option<Vec<Node>>> {
     Ok(Some(nodes))
 }
 
-async fn load_links(base_path: &PathBuf) -> Result<Option<Vec<Link>>> {
+async fn load_links(base_path: &Path) -> Result<Option<Vec<Link>>> {
     let links_file = base_path.join("links.json");
     if !links_file.exists() {
         return Ok(None);

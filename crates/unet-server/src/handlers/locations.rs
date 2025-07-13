@@ -18,10 +18,6 @@ pub struct ListLocationsQuery {
     pub page: Option<u64>,
     /// Items per page
     pub per_page: Option<u64>,
-    /// Filter by location type
-    pub location_type: Option<String>,
-    /// Filter by parent ID
-    pub parent_id: Option<Uuid>,
 }
 
 /// List all locations with optional filtering and pagination
@@ -45,7 +41,7 @@ pub async fn list_locations(
         total,
         page,
         per_page,
-        total_pages: (total + per_page - 1) / per_page,
+        total_pages: total.div_ceil(per_page),
         has_next: page * per_page < total,
         has_prev: page > 1,
     };
@@ -66,7 +62,7 @@ pub async fn create_location(
     Json(request): Json<CreateLocationRequest>,
 ) -> ServerResult<Json<ApiResponse<Location>>> {
     let location = request
-        .to_location()
+        .into_location()
         .map_err(|e| ServerError::Validation(e.to_string()))?;
 
     // TODO: Save to datastore
@@ -105,6 +101,6 @@ pub async fn delete_location(Path(id): Path<Uuid>) -> ServerResult<Json<ApiRespo
 
     Ok(Json(ApiResponse::success_with_message(
         (),
-        format!("Location {} deleted successfully", id),
+        format!("Location {id} deleted successfully"),
     )))
 }

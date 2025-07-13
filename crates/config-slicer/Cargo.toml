@@ -10,6 +10,7 @@ homepage.workspace = true
 description = "Configuration slicing and diffing library and CLI tool"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [[bin]]
 name = "config-slicer"

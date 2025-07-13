@@ -73,6 +73,7 @@ pub struct PollingTask {
 
 impl PollingTask {
     /// Create a new polling task
+    #[must_use]
     pub fn new(
         target: SocketAddr,
         node_id: Uuid,
@@ -97,24 +98,25 @@ impl PollingTask {
     }
 
     /// Check if task is healthy (recent successful polls)
+    #[must_use]
     pub fn is_healthy(&self, max_failure_age: Duration) -> bool {
-        if let Some(last_success) = self.last_success {
-            SystemTime::now()
-                .duration_since(last_success)
-                .map_or(false, |age| age <= max_failure_age)
-        } else {
-            // New task is considered healthy until it fails
-            self.consecutive_failures == 0
-        }
+        self.last_success
+            .map_or(self.consecutive_failures == 0, |last_success| {
+                SystemTime::now()
+                    .duration_since(last_success)
+                    .is_ok_and(|age| age <= max_failure_age)
+            })
     }
 
     /// Calculate next poll time based on interval and failures
+    #[must_use]
     pub fn next_poll_time(&self) -> Instant {
         let base_interval = self.interval;
 
         // Apply exponential backoff for failed tasks
         let actual_interval = if self.consecutive_failures > 0 {
-            let backoff_factor = 2_f64.powi(self.consecutive_failures.min(5) as i32);
+            let backoff_factor =
+                2_f64.powi(i32::try_from(self.consecutive_failures.min(5)).unwrap_or(5));
             Duration::from_secs_f64(base_interval.as_secs_f64() * backoff_factor)
         } else {
             base_interval
@@ -182,6 +184,7 @@ pub struct PollingScheduler {
 
 impl PollingScheduler {
     /// Create new polling scheduler
+    #[must_use]
     pub fn new(config: PollingConfig, snmp_config: SnmpClientConfig) -> (Self, PollingHandle) {
         let (message_tx, message_rx) = mpsc::unbounded_channel();
         let (result_tx, result_rx) = mpsc::unbounded_channel();
@@ -233,6 +236,7 @@ impl PollingScheduler {
                 tasks.retain(|_, task| task.is_healthy(health_check_interval * 3) || task.enabled);
 
                 let after_count = tasks.len();
+                drop(tasks);
                 if before_count != after_count {
                     info!(
                         cleaned_tasks = before_count - after_count,
@@ -272,7 +276,7 @@ impl PollingScheduler {
     }
 
     /// Handle control messages
-    async fn handle_message(&mut self, message: PollingMessage) -> bool {
+    async fn handle_message(&self, message: PollingMessage) -> bool {
         match message {
             PollingMessage::AddTask(task) => {
                 info!(task_id = %task.id, target = %task.target, "Adding polling task");
@@ -301,14 +305,13 @@ impl PollingScheduler {
             }
 
             PollingMessage::GetTaskStatus(task_id, response_tx) => {
-                let tasks = self.tasks.read().await;
-                let task = tasks.get(&task_id).cloned();
+                let task = self.tasks.read().await.get(&task_id).cloned();
                 let _ = response_tx.send(task);
             }
 
             PollingMessage::ListTasks(response_tx) => {
-                let tasks = self.tasks.read().await;
-                let task_list: Vec<PollingTask> = tasks.values().cloned().collect();
+                let task_list: Vec<PollingTask> =
+                    self.tasks.read().await.values().cloned().collect();
                 let _ = response_tx.send(task_list);
             }
 
@@ -351,7 +354,7 @@ impl PollingScheduler {
                 let poll_timeout = self.config.poll_timeout;
 
                 let handle = tokio::spawn(async move {
-                    Self::poll_task(task, snmp_client, result_tx, poll_timeout).await
+                    Self::poll_task(task, snmp_client, result_tx, poll_timeout).await;
                 });
 
                 poll_handles.push(handle);
@@ -388,7 +391,11 @@ impl PollingScheduler {
             timeout,
             snmp_client.get(
                 task.target,
-                &task.oids.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+                &task
+                    .oids
+                    .iter()
+                    .map(std::string::String::as_str)
+                    .collect::<Vec<_>>(),
                 Some(task.session_config.clone()),
             ),
         )
@@ -410,7 +417,7 @@ impl PollingScheduler {
                 (false, HashMap::new(), Some(e.to_string()))
             }
             Err(_) => {
-                let error_msg = format!("SNMP poll timeout after {:?}", timeout);
+                let error_msg = format!("SNMP poll timeout after {timeout:?}");
                 task.consecutive_failures += 1;
                 task.last_error = Some(error_msg.clone());
                 (false, HashMap::new(), Some(error_msg))
@@ -464,62 +471,83 @@ pub struct PollingHandle {
 
 impl PollingHandle {
     /// Add a new polling task
-    pub async fn add_task(&self, task: PollingTask) -> Result<(), String> {
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed
+    pub fn add_task(&self, task: PollingTask) -> Result<(), String> {
         self.message_tx
             .send(PollingMessage::AddTask(task))
-            .map_err(|e| format!("Failed to send message: {}", e))
+            .map_err(|e| format!("Failed to send message: {e}"))
     }
 
     /// Remove a polling task
-    pub async fn remove_task(&self, task_id: Uuid) -> Result<(), String> {
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed
+    pub fn remove_task(&self, task_id: Uuid) -> Result<(), String> {
         self.message_tx
             .send(PollingMessage::RemoveTask(task_id))
-            .map_err(|e| format!("Failed to send message: {}", e))
+            .map_err(|e| format!("Failed to send message: {e}"))
     }
 
     /// Update a polling task
-    pub async fn update_task(&self, task: PollingTask) -> Result<(), String> {
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed
+    pub fn update_task(&self, task: PollingTask) -> Result<(), String> {
         self.message_tx
             .send(PollingMessage::UpdateTask(task))
-            .map_err(|e| format!("Failed to send message: {}", e))
+            .map_err(|e| format!("Failed to send message: {e}"))
     }
 
     /// Enable or disable a task
-    pub async fn enable_task(&self, task_id: Uuid, enabled: bool) -> Result<(), String> {
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed
+    pub fn enable_task(&self, task_id: Uuid, enabled: bool) -> Result<(), String> {
         self.message_tx
             .send(PollingMessage::EnableTask(task_id, enabled))
-            .map_err(|e| format!("Failed to send message: {}", e))
+            .map_err(|e| format!("Failed to send message: {e}"))
     }
 
     /// Get status of a specific task
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed or the response channel fails
     pub async fn get_task_status(&self, task_id: Uuid) -> Result<Option<PollingTask>, String> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         self.message_tx
             .send(PollingMessage::GetTaskStatus(task_id, tx))
-            .map_err(|e| format!("Failed to send message: {}", e))?;
+            .map_err(|e| format!("Failed to send message: {e}"))?;
 
         rx.await
-            .map_err(|e| format!("Failed to receive response: {}", e))
+            .map_err(|e| format!("Failed to receive response: {e}"))
     }
 
     /// List all tasks
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed or the response channel fails
     pub async fn list_tasks(&self) -> Result<Vec<PollingTask>, String> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         self.message_tx
             .send(PollingMessage::ListTasks(tx))
-            .map_err(|e| format!("Failed to send message: {}", e))?;
+            .map_err(|e| format!("Failed to send message: {e}"))?;
 
         rx.await
-            .map_err(|e| format!("Failed to receive response: {}", e))
+            .map_err(|e| format!("Failed to receive response: {e}"))
     }
 
     /// Shutdown the scheduler
-    pub async fn shutdown(&self) -> Result<(), String> {
+    ///
+    /// # Errors
+    /// Returns an error if the message channel is closed
+    pub fn shutdown(&self) -> Result<(), String> {
         self.message_tx
             .send(PollingMessage::Shutdown)
-            .map_err(|e| format!("Failed to send message: {}", e))
+            .map_err(|e| format!("Failed to send message: {e}"))
     }
 }
 

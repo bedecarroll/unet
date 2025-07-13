@@ -32,8 +32,6 @@ struct CachedPolicy {
     mtime: SystemTime,
     /// Cache timestamp
     cached_at: SystemTime,
-    /// File content hash for validation
-    content_hash: u64,
 }
 
 /// Policy file metadata
@@ -62,6 +60,7 @@ pub struct LoadResult {
 
 impl PolicyLoader {
     /// Create a new policy loader with Git configuration
+    #[must_use]
     pub fn new(git_config: GitConfig) -> Self {
         Self {
             git_config,
@@ -72,81 +71,119 @@ impl PolicyLoader {
     }
 
     /// Set local policies directory (alternative to Git)
+    #[must_use]
     pub fn with_local_dir<P: Into<PathBuf>>(mut self, dir: P) -> Self {
         self.local_dir = Some(dir.into());
         self
     }
 
     /// Set cache TTL duration
-    pub fn with_cache_ttl(mut self, ttl: Duration) -> Self {
+    #[must_use]
+    pub const fn with_cache_ttl(mut self, ttl: Duration) -> Self {
         self.cache_ttl = ttl;
         self
     }
 
     /// Load all policy files from configured source
-    pub async fn load_policies(&mut self) -> PolicyResult<LoadResult> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The policies directory cannot be accessed
+    /// - Policy files cannot be read or parsed
+    /// - Invalid policy syntax is encountered
+    pub fn load_policies(&mut self) -> PolicyResult<LoadResult> {
         info!("Loading policy files");
 
-        let policies_dir = self.get_policies_directory().await?;
-        self.load_policies_from_directory(&policies_dir).await
+        let policies_dir = self.get_policies_directory()?;
+        self.load_policies_from_directory(&policies_dir)
     }
 
     /// Load policies from a specific directory
-    pub async fn load_policies_from_directory(&mut self, dir: &Path) -> PolicyResult<LoadResult> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The directory does not exist
+    /// - Directory cannot be accessed
+    /// - Policy files cannot be read or parsed
+    pub fn load_policies_from_directory(&mut self, dir: &Path) -> PolicyResult<LoadResult> {
+        Self::validate_directory(dir)?;
+        debug!("Loading policies from directory: {}", dir.display());
+
+        let policy_files = Self::collect_policy_files(dir);
+        let load_result = self.process_policy_files(policy_files);
+
+        info!(
+            "Policy loading complete: {} loaded, {} errors, {} total files",
+            load_result.loaded.len(),
+            load_result.errors.len(),
+            load_result.total_files
+        );
+
+        Ok(load_result)
+    }
+
+    /// Validate that the policies directory exists
+    fn validate_directory(dir: &Path) -> PolicyResult<()> {
         if !dir.exists() {
             return Err(PolicyError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 format!("Policies directory not found: {}", dir.display()),
             )));
         }
+        Ok(())
+    }
 
-        debug!("Loading policies from directory: {}", dir.display());
+    /// Collect all .policy files from the directory tree
+    fn collect_policy_files(dir: &Path) -> Vec<PathBuf> {
+        walkdir::WalkDir::new(dir)
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+            .filter(|e| e.file_type().is_file())
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "policy"))
+            .map(|e| e.path().to_path_buf())
+            .collect()
+    }
 
+    /// Process all collected policy files
+    fn process_policy_files(&mut self, policy_files: Vec<PathBuf>) -> LoadResult {
         let mut loaded = Vec::new();
         let mut errors = Vec::new();
-        let mut total_files = 0;
+        let total_files = policy_files.len();
 
-        // Walk the directory tree looking for .policy files
-        for entry in walkdir::WalkDir::new(dir)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "policy"))
-        {
-            total_files += 1;
-            let file_path = entry.path();
-
-            match self.load_policy_file(file_path).await {
+        for file_path in policy_files {
+            match self.load_policy_file(&file_path) {
                 Ok(policy_file) => {
                     debug!("Loaded policy file: {}", file_path.display());
                     loaded.push(policy_file);
                 }
                 Err(e) => {
                     warn!("Failed to load policy file {}: {}", file_path.display(), e);
-                    errors.push((file_path.to_path_buf(), e));
+                    errors.push((file_path, e));
                 }
             }
         }
 
-        info!(
-            "Policy loading complete: {} loaded, {} errors, {} total files",
-            loaded.len(),
-            errors.len(),
-            total_files
-        );
-
-        Ok(LoadResult {
+        LoadResult {
             loaded,
             errors,
             total_files,
-        })
+        }
     }
 
     /// Load a single policy file with caching
-    pub async fn load_policy_file(&mut self, path: &Path) -> PolicyResult<PolicyFile> {
-        let metadata = std::fs::metadata(path).map_err(|e| PolicyError::Io(e))?;
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The file cannot be read
+    /// - The file contains invalid policy syntax
+    /// - File metadata cannot be accessed
+    pub fn load_policy_file(&mut self, path: &Path) -> PolicyResult<PolicyFile> {
+        let metadata = std::fs::metadata(path).map_err(PolicyError::Io)?;
 
-        let mtime = metadata.modified().map_err(|e| PolicyError::Io(e))?;
+        let mtime = metadata.modified().map_err(PolicyError::Io)?;
 
         // Check cache first
         if let Some(cached) = self.policy_cache.get(path) {
@@ -163,20 +200,16 @@ impl PolicyLoader {
 
         // Load and parse the file
         debug!("Loading policy file from disk: {}", path.display());
-        let content = std::fs::read_to_string(path).map_err(|e| PolicyError::Io(e))?;
+        let content = std::fs::read_to_string(path).map_err(PolicyError::Io)?;
 
         // Validate file format and parse policies
-        let rules = self.parse_policy_file(&content)?;
-
-        // Calculate content hash for validation
-        let content_hash = self.calculate_hash(&content);
+        let rules = Self::parse_policy_file(&content)?;
 
         // Update cache
         let cached_policy = CachedPolicy {
             rules: rules.clone(),
             mtime,
             cached_at: SystemTime::now(),
-            content_hash,
         };
         self.policy_cache.insert(path.to_path_buf(), cached_policy);
 
@@ -189,7 +222,7 @@ impl PolicyLoader {
     }
 
     /// Parse policy file content into rules
-    fn parse_policy_file(&self, content: &str) -> PolicyResult<Vec<PolicyRule>> {
+    fn parse_policy_file(content: &str) -> PolicyResult<Vec<PolicyRule>> {
         let mut rules = Vec::new();
         let mut line_number = 0;
 
@@ -238,18 +271,8 @@ impl PolicyLoader {
         true
     }
 
-    /// Calculate simple hash of content for validation
-    fn calculate_hash(&self, content: &str) -> u64 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        content.hash(&mut hasher);
-        hasher.finish()
-    }
-
     /// Get the policies directory (from Git or local)
-    async fn get_policies_directory(&self) -> PolicyResult<PathBuf> {
+    fn get_policies_directory(&self) -> PolicyResult<PathBuf> {
         if let Some(ref local_dir) = self.local_dir {
             return Ok(local_dir.clone());
         }
@@ -258,10 +281,7 @@ impl PolicyLoader {
             // TODO: Implement Git repository cloning/syncing
             // For now, return an error to indicate Git integration is needed
             return Err(PolicyError::Evaluation {
-                message: format!(
-                    "Git repository integration not yet implemented for: {}",
-                    repo_url
-                ),
+                message: format!("Git repository integration not yet implemented for: {repo_url}"),
             });
         }
 
@@ -278,6 +298,7 @@ impl PolicyLoader {
     }
 
     /// Get cache statistics
+    #[must_use]
     pub fn cache_stats(&self) -> CacheStats {
         let total_entries = self.policy_cache.len();
         let expired_entries = self
@@ -300,6 +321,10 @@ impl PolicyLoader {
     }
 
     /// Validate a policy file format without parsing all rules
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if validation encounters a critical error
     pub fn validate_policy_file(&self, content: &str) -> PolicyResult<ValidationResult> {
         let mut total_lines = 0;
         let mut valid_rules = 0;
@@ -337,36 +362,48 @@ impl PolicyLoader {
 }
 
 /// Cache statistics
+/// Statistics about the policy cache state
 #[derive(Debug, Clone)]
 pub struct CacheStats {
+    /// Total number of entries in the cache
     pub total_entries: usize,
+    /// Number of expired cache entries
     pub expired_entries: usize,
+    /// Number of valid cache entries
     pub valid_entries: usize,
 }
 
 /// Policy file validation result
 #[derive(Debug, Clone)]
 pub struct ValidationResult {
+    /// Total number of lines processed
     pub total_lines: usize,
+    /// Number of valid policy rules found
     pub valid_rules: usize,
+    /// List of validation errors encountered
     pub errors: Vec<ValidationError>,
 }
 
 /// Validation error details
 #[derive(Debug, Clone)]
 pub struct ValidationError {
+    /// Line number where the error occurred
     pub line: usize,
+    /// Error message describing the problem
     pub message: String,
+    /// Content of the line that caused the error
     pub content: String,
 }
 
 impl ValidationResult {
     /// Check if validation passed (no errors)
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         self.errors.is_empty()
     }
 
     /// Get error count
+    #[must_use]
     pub fn error_count(&self) -> usize {
         self.errors.len()
     }
@@ -404,7 +441,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         let mut loader = PolicyLoader::new(git_config).with_local_dir(policies_dir);
 
         // Load policies
-        let result = loader.load_policies().await.unwrap();
+        let result = loader.load_policies().unwrap();
 
         assert_eq!(result.loaded.len(), 1);
         assert_eq!(result.errors.len(), 0);
@@ -510,7 +547,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         let mut loader = PolicyLoader::new(git_config).with_local_dir(&policies_path);
 
         // Load policies from real directory
-        let result = loader.load_policies().await.unwrap();
+        let result = loader.load_policies().unwrap();
 
         // Print results for debugging
         println!(

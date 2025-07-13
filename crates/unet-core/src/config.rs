@@ -106,11 +106,15 @@ pub struct AuthConfig {
 
 impl Config {
     /// Creates a new configuration with defaults
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Loads configuration from a TOML file with environment overrides
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or parsed
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let builder = ConfigBuilder::builder()
             .add_source(File::with_name(path.as_ref().to_str().unwrap_or("config")))
@@ -126,6 +130,9 @@ impl Config {
     }
 
     /// Loads configuration from environment variables only
+    ///
+    /// # Errors
+    /// Returns an error if environment variables cannot be parsed
     pub fn from_env() -> Result<Self> {
         let builder =
             ConfigBuilder::builder().add_source(Environment::with_prefix("UNET").separator("_"));
@@ -140,6 +147,9 @@ impl Config {
     }
 
     /// Saves configuration to a TOML file
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be written or serialization fails
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let toml_string = toml::to_string_pretty(self)
             .map_err(|e| Error::config_with_source("Failed to serialize configuration", e))?;
@@ -149,11 +159,15 @@ impl Config {
     }
 
     /// Gets the database URL with environment variable override
+    #[must_use]
     pub fn database_url(&self) -> String {
         std::env::var("DATABASE_URL").unwrap_or_else(|_| self.database.url.clone())
     }
 
     /// Validates the configuration for correctness
+    ///
+    /// # Errors
+    /// Returns an error if the configuration is invalid
     pub fn validate(&self) -> Result<()> {
         // Validate database URL
         if self.database.url.is_empty() {
@@ -307,7 +321,7 @@ mod tests {
 
         // Load configuration with explicit file extension
         let path_str = temp_file.path().to_str().unwrap();
-        let toml_path = format!("{}.toml", path_str);
+        let toml_path = format!("{path_str}.toml");
         std::fs::copy(temp_file.path(), &toml_path).unwrap();
 
         let loaded_config = Config::from_file(&toml_path).unwrap();

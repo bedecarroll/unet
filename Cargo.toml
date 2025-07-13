@@ -85,7 +85,7 @@ tokio-cron-scheduler = "0.14"
 
 # Logging and tracing
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 
 # File handling
 tempfile = "3.8"
@@ -101,3 +101,4 @@ proptest = "1.5"
 
 # Async runtime for migration
 async-std = { version = "1", features = ["attributes", "tokio1"] }
+

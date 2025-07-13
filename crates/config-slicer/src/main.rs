@@ -2,14 +2,7 @@
 //!
 //! Command-line tool for slicing and diffing network device configurations.
 
-#![forbid(
-    clippy::all,
-    clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo
-)]
-use anyhow::Result;
+#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 use clap::Parser;
 use tracing::{info, warn};
 
@@ -23,7 +16,7 @@ struct Cli {
     verbose: bool,
 }
 
-fn main() -> Result<()> {
+fn main() {
     let cli = Cli::parse();
 
     // Initialize tracing
@@ -34,6 +27,4 @@ fn main() -> Result<()> {
     }
 
     warn!("config-slicer implementation not yet complete");
-
-    Ok(())
 }

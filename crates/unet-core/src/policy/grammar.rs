@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_null_check_parsing() {
-        let input = r#"WHEN custom_data.location IS NOT NULL THEN SET node.location_id TO custom_data.location"#;
+        let input = r"WHEN custom_data.location IS NOT NULL THEN SET node.location_id TO custom_data.location";
         let result = PolicyGrammar::parse(Rule::rule, input);
         assert!(result.is_ok(), "Failed to parse null check: {:?}", result);
     }

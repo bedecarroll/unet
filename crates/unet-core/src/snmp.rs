@@ -1,7 +1,7 @@
 //! SNMP client integration for μNet
 //!
 //! This module provides SNMP polling capabilities for network devices to collect
-//! derived state information. It supports SNMPv2c and SNMPv3 protocols with
+//! derived state information. It supports `SNMPv2c` and `SNMPv3` protocols with
 //! connection pooling and error handling.
 //!
 //! # Architecture
@@ -83,7 +83,7 @@ pub enum SnmpError {
 pub type SnmpResult<T> = std::result::Result<T, SnmpError>;
 
 /// SNMP value types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SnmpValue {
     /// Integer value
     Integer(i64),
@@ -114,31 +114,33 @@ pub enum SnmpValue {
 }
 
 impl SnmpValue {
-    /// Convert to string representation
-    pub fn to_string(&self) -> String {
-        match self {
-            SnmpValue::Integer(i) => i.to_string(),
-            SnmpValue::String(s) => s.clone(),
-            SnmpValue::Oid(oid) => oid.clone(),
-            SnmpValue::IpAddress(ip) => ip.to_string(),
-            SnmpValue::Counter32(c) => c.to_string(),
-            SnmpValue::Counter64(c) => c.to_string(),
-            SnmpValue::Gauge32(g) => g.to_string(),
-            SnmpValue::TimeTicks(t) => t.to_string(),
-            SnmpValue::Opaque(data) => format!("Opaque({} bytes)", data.len()),
-            SnmpValue::Null => "null".to_string(),
-            SnmpValue::NoSuchObject => "noSuchObject".to_string(),
-            SnmpValue::NoSuchInstance => "noSuchInstance".to_string(),
-            SnmpValue::EndOfMibView => "endOfMibView".to_string(),
-        }
-    }
-
     /// Check if value represents an error condition
-    pub fn is_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
         matches!(
             self,
-            SnmpValue::NoSuchObject | SnmpValue::NoSuchInstance | SnmpValue::EndOfMibView
+            Self::NoSuchObject | Self::NoSuchInstance | Self::EndOfMibView
         )
+    }
+}
+
+impl std::fmt::Display for SnmpValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Integer(i) => write!(f, "{i}"),
+            Self::String(s) => write!(f, "{s}"),
+            Self::Oid(oid) => write!(f, "{oid}"),
+            Self::IpAddress(ip) => write!(f, "{ip}"),
+            Self::Counter32(c) => write!(f, "{c}"),
+            Self::Counter64(c) => write!(f, "{c}"),
+            Self::Gauge32(g) => write!(f, "{g}"),
+            Self::TimeTicks(t) => write!(f, "{t}"),
+            Self::Opaque(data) => write!(f, "Opaque({} bytes)", data.len()),
+            Self::Null => write!(f, "null"),
+            Self::NoSuchObject => write!(f, "noSuchObject"),
+            Self::NoSuchInstance => write!(f, "noSuchInstance"),
+            Self::EndOfMibView => write!(f, "endOfMibView"),
+        }
     }
 }
 
@@ -150,7 +152,7 @@ pub enum SnmpCredentials {
         /// Community string (read-only or read-write)
         community: String,
     },
-    /// SNMPv3 user-based security
+    /// `SNMPv3` user-based security
     UserBased {
         /// Username
         username: String,
@@ -214,6 +216,7 @@ pub struct SnmpSession {
 
 impl SnmpSession {
     /// Create new SNMP session
+    #[must_use]
     pub fn new(config: SessionConfig) -> Self {
         Self {
             config,
@@ -224,16 +227,21 @@ impl SnmpSession {
     }
 
     /// Get session ID
-    pub fn id(&self) -> Uuid {
+    #[must_use]
+    pub const fn id(&self) -> Uuid {
         self.session_id
     }
 
     /// Get session configuration
-    pub fn config(&self) -> &SessionConfig {
+    pub const fn config(&self) -> &SessionConfig {
         &self.config
     }
 
     /// Perform SNMP GET operation
+    ///
+    /// # Errors
+    ///
+    /// Returns `SnmpError` if the SNMP request fails or times out
     pub async fn get(&self, oids: &[&str]) -> SnmpResult<HashMap<String, SnmpValue>> {
         debug!(
             session_id = %self.session_id,
@@ -256,10 +264,10 @@ impl SnmpSession {
             let value = match *oid {
                 "1.3.6.1.2.1.1.1.0" => SnmpValue::String("Linux router 5.4.0".to_string()),
                 "1.3.6.1.2.1.1.2.0" => SnmpValue::Oid("1.3.6.1.4.1.8072.3.2.10".to_string()),
-                "1.3.6.1.2.1.1.3.0" => SnmpValue::TimeTicks(12345678),
+                "1.3.6.1.2.1.1.3.0" => SnmpValue::TimeTicks(12_345_678),
                 _ => SnmpValue::NoSuchObject,
             };
-            result.insert(oid.to_string(), value);
+            result.insert((*oid).to_string(), value);
         }
 
         // Update last success timestamp
@@ -279,7 +287,14 @@ impl SnmpSession {
     }
 
     /// Perform SNMP GETNEXT operation (table walking)
-    pub async fn get_next(&self, start_oid: &str) -> SnmpResult<HashMap<String, SnmpValue>> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `SnmpError` if:
+    /// - The SNMP session cannot be established
+    /// - The target device is unreachable
+    /// - The OID is invalid or not supported
+    pub fn get_next(&self, start_oid: &str) -> SnmpResult<HashMap<String, SnmpValue>> {
         debug!(
             session_id = %self.session_id,
             target = %self.config.address,
@@ -294,11 +309,11 @@ impl SnmpSession {
         // Simulate walking an interface table
         if start_oid.starts_with("1.3.6.1.2.1.2.2.1") {
             for i in 1..=4 {
-                let oid = format!("{}.{}", start_oid, i);
+                let oid = format!("{start_oid}.{i}");
                 let value = match start_oid {
                     "1.3.6.1.2.1.2.2.1.2" => SnmpValue::String(format!("eth{}", i - 1)),
                     "1.3.6.1.2.1.2.2.1.3" => SnmpValue::Integer(6), // ethernetCsmacd
-                    "1.3.6.1.2.1.2.2.1.5" => SnmpValue::Gauge32(1000000000), // 1Gbps
+                    "1.3.6.1.2.1.2.2.1.5" => SnmpValue::Gauge32(1_000_000_000), // 1Gbps
                     _ => SnmpValue::NoSuchObject,
                 };
                 result.insert(oid, value);
@@ -318,13 +333,11 @@ impl SnmpSession {
     /// Check if session is healthy (recent successful operations)
     pub async fn is_healthy(&self, max_age: Duration) -> bool {
         let last_success = self.last_success.read().await;
-        if let Some(timestamp) = *last_success {
+        last_success.is_some_and(|timestamp| {
             SystemTime::now()
                 .duration_since(timestamp)
-                .map_or(false, |age| age <= max_age)
-        } else {
-            false
-        }
+                .is_ok_and(|age| age <= max_age)
+        })
     }
 
     /// Get connection attempt count
@@ -378,6 +391,7 @@ impl Default for SnmpClientConfig {
 
 impl SnmpClient {
     /// Create new SNMP client with configuration
+    #[must_use]
     pub fn new(config: SnmpClientConfig) -> Self {
         Self {
             max_connections: config.max_connections,
@@ -435,6 +449,14 @@ impl SnmpClient {
     }
 
     /// Perform SNMP GET operation on target
+    ///
+    /// # Errors
+    ///
+    /// Returns `SnmpError` if:
+    /// - Connection to target fails
+    /// - SNMP request times out
+    /// - Invalid OIDs are provided
+    /// - Authentication fails
     pub async fn get(
         &self,
         address: SocketAddr,
@@ -455,6 +477,14 @@ impl SnmpClient {
     }
 
     /// Perform SNMP table walk on target
+    ///
+    /// # Errors
+    ///
+    /// Returns `SnmpError` if:
+    /// - Connection to target fails
+    /// - SNMP request times out
+    /// - Invalid start OID is provided
+    /// - Authentication fails
     pub async fn walk(
         &self,
         address: SocketAddr,
@@ -471,7 +501,7 @@ impl SnmpClient {
                 })?;
 
         let session = self.get_session(address, config).await?;
-        session.get_next(start_oid).await
+        session.get_next(start_oid)
     }
 
     /// Get statistics about the client
@@ -498,9 +528,13 @@ impl SnmpClient {
         }
 
         if !sessions_to_remove.is_empty() {
-            let mut sessions = self.sessions.write().await;
-            for address in sessions_to_remove {
-                sessions.remove(&address);
+            {
+                let mut sessions = self.sessions.write().await;
+                for address in &sessions_to_remove {
+                    sessions.remove(address);
+                }
+            }
+            for address in &sessions_to_remove {
                 info!(target = %address, "Removed inactive SNMP session");
             }
         }
@@ -528,7 +562,7 @@ mod tests {
         assert_eq!(SnmpValue::Integer(42).to_string(), "42");
         assert_eq!(SnmpValue::String("test".to_string()).to_string(), "test");
         assert_eq!(
-            SnmpValue::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)).to_string(),
+            Self::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)).to_string(),
             "127.0.0.1"
         );
         assert_eq!(SnmpValue::Counter32(1000).to_string(), "1000");
@@ -561,7 +595,7 @@ mod tests {
             SnmpCredentials::Community { community } => {
                 assert_eq!(community, "public");
             }
-            _ => panic!("Expected community credentials"),
+            SnmpCredentials::UserBased { .. } => panic!("Expected community credentials"),
         }
     }
 

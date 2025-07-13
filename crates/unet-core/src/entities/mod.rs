@@ -1,4 +1,4 @@
-//! SeaORM Entities for μNet Core Database Tables
+//! `SeaORM` Entities for μNet Core Database Tables
 
 pub mod interface_status;
 pub mod links;

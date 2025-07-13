@@ -9,6 +9,9 @@ use std::path::Path;
 use tracing_subscriber::EnvFilter;
 
 /// Initializes the global tracing subscriber based on configuration
+///
+/// # Errors
+/// Returns an error if the log level is invalid or if tracing initialization fails
 pub fn init_tracing(config: &LoggingConfig) -> Result<()> {
     // Create environment filter with fallback to config level
     let env_filter = EnvFilter::try_from_default_env()
@@ -21,12 +24,13 @@ pub fn init_tracing(config: &LoggingConfig) -> Result<()> {
     if let Some(ref file_path) = config.file {
         init_tracing_with_file(config, file_path, env_filter)
     } else {
-        init_tracing_console_only(config, env_filter)
+        init_tracing_console_only(config, env_filter);
+        Ok(())
     }
 }
 
 /// Initialize tracing with console output only
-fn init_tracing_console_only(config: &LoggingConfig, env_filter: EnvFilter) -> Result<()> {
+fn init_tracing_console_only(config: &LoggingConfig, env_filter: EnvFilter) {
     match config.format {
         ref f if f == "json" => {
             tracing_subscriber::fmt()
@@ -59,12 +63,11 @@ fn init_tracing_console_only(config: &LoggingConfig, env_filter: EnvFilter) -> R
         output = "console",
         "Tracing initialized"
     );
-    Ok(())
 }
 
 /// Initialize tracing with both console and file output  
 /// Note: For now, we validate the file path but only use console output
-/// TODO: Implement proper file logging with tracing_appender in future
+/// TODO: Implement proper file logging with `tracing_appender` in future
 fn init_tracing_with_file(
     config: &LoggingConfig,
     file_path: &str,
@@ -86,7 +89,7 @@ fn init_tracing_with_file(
         .append(true)
         .open(file_path)
         .map_err(|e| {
-            Error::config_with_source(format!("Failed to open log file '{}'", file_path), e)
+            Error::config_with_source(format!("Failed to open log file '{file_path}'"), e)
         })?;
 
     // Initialize tracing (console only for now)
@@ -127,6 +130,9 @@ fn init_tracing_with_file(
 }
 
 /// Initializes tracing with default pretty format and info level
+///
+/// # Errors
+/// Returns an error if tracing initialization fails
 pub fn init_default_tracing() -> Result<()> {
     let config = LoggingConfig {
         level: "info".to_string(),
@@ -179,6 +185,7 @@ macro_rules! log_database_operation {
     };
 }
 
+/// Macro for logging SNMP operations with structured data
 #[macro_export]
 macro_rules! log_snmp_operation {
     ($operation:expr, $target:expr) => {
@@ -190,6 +197,7 @@ macro_rules! log_snmp_operation {
     };
 }
 
+/// Macro for logging network operations with structured data
 #[macro_export]
 macro_rules! log_network_operation {
     ($operation:expr, $endpoint:expr) => {
@@ -202,6 +210,9 @@ macro_rules! log_network_operation {
 }
 
 /// Utility function to validate log level
+///
+/// # Errors
+/// Returns an error if the log level is not valid
 pub fn validate_log_level(level: &str) -> Result<()> {
     match level.to_lowercase().as_str() {
         "trace" | "debug" | "info" | "warn" | "error" => Ok(()),
@@ -213,6 +224,9 @@ pub fn validate_log_level(level: &str) -> Result<()> {
 }
 
 /// Utility function to validate log format
+///
+/// # Errors
+/// Returns an error if the log format is not valid
 pub fn validate_log_format(format: &str) -> Result<()> {
     match format {
         "json" | "pretty" => Ok(()),

@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "Database migrations for μNet"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
 
 [lib]
 name = "migration"

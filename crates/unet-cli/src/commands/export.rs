@@ -41,7 +41,7 @@ pub async fn execute(
 
     let export_all = args.only.is_none();
     let export_types = args.only.clone().unwrap_or_else(|| {
-        return vec![
+        vec![
             "locations".to_owned(),
             "nodes".to_owned(),
             "links".to_owned(),

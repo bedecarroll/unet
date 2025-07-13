@@ -10,6 +10,7 @@ homepage.workspace = true
 description = "Core library for μNet network configuration management"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [dependencies]
 # Core async runtime
