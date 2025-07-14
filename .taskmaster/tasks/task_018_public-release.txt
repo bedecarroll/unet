@@ -1,0 +1,13 @@
+# Task ID: 18
+# Title: Implement `config-slicer` crate with Juniper & IOS parsers (D-3 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Create library that tokenizes vendor configs into AST slices.
+# Details:
+• Use nom parser combinators; create ios.rs, juniper.rs modules.
+• Expose fn slice_cfg(cfg:&str, subtree:&str)->Result<String>.
+• Publish crate path ./crates/config-slicer.
+
+# Test Strategy:
+Golden file tests: input config + subtree spec produce expected trimmed output; diff verified by insta snapshots.

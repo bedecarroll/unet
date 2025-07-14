@@ -1,0 +1,28 @@
+# Task ID: 1
+# Title: Finalize SQLite datastore with SeaORM migrations (A-1 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Complete and harden the SQLite backend so that every CRUD operation in unet-core passes using an on-disk .sqlite file.
+# Details:
+• Update SeaORM entity definitions for Node, Link, Location to use #[derive(ActiveModelBehavior)].
+• Write explicit up/down SQL migration files (./migrations/20240608_01_sqlite_init.sql) that create all tables, FKs, indexes.
+• Implement connection string parser defaulting to ./unet.db when DSN omitted.
+• Add extension trait DatastoreExt::sqlite_bootstrap() -> Result<()> that runs pending migrations via sea_orm_migration::Migrator.
+• Pseudo-code:
+```
+async fn bootstrap_sqlite(db_url: &str) -> Result<()> {
+    let conn = Database::connect(db_url).await?;
+    Migrator::up(&conn, None).await?;
+    Ok(())
+}
+```
+• Replace direct sqlx calls with SeaORM CRUD helpers inside datastore module.
+• Ensure all model tests use tempfile::NamedTempFile to create isolated DBs.
+
+# Test Strategy:
+Add `#[tokio::test]` in unet-core/tests/datastore_sqlite.rs that:
+1. spins up temp DB, calls bootstrap_sqlite().
+2. runs create/read/update/delete flows for Node/Link/Location.
+3. asserts that cargo test -p unet-core datastore passes with `--features sqlite`.
+Use GitHub Action job that caches sea-orm-cli binary and runs the same suite.

@@ -1,0 +1,14 @@
+# Task ID: 33
+# Title: Expose Prometheus metrics (I-1 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Add `/metrics` endpoint with policy evaluation counters.
+# Details:
+• Use prometheus crate + axum_prometheus middleware.
+• Counters: unet_policy_eval_total, unet_policy_violation_total, http_requests_total.
+• Register custom histogram for evaluator latency.
+
+# Test Strategy:
+curl /metrics returns text/plain with expected metric names.
+Unit test increments via evaluator; scrapes and asserts value >0.

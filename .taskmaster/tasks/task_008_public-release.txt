@@ -1,0 +1,17 @@
+# Task ID: 8
+# Title: Username/password auth with BCrypt & 401 responses (B-2 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Store user credentials and protect CRUD routes.
+# Details:
+• Add users table: id, username UNIQUE, password_hash, role.
+• Use bcrypt crate (`hash` cost 12).
+• Implement middleware (tower_cookies + axum) extracting Basic header.
+• Non-authenticated requests get 401 with WWW-Authenticate: Basic realm="μNet".
+
+# Test Strategy:
+HTTP test using reqwest:
+1. POST /api/users {admin, pwd}
+2. GET /api/nodes w/out header -> 401.
+3. GET with correct Basic creds -> 200.

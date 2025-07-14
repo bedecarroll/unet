@@ -1,0 +1,18 @@
+# Task ID: 2
+# Title: Implement CSV demo backend behind `demo-csv` feature (A-1 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Provide a lightweight CSV-based datastore for demos and tutorials.
+# Details:
+• Add Cargo feature `demo-csv` in unet-core.
+• Create csv_store.rs implementing trait Datastore (get/put/delete).
+• Use csv_async crate to stream parse rows; map columns to internal models.
+• Provide CLI command `unet-cli ingest csv <glob>` that calls CsvStore::ingest(glob).
+• Gate module inclusion behind cfg(feature="demo-csv").
+
+# Test Strategy:
+Integration test in unet-cli/tests/csv_ingest.rs that:
+1. Builds with `--features demo-csv`.
+2. Runs `Command::cargo_bin("unet-cli")? .args(["ingest","csv","examples/*.csv"])`.
+3. Verifies resulting sqlite DB has expected row count via SeaORM query.

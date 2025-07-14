@@ -218,10 +218,13 @@ impl PolicyService {
     #[must_use]
     pub fn with_local_dir(policies_directory: &str) -> Self {
         let git_config = GitConfig {
+            repository_url: None,
+            local_directory: Some(policies_directory.to_string()),
+            branch: "main".to_string(),
+            auth_token: None,
+            sync_interval: 300,
             policies_repo: None,
             templates_repo: None,
-            branch: "main".to_string(),
-            sync_interval: 300,
         };
         let loader = PolicyLoader::new(git_config).with_local_dir(policies_directory);
         let engine = Arc::new(DefaultPolicyEvaluationEngine::new());

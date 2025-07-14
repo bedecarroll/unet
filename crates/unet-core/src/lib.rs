@@ -93,6 +93,8 @@ pub mod prelude {
         filter_equals_uuid,
         sort_asc,
         sort_desc,
+        // Transaction helpers
+        transaction_helpers,
     };
 
     // Configuration and logging

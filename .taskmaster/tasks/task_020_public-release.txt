@@ -1,0 +1,13 @@
+# Task ID: 20
+# Title: Support `{% include %}` / `{% import %}` in templates (D-5 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Leverage MiniJinja loader to allow composite templates.
+# Details:
+• Implement FileSystemLoader pointed at ./templates.
+• Document search path precedence.
+• Add unit tests for import macros.
+
+# Test Strategy:
+Render template that includes sub-template and assert final output contains expected merged text.

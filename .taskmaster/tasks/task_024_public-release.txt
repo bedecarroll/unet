@@ -1,0 +1,13 @@
+# Task ID: 24
+# Title: Implement MCP-compliant `/mcp/context` endpoint (F-1 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Expose network context according to MCP JSON schema.
+# Details:
+• Add route GET /mcp/context returning 200 application/json.
+• Follow spec: version, nodes[], links[].
+• Validate output against schemas/mcp_context.json during CI using jsonschema crate.
+
+# Test Strategy:
+CI test fetches endpoint, loads schema file, calls `schema.validate(&value)` and asserts empty errors vec.

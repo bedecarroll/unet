@@ -1,0 +1,14 @@
+# Task ID: 11
+# Title: Finalize DSL grammar for policy engine (C-1 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Complete pest grammar covering MATCH, ASSERT, SET, APPLY clauses.
+# Details:
+• Update ./policy/grammar.pest.
+• Handle comments, multi-line strings, comparison operators.
+• Provide parse_rule_set(&str)-> Result<Vec<Rule>> API.
+• Include examples in ./policy/tests/fixtures/.
+
+# Test Strategy:
+cargo test -p policy runs parser on sample_rules/*.mu and asserts RuleSet length + AST snapshot via insta.

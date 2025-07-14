@@ -1,0 +1,14 @@
+# Task ID: 14
+# Title: CLI command `policy check` exits non-zero on violations (C-4 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Add `unet-cli policy check <csv> --rules <dir>`.
+# Details:
+• Parse CSV into nodes; load RuleSet via previous libraries.
+• Call evaluate(); if violations.len()>0 { eprintln!(…); process::exit(1)}.
+• Provide `--format json|table`.
+
+# Test Strategy:
+CLI test with known failing rule returns exit code 1.
+Success sample returns 0.

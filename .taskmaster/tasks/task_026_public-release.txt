@@ -1,0 +1,13 @@
+# Task ID: 26
+# Title: GitHub Actions matrix build (linux-musl, macOS, windows-gnu) (G-1 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Ensure cross-platform binaries on every push.
+# Details:
+• Modify .github/workflows/ci.yml: jobs.build.strategy.matrix.os and target triple.
+• Use `cross` for musl.
+• Upload artifacts via actions/upload-artifact.
+
+# Test Strategy:
+Workflow must complete successfully in PR checks; artifact existence verified via action step: run: test -f ./target/release/unet-cli.

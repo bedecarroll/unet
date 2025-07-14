@@ -1,0 +1,2176 @@
+{
+  "public-release": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Finalize SQLite datastore with SeaORM migrations (A-1 • P0)",
+        "description": "Complete and harden the SQLite backend so that every CRUD operation in unet-core passes using an on-disk .sqlite file.",
+        "details": "• Update SeaORM entity definitions for Node, Link, Location to use #[derive(ActiveModelBehavior)].\n• Write explicit up/down SQL migration files (./migrations/20240608_01_sqlite_init.sql) that create all tables, FKs, indexes.\n• Implement connection string parser defaulting to ./unet.db when DSN omitted.\n• Add extension trait DatastoreExt::sqlite_bootstrap() -> Result<()> that runs pending migrations via sea_orm_migration::Migrator.\n• Pseudo-code:\n```\nasync fn bootstrap_sqlite(db_url: &str) -> Result<()> {\n    let conn = Database::connect(db_url).await?;\n    Migrator::up(&conn, None).await?;\n    Ok(())\n}\n```\n• Replace direct sqlx calls with SeaORM CRUD helpers inside datastore module.\n• Ensure all model tests use tempfile::NamedTempFile to create isolated DBs.",
+        "testStrategy": "Add `#[tokio::test]` in unet-core/tests/datastore_sqlite.rs that:\n1. spins up temp DB, calls bootstrap_sqlite().\n2. runs create/read/update/delete flows for Node/Link/Location.\n3. asserts that cargo test -p unet-core datastore passes with `--features sqlite`.\nUse GitHub Action job that caches sea-orm-cli binary and runs the same suite.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Schema & Migration Authoring",
+            "description": "Create initial SQLite schema and migration scripts.",
+            "dependencies": [],
+            "details": "• Draft up/down SQL in ./migrations/20240608_01_sqlite_init.sql for Node, Link, Location tables, foreign keys, indexes.\n• Ensure naming aligns with SeaORM entity conventions and planned CRUD queries.\n• Add migration entry to sea_orm_migration::Migrator.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Entity Refactor",
+            "description": "Update SeaORM entity definitions to match new schema.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Modify Node, Link, Location entities to include #[derive(ActiveModelBehavior)].\n• Regenerate sea-orm-entity code where needed.\n• Sync column types and relationships with migration script.\n• Add model unit tests to ensure compile-time correctness.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Connection Handling",
+            "description": "Implement DSN parser with sensible defaults for SQLite.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Create helper that interprets env var/CLI input and defaults to ./unet.db when DSN is empty.\n• Support absolute & relative paths, file creation flags, and URI query options.\n• Add error handling and unit tests for edge cases (readonly, nonexistent dir).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Bootstrap Utility",
+            "description": "Provide DatastoreExt::sqlite_bootstrap() to run migrations automatically.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "• Implement async function that opens connection via parser from subtask 3.\n• Integrate sea_orm_migration::Migrator to apply pending migrations from subtask 1.\n• Return Result<()> with detailed error mapping.\n• Document usage in README and add example snippet.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "CRUD Refactor",
+            "description": "Adapt all datastore operations to use the new SeaORM setup.",
+            "dependencies": [
+              2,
+              4
+            ],
+            "details": "• Replace legacy CRUD calls with SeaORM ActiveModel interactions.\n• Ensure create/read/update/delete flows for Node, Link, Location compile and function.\n• Handle transaction boundaries and connection pooling.\n• Update public trait implementations if signatures changed.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Test & CI Integration",
+            "description": "Write exhaustive tests and wire GitHub Action job.",
+            "dependencies": [
+              5
+            ],
+            "details": "• Add tokio::test integration in unet-core/tests/datastore_sqlite.rs covering bootstrap + full CRUD.\n• Use temp directory DB for isolation.\n• Configure CI matrix to run cargo test with --features sqlite and cache SeaORM dependencies.\n• Fail build on migration drift or test regressions.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement CSV demo backend behind `demo-csv` feature (A-1 • P1)",
+        "description": "Provide a lightweight CSV-based datastore for demos and tutorials.",
+        "details": "• Add Cargo feature `demo-csv` in unet-core.\n• Create csv_store.rs implementing trait Datastore (get/put/delete).\n• Use csv_async crate to stream parse rows; map columns to internal models.\n• Provide CLI command `unet-cli ingest csv <glob>` that calls CsvStore::ingest(glob).\n• Gate module inclusion behind cfg(feature=\"demo-csv\").",
+        "testStrategy": "Integration test in unet-cli/tests/csv_ingest.rs that:\n1. Builds with `--features demo-csv`.\n2. Runs `Command::cargo_bin(\"unet-cli\")? .args([\"ingest\",\"csv\",\"examples/*.csv\"])`.\n3. Verifies resulting sqlite DB has expected row count via SeaORM query.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add `demo-csv` Feature Gating",
+            "description": "Create Cargo feature flag to toggle CSV demo datastore.",
+            "dependencies": [],
+            "details": "• Update unet-core/Cargo.toml with feature `demo-csv`.\n• Wrap csv_store.rs mod inclusion in `cfg(feature = \"demo-csv\")`.\n• Ensure default features remain unchanged.\n• Document the feature in README.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement CSV Parser Module",
+            "description": "Create csv_store.rs responsible for reading CSV files.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Use csv_async with tokio streams to read rows.\n• Map CSV columns to internal model structs.\n• Expose async fn `ingest(glob: &str) -> Result<Vec<ModelRow>>`.\n• Handle headers, type parsing, and basic validation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Datastore Trait Implementation",
+            "description": "Provide `CsvStore` that implements core `Datastore` trait.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Implement get/put/delete backed by in-memory HashMap populated via parser.\n• Ensure trait methods conform to existing async signatures.\n• Provide constructor `CsvStore::from_glob(glob)`.\n• Add error enum CsvStoreError mapping I/O & parse errors.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "CLI Ingest Command",
+            "description": "Add `unet-cli ingest csv <glob>` subcommand to trigger ingestion.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Extend clap app hierarchy with new command.\n• Inside handler, build CsvStore::from_glob and persist to default Sqlite DB.\n• Print summary: file count, row count.\n• Only compile when `demo-csv` feature enabled.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Tests and CI Integration",
+            "description": "Create integration tests and CI job to validate CSV ingest path.",
+            "dependencies": [
+              4
+            ],
+            "details": "• tests/csv_ingest.rs builds with `--features demo-csv` and runs CLI against example fixtures.\n• Verify resulting Sqlite row count using SeaORM.\n• Add GitHub Actions matrix job enabling `demo-csv` and running `cargo test && cargo clippy`.\n• Ensure coverage captured by tarpaulin.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Scaffold Postgres support behind `postgres` feature flag (A-1 • P1)",
+        "description": "Add initial PostgreSQL compatibility with SeaORM.",
+        "details": "• Add `postgres` feature; update Cargo.toml to include `sea-orm = { features=[\"sqlx-postgres\"] }`.\n• Abstract connection string handling: env var DATABASE_URL takes precedence.\n• Generate migrations compatible with both SQLite & Postgres (use conditional DDL or separate dirs).\n• Provide `cfg_if!` switch in datastore.rs to pick runtime driver.",
+        "testStrategy": "CI job `postgres-test` uses `postgres:16-alpine` service; runs `DATABASE_URL=postgres://postgres:postgres@localhost/unet` cargo test` with `--features postgres` and asserts green.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Cargo feature wiring for Postgres",
+            "description": "Introduce `postgres` feature flag and update Cargo.toml dependencies to enable SeaORM Postgres driver.",
+            "dependencies": [],
+            "details": "• Add `[features] postgres = [\"sea-orm/sqlx-postgres\"]` to unet-core.\n• Ensure default-features = false where appropriate.\n• Update workspace crates to conditionally compile Postgres-specific code.\n• Verify `cargo check --features postgres` succeeds.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Driver abstraction layer",
+            "description": "Create compile-time switch to select SQLite or Postgres connector based on active feature.",
+            "dependencies": [
+              1
+            ],
+            "details": "• In datastore.rs, use `cfg_if!` to alias `DatabaseBackend` and `DatabaseConnection`.\n• Provide helper `async fn connect(dsn: &str) -> Result<DatabaseConnection>` that resolves to correct driver.\n• Add compile error guard when neither `sqlite` nor `postgres` features are enabled.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Dual migrations scaffold",
+            "description": "Organize migrations so both SQLite and Postgres schemas can be applied transparently.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Create directory structure `migrations/sqlite` and `migrations/postgres`.\n• Write initial Postgres SQL matching existing SQLite schema (type tweaks, serial PKs, etc.).\n• Extend Migrator to choose path at runtime via selected backend.\n• Add tests that run `Migrator::up` for each backend in isolation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Environment variable & DSN handling",
+            "description": "Implement precedence rules and parsing for DATABASE_URL and CLI-supplied DSNs.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Create `fn resolve_dsn(cli_arg: Option<&str>) -> String`.\n• Priority: CLI arg > `DATABASE_URL` env > backend defaults (`./unet.db` for SQLite, `postgres://postgres:postgres@localhost/unet` for Postgres).\n• Validate scheme matches enabled feature; emit clear error otherwise.\n• Unit tests cover all branches.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "CI job with Postgres service",
+            "description": "Add GitHub Actions workflow step that spins up Postgres 16 and executes tests under `--features postgres`.",
+            "dependencies": [
+              1,
+              3,
+              4
+            ],
+            "details": "• Define `services: postgres: image: postgres:16-alpine` with creds.\n• Set `DATABASE_URL` env in job.\n• Run `cargo test --workspace --features postgres --all-targets`.\n• Cache cargo registry and target dirs for speed.\n• Ensure job is required in branch protection rules.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Add lifecycle enum & timestamps to core models (A-2 • P0)",
+        "description": "Track object lifecycle state (plan, deploy, retire) with created_at / updated_at columns.",
+        "details": "• Introduce enum Lifecycle { Plan, Deploy, Retire } backed by i16 in DB.\n• Update SeaORM Entity for Node, Link, Location: add lifecycle, created_at TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP.\n• Implement ActiveModelBehavior::before_save to auto-bump updated_at.\n• Provide validation that only legal state transitions occur (e.g., Plan→Deploy, Deploy→Retire).",
+        "testStrategy": "Unit tests in lifecycle_tests.rs:\n• attempt invalid transition and expect Err(ValidationError).\n• create new Node and assert default lifecycle == Plan.\n• verify timestamps not NULL after insert.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Lifecycle enum & database migrations",
+            "description": "Introduce the Lifecycle enum (Plan, Deploy, Retire) backed by i16 and add lifecycle, created_at, updated_at columns to Node, Link, and Location tables.",
+            "dependencies": [],
+            "details": "• Add Rust enum Lifecycle with SeaORM EnumType implementation, mapping to SMALLINT/i16.\n• Generate new migration file: add lifecycle SMALLINT NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP to node, link, location tables.\n• Apply conditional SQL for SQLite vs Postgres if necessary.\n• Re-export enum in lib.rs for use across modules.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Extend SeaORM entities & add before_save hook",
+            "description": "Update Node, Link, and Location entity definitions to include new fields and implement ActiveModelBehavior::before_save to auto-update updated_at.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Regenerate entity structs with sea-orm-cli or edit manually to add lifecycle: Lifecycle, created_at: DateTimeWithTimeZone, updated_at: DateTimeWithTimeZone.\n• Implement ActiveModelBehavior for each: in before_save, set self.updated_at = now().\n• Ensure created_at is only set on insert.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement lifecycle transition validation",
+            "description": "Add logic preventing illegal state transitions (only Plan→Deploy→Retire allowed).",
+            "dependencies": [
+              2
+            ],
+            "details": "• In ActiveModelBehavior::before_save or a dedicated validator, compare current lifecycle in DB vs new value.\n• Return Err(ValidationError::new(\"invalid_transition\")) if transition is not allowed.\n• Provide helper fn is_valid_transition(from, to) -> bool covering allowed pairs.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Write unit tests for lifecycle enum, validation, and timestamps",
+            "description": "Create lifecycle_tests.rs covering default values, valid/invalid transitions, and timestamp behavior.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "• Test that inserting a new Node sets lifecycle=Plan and timestamps non-NULL.\n• Test Plan→Deploy and Deploy→Retire succeed.\n• Test invalid Plan→Retire or Retire→Plan returns ValidationError.\n• Use SeaORM in-memory SQLite for fast tests or Postgres feature as CI step.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Add `custom_data` JSON column & round-trip through API/CLI (A-3 • P0)",
+        "description": "Allow arbitrary key/value storage on entities for future-proofing.",
+        "details": "• Alter migration adding custom_data JSONB (Postgres) / JSON (SQLite).\n• Extend REST DTOs & CLI structs with `HashMap<String, Value>`.\n• Use serde_json::Value for internal representation.\n• Ensure policy engine can reference keys via path syntax (e.g., node.custom_data[\"rack\"].)",
+        "testStrategy": "• serde round-trip test: serialize Node with nested JSON, POST to /api/nodes, GET back and compare.\n• CLI test: `unet-cli node add r1 --json '{\"rack\":\"12A\"}'` then `unet-cli node get r1 -o json` contains field.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create migration adding custom_data JSON column",
+            "description": "Extend SQLite and Postgres schemas with a nullable JSON/JSONB column named `custom_data` on all applicable entity tables.",
+            "dependencies": [],
+            "details": "• Write SeaORM migration `20240610_01_add_custom_data.rs` with dialect-specific DDL (JSON for SQLite, JSONB for Postgres).\n• Ensure up/down functions correctly add and drop the column.\n• Gate Postgres variant behind `#[cfg(feature=\"postgres\")]`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Update DTOs and CLI structs to expose custom_data",
+            "description": "Add `HashMap<String, serde_json::Value>` field to REST DTOs and CLI models to surface arbitrary key/value pairs.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Modify OpenAPI schema and `NodeDto`, `LinkDto`, etc.\n• Update `unet-cli` struct definitions and argument parsing (`--json` flag) to populate the field.\n• Regenerate OpenAPI docs.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement serde mapping and persistence logic",
+            "description": "Wire the new DTO field through service layer into SeaORM ActiveModels and back, using `serde_json::Value` for internal storage.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Extend entity `Column::CustomData` with `Json` type.\n• Update CRUD handlers to map between DTO `HashMap` and entity JSON column.\n• Provide default `json!({})` when field omitted.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Enable policy engine access to custom_data via path syntax",
+            "description": "Allow policy DSL expressions like `node.custom_data[\"rack\"]` to resolve against stored JSON values.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Modify policy evaluation AST to treat `custom_data` as dynamic object.\n• Implement lookup helper supporting string index paths and nested objects.\n• Add unit tests for positive/negative lookups.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive round-trip and CLI/API tests",
+            "description": "Ensure full lifecycle coverage for custom_data including nested structures, nulls, and policy queries.",
+            "dependencies": [
+              4
+            ],
+            "details": "• Integration test posts entity with nested JSON, retrieves it, and asserts equality.\n• CLI smoke test: `unet-cli node add` + `node get -o json` contains expected field.\n• Policy engine test validating rule access.\n• Run tests under SQLite and Postgres CI jobs.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Write derived rows & delta view from SNMP collector (A-4 • P0)",
+        "description": "Generate \"derived\" inventory from live SNMP data and expose mismatch diffs.",
+        "details": "• Create crate snmp-collector using snmp-parser + async-std.\n• For each device: collect ifTable, lldpRemSysName.\n• Insert rows into derived_* tables with foreign key to desired id.\n• Materialize SQL VIEW v_diffs as EXCEPT between desired & derived.\n• Expose REST `/api/diffs` that SELECTs view.",
+        "testStrategy": "Mock SNMP session with snmp-mock & assert derived rows exist.\nE2E test calls REST endpoint, intentionally diverges desired state, expects diff JSON list length >0.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create snmp-collector crate",
+            "description": "Set up a new Rust crate using snmp-parser + async-std to perform asynchronous SNMP polling.",
+            "dependencies": [],
+            "details": "• Scaffold Cargo crate `snmp-collector`.\n• Add dependencies: snmp-parser, async-std, thiserror.\n• Expose async `collect(host, community)` returning raw varbinds.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement SNMP→model data mapping",
+            "description": "Transform collected varbinds into internal structs representing ifTable and lldpRemSysName records.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Define structs IfEntry, LldpRemote.\n• Map OIDs to fields; handle index parsing.\n• Return Vec<IfEntry>, Vec<LldpRemote> for each device.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create derived_* tables and insert logic",
+            "description": "Persist mapped SNMP data into derived tables with foreign keys to desired inventory.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Add SeaORM entities for derived_interfaces, derived_neighbors.\n• Implement upsert functions inside snmp-collector.\n• Ensure FK desired_id REFERENCES desired_devices(id).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Materialize SQL view v_diffs",
+            "description": "Provide SQL VIEW that surfaces mismatches between desired and derived tables using EXCEPT.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Write migration adding `v_diffs`.\n• View selects desired_* EXCEPT derived_* (and vice-versa).\n• Add index on key columns for performance.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Expose REST endpoint /api/diffs",
+            "description": "Add Axum route that queries v_diffs and returns JSON array of differences.",
+            "dependencies": [
+              4
+            ],
+            "details": "• Implement handler in unet-api crate.\n• Support filter params ?device_id=, ?limit=.\n• Return 200 application/json with serialized rows.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement mocks for SNMP and DB",
+            "description": "Provide test utilities to fake SNMP sessions and an in-memory SQLite DB for isolated tests.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Use snmp-mock crate to simulate responses.\n• Use `SqlitePool::connect_in_memory` for DB.\n• Helpers return predictable interface and LLDP data.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "End-to-end test validating diff workflow",
+            "description": "Run collector, diverge desired state, and assert /api/diffs reports discrepancies.",
+            "dependencies": [
+              5,
+              6
+            ],
+            "details": "• Launch test server with mock SNMP + in-memory DB.\n• Insert desired row that will mismatch.\n• Execute collector, then HTTP GET /api/diffs.\n• Expect JSON len > 0 and specific fields.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Require `--insecure` flag to run without auth (B-1 • P0)",
+        "description": "Force users to opt-in explicitly to unauthenticated mode.",
+        "details": "• Update main.rs flag parsing (clap) adding --insecure (bool).\n• When HTTP server starts, if auth backend disabled AND --insecure not specified, abort with error.\n• Print red warning banner.",
+        "testStrategy": "CLI test: spawn `unet-cli serve` without flag -> process exits non-zero with message.\nRun with `--insecure` -> server 200 OK on /health.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add --insecure CLI flag",
+            "description": "Introduce a new boolean flag (--insecure) in main.rs using clap to let users explicitly opt-in to unauthenticated mode.",
+            "dependencies": [],
+            "details": "• Update clap App definition: .arg(Arg::new(\"insecure\").long(\"insecure\").help(\"Run without authentication\").action(ArgAction::SetTrue))\n• Extend Config struct to carry insecure: bool\n• Ensure help/usage output includes clear cautionary wording",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement server startup guard",
+            "description": "Abort server startup when auth backend is disabled and --insecure flag is not provided; emit colored warning when insecure mode is active.",
+            "dependencies": [
+              1
+            ],
+            "details": "• In server::bootstrap (or main), check if !config.auth_enabled && !config.insecure { eprintln!(\"ERROR: Authentication disabled but --insecure not supplied\"); std::process::exit(1); }\n• When config.insecure == true, print red banner (use ansi_term or similar) indicating insecure mode.\n• Exit code should be non-zero on guard failure.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add tests and error messaging verification",
+            "description": "Create integration tests to ensure guard works and proper messaging appears.",
+            "dependencies": [
+              2
+            ],
+            "details": "• CLI test: Command::cargo_bin(\"unet-cli\").arg(\"serve\").assert().failure().stderr(predicate::str::contains(\"--insecure\"));\n• Positive test: Command::cargo_bin(\"unet-cli\").args([\"serve\", \"--insecure\"]).assert().stdout(predicate::str::contains(\"INSECURE MODE\")); hit /health endpoint to confirm 200.\n• Add docs entry in README about the new flag.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Username/password auth with BCrypt & 401 responses (B-2 • P0)",
+        "description": "Store user credentials and protect CRUD routes.",
+        "details": "• Add users table: id, username UNIQUE, password_hash, role.\n• Use bcrypt crate (`hash` cost 12).\n• Implement middleware (tower_cookies + axum) extracting Basic header.\n• Non-authenticated requests get 401 with WWW-Authenticate: Basic realm=\"μNet\".",
+        "testStrategy": "HTTP test using reqwest:\n1. POST /api/users {admin, pwd}\n2. GET /api/nodes w/out header -> 401.\n3. GET with correct Basic creds -> 200.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create users table migration",
+            "description": "Add SeaORM migration that creates the `users` table with columns: id (PK, AUTOINCREMENT), username (TEXT UNIQUE NOT NULL), password_hash (TEXT NOT NULL), role (TEXT NOT NULL DEFAULT 'Admin'). Ensure up/down SQL files are generated and registered in Migrator.",
+            "dependencies": [],
+            "details": "Location: migrations/20240608_02_create_users.sql. Include index on username. Add entity & ActiveModel updates in unet-core.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement password hashing with bcrypt",
+            "description": "Use the `bcrypt` crate (cost 12) to hash plaintext passwords on user creation/update and verify hashes during authentication.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create helper fn `hash_password(plain) -> Result<String>` and `verify_password(plain, hash) -> Result<bool>` placed in auth::crypto module. Cover with unit tests.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Develop Basic Auth middleware",
+            "description": "Implement Axum extractor/middleware that parses the `Authorization: Basic` header, decodes credentials, looks up the user, and verifies the password hash via helper functions.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Return `Extension<CurrentUser>` on success; store in request extensions. On failure, propagate custom AuthError.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Handle 401 responses with WWW-Authenticate header",
+            "description": "Add global error handler or `IntoResponse` implementation for AuthError that returns HTTP 401 and header `WWW-Authenticate: Basic realm=\"μNet\"`.",
+            "dependencies": [
+              3
+            ],
+            "details": "Ensure JSON body `{ \"error\": \"unauthorized\" }` is included for clients.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Expose user CRUD API endpoints",
+            "description": "Create `/api/users` routes (POST, GET list, GET/:id, PUT/:id, DELETE/:id) leveraging Axum and protected by Basic Auth middleware.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "POST hashes password before insert; hide `password_hash` in responses; enforce username uniqueness.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Write integration tests for auth flow and endpoints",
+            "description": "Using `reqwest` and test server, verify: (1) user creation, (2) 401 on missing auth, (3) successful authenticated request, (4) wrong password returns 401.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Place tests under `tests/auth_integration.rs`; use test database with Migrator to bootstrap schema.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Bearer-token header authentication (B-3 • P1)",
+        "description": "Add token-based auth to prepare for future OIDC.",
+        "details": "• Extend users table with column api_token (UUIDv4) nullable.\n• Generate token via POST /api/tokens returning bearer.\n• Middleware checks Authorization: Bearer <token> (using axum extractors).\n• Rate-limit token issuance to 5/min IP.",
+        "testStrategy": "Integration test issues token, then calls protected route with bearer header; expects 200. Missing or bad token -> 401.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add api_token column & create migration",
+            "description": "Extend the users table with a nullable UUIDv4 column named api_token and generate the accompanying SQL migration.",
+            "dependencies": [],
+            "details": "• Modify Diesel schema (or equivalent ORM) to add api_token column.\n• Generate forward + rollback migrations.\n• Ensure existing rows get NULL default.\n• Run migration in CI to verify it applies cleanly.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement token generation endpoint",
+            "description": "Create POST /api/tokens endpoint that issues a new bearer token and persists it.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Validate user credentials (basic auth/session).\n• Generate UUIDv4 token, store in api_token.\n• Return JSON {\"token\":\"<uuid>\"}.\n• Ensure HTTPS-only response headers.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add bearer-token authentication middleware",
+            "description": "Introduce middleware that authenticates requests using Authorization: Bearer <token>.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• Build Axum extractor/layer reading header.\n• Look up user by api_token; attach User to request context.\n• Return 401 on missing/invalid token.\n• Integrate into protected route stack.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Apply rate limiting to token issuance",
+            "description": "Limit POST /api/tokens requests to 5 per minute per IP address.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Use tower::limit or in-house Redis counter.\n• Return 429 when limit exceeded.\n• Track metrics for blocked attempts.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement token revocation logic",
+            "description": "Allow users/admins to revoke existing tokens and ensure revoked tokens fail auth.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "• Add DELETE /api/tokens endpoint or set api_token NULL.\n• Middleware checks NULL/absent tokens each request.\n• Update DB index for faster token lookup.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Write integration & unit tests",
+            "description": "Ensure full token lifecycle works including auth, rate limiting, and revocation.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "• Integration: generate token -> access protected route (200).\n• Negative: missing/bad token -> 401.\n• Rate limit: exceed 5/min -> 429.\n• Revocation: delete token then retry protected route -> 401.\n• Use testcontainers/SQLite for isolated DB.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Route-level RBAC middleware (admin vs read-only) (B-4 • P1)",
+        "description": "Enforce role-based permissions on API endpoints.",
+        "details": "• Define enum Role { Admin, ReadOnly }.\n• Attach .layer(RequireRole::<Admin>) on mutating routes.\n• Return 403 on insufficient role.\n• CLI surfaces 403 as coloured error.",
+        "testStrategy": "User with ReadOnly attempts POST /api/nodes -> 403.\nAdmin succeeds.\nUnit test middleware separately with axum::http::Request simulation.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Role enum and persistence",
+            "description": "Introduce Role enum { Admin, ReadOnly } and add a roles column or table relation to persist each user’s role.",
+            "dependencies": [],
+            "details": "• Create src/auth/role.rs with public enum Role.\n• Implement Serialize/Deserialize & SeaORM ActiveEnum mapping.\n• Run migration to add role field to users table with default ReadOnly.\n• Expose helper fn user.role() -> Role.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement RequireRole middleware layer",
+            "description": "Create Axum middleware that validates the authenticated user’s role against a compile-time constant generic parameter.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Generic struct RequireRole<const R: Role>.\n• On request, extract Extension<User> then compare.\n• If insufficient, return StatusCode::FORBIDDEN JSON error.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Apply middleware to route definitions",
+            "description": "Wire RequireRole layer onto all mutating routes (POST/PUT/PATCH/DELETE) while leaving GET routes unrestricted or ReadOnly.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• Update router builder in src/http.rs.\n• For each protected scope, call .layer(RequireRole::<{ Role::Admin }>)\n• Ensure open /health and auth endpoints stay public.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Enhance CLI to display 403 feedback",
+            "description": "Modify unet-cli to detect HTTP 403 responses and print a red error banner with guidance.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Recognise reqwest::StatusCode::FORBIDDEN.\n• Use colored crate to output ‘Permission denied (need admin role)’ in red.\n• Exit with code 4.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Create unit and integration tests for RBAC",
+            "description": "Add tests that verify middleware logic and end-to-end behaviour for Admin vs ReadOnly users.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "• Unit: simulate Request with Admin/ReadOnly extensions and assert response codes.\n• Integration: spin up server, issue bearer token for each role, attempt POST /api/nodes.\n• Expect 403 for ReadOnly, 200 for Admin.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Finalize DSL grammar for policy engine (C-1 • P0)",
+        "description": "Complete pest grammar covering MATCH, ASSERT, SET, APPLY clauses.",
+        "details": "• Update ./policy/grammar.pest.\n• Handle comments, multi-line strings, comparison operators.\n• Provide parse_rule_set(&str)-> Result<Vec<Rule>> API.\n• Include examples in ./policy/tests/fixtures/.",
+        "testStrategy": "cargo test -p policy runs parser on sample_rules/*.mu and asserts RuleSet length + AST snapshot via insta.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Grammar Extension",
+            "description": "Finalize pest grammar to cover core clauses and operators.",
+            "dependencies": [],
+            "details": "Update ./policy/grammar.pest to fully define MATCH, ASSERT, SET, and APPLY clauses, including logical operators (and/or/not), comparison operators (=, !=, <, <=, >, >=), list literals, and identifiers. Maintain backward-compatibility with existing rules.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Comment & String Handling",
+            "description": "Introduce support for comments and multi-line strings in grammar.",
+            "dependencies": [
+              1
+            ],
+            "details": "Extend grammar with line (// ...) and block (/* ... */) comments, escape sequences, and triple-quoted multi-line string literals. Add corresponding pest rules and update whitespace/comment skips.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "AST Mapping",
+            "description": "Transform pest parse tree into typed AST structures.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement FromPairs helpers that walk pest Pairs and construct Vec<Rule>, MatchExpr, AssertExpr, etc. Place code in policy/ast.rs. Ensure clear error propagation with custom Error enum.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Parse API",
+            "description": "Expose public parse_rule_set function.",
+            "dependencies": [
+              3
+            ],
+            "details": "Add pub fn parse_rule_set(src: &str) -> Result<Vec<Rule>, Error> in policy/lib.rs that calls pest parser then AST mapping. Re-export Rule and Error types for downstream crates.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Fixtures",
+            "description": "Create sample rule files exercising full grammar.",
+            "dependencies": [
+              4
+            ],
+            "details": "Add .mu files under ./policy/tests/fixtures/sample_rules/ showcasing comments, multi-line strings, all clauses, and edge cases (empty sets, nested applies).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Snapshot Tests",
+            "description": "Write insta snapshot tests for parser output.",
+            "dependencies": [
+              5
+            ],
+            "details": "Add tests in policy/tests/parser.rs that iterate over fixture files, call parse_rule_set, assert rule count, and snapshot the resulting AST with insta::assert_debug_snapshot!(..). Integrate with `cargo test -p policy`.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Implement policy evaluator core with >90% branch coverage (C-2 • P0)",
+        "description": "Execute rules against in-memory model graph.",
+        "details": "• EvaluationContext holds HashMap<NodeId, Node> etc.\n• Implement Visitor over AST: MATCH builds selection set; ASSERT pushes failures; SET mutates desired.\n• Provide `evaluate(&RuleSet, &mut Context)->Vec<Violation>`.\n• Use criterion benchmarks for 10k nodes.",
+        "testStrategy": "• Unit tests for each AST node path using mock objects.\n• cargo tarpaulin --branches ensures >0.9 coverage.\n• Failing ASSERT returns non-empty violations.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Context model",
+            "description": "Design and implement EvaluationContext holding graph nodes, indexes, and helper look-ups for rule execution.",
+            "dependencies": [],
+            "details": "Create struct EvaluationContext { nodes: HashMap<NodeId, Node>, ... }. Provide basic APIs for selection, mutation, lookup. Add unit tests for getters/setters.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Visitor implementation skeleton",
+            "description": "Create EvalVisitor that walks the parsed AST and delegates to node-specific handlers (MATCH, ASSERT, SET).",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement trait Visitor for EvalVisitor with stub visit_match, visit_assert, visit_set methods. Inject mutable ref to EvaluationContext.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "MATCH logic",
+            "description": "Implement visit_match to build selection sets from graph based on predicate expressions.",
+            "dependencies": [
+              2
+            ],
+            "details": "Support attribute filters, relationship traversals, and store results in visitor state. Unit tests for positive/negative matches.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "ASSERT evaluation",
+            "description": "Implement visit_assert to evaluate predicates against current selection and record failures.",
+            "dependencies": [
+              2
+            ],
+            "details": "Return boolean, push failure info to temporary list. Cover edge cases: empty selection, negated conditions.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "SET mutation",
+            "description": "Implement visit_set to mutate desired state in EvaluationContext based on rule directives.",
+            "dependencies": [
+              2
+            ],
+            "details": "Handle property updates, node creation/deletion markers. Ensure mutations are isolated for later commit phase.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Violation struct and evaluate entrypoint",
+            "description": "Define Violation struct and implement evaluate(&RuleSet, &mut EvaluationContext) -> Vec<Violation> orchestrating visitor passes.",
+            "dependencies": [
+              1,
+              3,
+              4,
+              5
+            ],
+            "details": "Violation carries rule_id, node_ids, message. Unit tests verifying ASSERT failure returns non-empty list.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Criterion benchmarks",
+            "description": "Add benchmarks for evaluating 10k-node graph to measure throughput and allocations.",
+            "dependencies": [
+              6
+            ],
+            "details": "Create benches/evaluator.rs with synthetic graph generator. Use --bench feature in CI; track ops/sec.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Coverage gating in CI",
+            "description": "Configure cargo tarpaulin branch coverage check (>90%) and fail pipeline when threshold not met.",
+            "dependencies": [
+              6
+            ],
+            "details": "Update GitHub Actions: run cargo tarpaulin --workspace --branches --fail-under 90. Ensure report uploaded to Codecov.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Background Git sync fetching policy rules (C-3 • P0)",
+        "description": "Daemon periodically pulls remote Git repo to refresh rule set.",
+        "details": "• Use git2::Repository; spawn tokio::task::spawn_interval(Duration::from_secs(N)).\n• Configurable via CLI flag --rules-git-url.\n• On pull success, send broadcast event to evaluator to reload.\n• Handle merge conflicts by hard-reset to origin/HEAD.",
+        "testStrategy": "Integration test with temp bare repo: commit update, wait, assert evaluator receives new rule version (channel recv()).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add `--rules-git-url` CLI flag and runtime configuration",
+            "description": "Introduce a new command-line flag allowing users to specify the remote Git repository that hosts policy rules, and expose it through the application-wide Config struct.",
+            "dependencies": [],
+            "details": "• Update Clap/StructOpt structs to include `--rules-git-url <url>` (optional).\n• Persist value in Config; default to None disables sync task.\n• Provide helper `Config::rules_git_url() -> Option<Url>`.\n• Unit test flag parsing.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Git synchronization helper using git2",
+            "description": "Create a reusable async function `sync_rules_repo(cfg: &Config) -> Result<bool>` that clones, fetches, or hard-resets the rules repository and returns whether new commits were detected.",
+            "dependencies": [
+              1
+            ],
+            "details": "• If local path (e.g., $CACHE/rules.git) missing, perform `Repository::clone_recurse`.\n• Else `fetch(\"origin\", &[\"refs/heads/*:refs/remotes/origin/*\"], None, None)`.\n• Detect fast-forward vs diverged; on divergence perform `reset --hard origin/HEAD`.\n• Return Ok(true) when HEAD SHA changed.\n• Log errors and bubble up.\n• Unit test with temp repos.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Spawn periodic background task for rule synchronization",
+            "description": "Set up a Tokio `interval` task that invokes `sync_rules_repo` every N seconds, configurable via an environment variable or default (e.g., 60 s).",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• Add `rules_sync_interval_seconds` to Config.\n• In `main.rs`, after runtime init, call `tokio::spawn(async move { loop { interval.tick().await; if let Ok(updated) = sync_rules_repo(&cfg).await { ... }}})`.\n• Gracefully handle shutdown via `select!` on shutdown signal.\n• Trace-level logging for each cycle.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Broadcast reload event on successful sync",
+            "description": "Integrate a Tokio broadcast channel that notifies the policy evaluator when new rules are downloaded.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Create `pub type RulesReloadTx = broadcast::Sender<()>`.\n• Inject sender into background task; on `updated == true` send `tx.send(())`.\n• Update evaluator to hold a `broadcast::Receiver` and call `reload()` upon recv.\n• Handle lagged receivers with `RecvError::Lagged` retry.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integration test validating end-to-end Git sync and reload",
+            "description": "Write an async integration test that spins up a temporary bare repo, launches the app with sync enabled, commits a new rule, waits, and asserts the evaluator receives a reload notification.",
+            "dependencies": [
+              4
+            ],
+            "details": "• Use `tempdir` + `git2` to create remote repo and working clone.\n• Start application in background with in-memory evaluator channel.\n• After initial idle, add commit to remote and push.\n• Await broadcast recv with timeout.\n• Assert evaluator reloaded latest rule content.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "CLI command `policy check` exits non-zero on violations (C-4 • P0)",
+        "description": "Add `unet-cli policy check <csv> --rules <dir>`.",
+        "details": "• Parse CSV into nodes; load RuleSet via previous libraries.\n• Call evaluate(); if violations.len()>0 { eprintln!(…); process::exit(1)}.\n• Provide `--format json|table`.",
+        "testStrategy": "CLI test with known failing rule returns exit code 1.\nSuccess sample returns 0.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add `policy check` subcommand and argument parsing",
+            "description": "Extend the `unet-cli` command-line interface to recognise the new `policy check <csv>` subcommand with options `--rules <dir>` and `--format json|table`.",
+            "dependencies": [],
+            "details": "• Update Clap/StructOpt definitions.\n• Ensure help text and default format (table).\n• Propagate parsed values to command dispatcher.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement CSV loader for node graph construction",
+            "description": "Load the provided CSV file and convert rows into in-memory Node objects consumable by the policy engine.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Reuse existing model structs.\n• Handle headers, type conversion, and error reporting.\n• Return Vec<Node> or an EvaluationContext-ready graph.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Wire evaluator call and exit-code logic",
+            "description": "Invoke `evaluate()` with the RuleSet and loaded nodes; exit with code 1 when violations are present, otherwise 0.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• Load RuleSet from directory using previously built parser.\n• Collect violations; print summary to stderr when non-empty.\n• Use `std::process::exit` to set code.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Output formatting & CLI integration tests",
+            "description": "Provide JSON and table formatters for violations and add integration tests validating formatting and exit codes.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Implement `format_json` and `format_table` helpers.\n• Use `assert_cmd` and `predicates` crates to test:\n  – success case returns 0 with empty list.\n  – failure case returns 1 and matches expected output.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "title": "Cache compiled AST for large rule sets (C-5 • P1)",
+        "description": "Persist bincode-encoded AST to disk to accelerate startup.",
+        "details": "• After parsing, serialize RuleSet to ~/.cache/unet/<hash>.bin.\n• On next run, compare file mtime of rules; if unchanged, load cache.\n• Use lru-cache for in-proc cache of 10k entries.",
+        "testStrategy": "Benchmark startup time with and without cache; assert <10 ms for 10k rules in CI perf job using hyperfine.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define cache hash and on-disk path scheme",
+            "description": "Design a deterministic hashing strategy for RuleSet sources and map it to a filesystem-safe cache path under ~/.cache/unet/<hash>.bin.",
+            "dependencies": [],
+            "details": "• Compute SHA-256 over concatenated (normalized) rule file paths + contents.\n• Hex-encode first 32 chars for directory fan-out: ~/.cache/unet/<hash[0..2]>/<hash>.bin.\n• Create helper fn cache_path(rule_paths: &[PathBuf]) -> PathBuf.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement bincode serialization/deserialization of AST",
+            "description": "Persist parsed RuleSet to disk and load it back when valid.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Add serde derives to AST types if missing.\n• Provide fn save_ast(path: &Path, rules: &RuleSet) -> io::Result<()> and fn load_ast(path: &Path) -> io::Result<RuleSet>.\n• Use bincode::serialize_into/deserialize_from with compression (e.g., zstd) feature-gated via cfg(feature=\"cache\").",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement mtime validation logic",
+            "description": "Compare modification times of source rule files against cached artifact to decide reuse or regeneration.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Gather latest mtime across all input rule files via std::fs::metadata.\n• Store this timestamp in a sidecar .meta file or embed in serialized blob header.\n• On load, if any source file mtime > cached mtime, bypass cache and reparse + overwrite cache.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Add in-process LRU cache for RuleSet lookups",
+            "description": "Keep up to 10k recently used AST entries in memory to avoid disk hits within the same process.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Add lru crate to Cargo.toml.\n• Create lazy_static/once_cell global LruCache<String, Arc<RuleSet>> keyed by hash.\n• Wrap load_ast with lookup/insert logic; ensure thread-safe via Mutex or RwLock.\n• Expose fn get_or_insert_rules(rule_paths) -> Result<Arc<RuleSet>>.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Write performance benchmarks and CI perf job",
+            "description": "Validate that caching drops startup time below 10 ms for 10k rules using hyperfine in CI.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "• Add benches/startup.rs calling get_or_insert_rules with synthetic 10k-rule file.\n• Include ./scripts/bench_startup.sh: hyperfine --warmup 3 './unet-cli --rules big.mu'.\n• Assert mean < 10ms with hyperfine --export-json and grep.\n• Wire into GitHub Action perf job that runs only on cache-related paths.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Integrate MiniJinja with custom filters (D-1 • P0)",
+        "description": "Embed MiniJinja template engine for configuration rendering.",
+        "details": "• Add minijinja = \"^1.0\".\n• Register filters: ip_cidr(), to_upper(), indent(n).\n• Implement `render config <node.json>` CLI which loads template by logical name and renders context.\n• Provide `ContextBuilder` converting Node struct to Value.",
+        "testStrategy": "Unit test compiles template with `{{ hostname | to_upper }}` and asserts output.\nCLI e2e renders sample JSON to expected config snapshot.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add MiniJinja dependency",
+            "description": "Introduce MiniJinja crate to the project",
+            "dependencies": [],
+            "details": "• Add `minijinja = \"^1.0\"` to Cargo.toml under `[dependencies]`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement custom filters",
+            "description": "Create and register ip_cidr, to_upper, and indent filters",
+            "dependencies": [
+              1
+            ],
+            "details": "• Define Rust functions `ip_cidr`, `to_upper`, and `indent`.\n• Register them with MiniJinja `Environment`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build rendering context",
+            "description": "Implement ContextBuilder converting Node struct to MiniJinja Value",
+            "dependencies": [
+              1
+            ],
+            "details": "• Add `ContextBuilder` struct with `from_node(node: &Node) -> Value`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Add `render config` CLI command",
+            "description": "Implement CLI command to render template with context",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "• Parse `render config <node.json>`.\n• Load template by logical name.\n• Feed MiniJinja context and output result to stdout.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Write unit and e2e tests",
+            "description": "Ensure filters and CLI rendering work correctly",
+            "dependencies": [
+              4
+            ],
+            "details": "• Unit test template `{{ hostname | to_upper }}`.\n• E2E test renders sample JSON and matches snapshot.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "Parse `# match:` header for subtree matching (D-2 • P0)",
+        "description": "Allow template files to declare subset selection using YAML-like header.",
+        "details": "• Regex scan first lines for `# match: <expr>`.\n• Expression grammar reused from policy MATCH subset.\n• During render, filter nodes collection accordingly.",
+        "testStrategy": "Given template with header restricting to vendor==\"cisco\", render list where non-Cisco nodes skipped.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement header scanner for `# match:` directive",
+            "description": "Extend template-loading logic to detect and extract a `# match:` line from the first contiguous block of comment lines at the top of a template file.",
+            "dependencies": [],
+            "details": "• Update `template.rs::load()` to iterate lines until first non-comment.\n• Use regex `^#\\s*match:\\s*(.+)$` capturing the expression.\n• Store raw expression string in Template struct (new field `match_expr: Option<String>`).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Parse extracted expression with existing grammar",
+            "description": "Feed the raw expression captured in Subtask 1 into the already implemented policy-MATCH expression parser to obtain an evaluable AST.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Import `expr_parser::parse_expr()`.\n• On template load, if `match_expr` present, invoke parser; on error, surface as TemplateError.\n• Cache parsed AST in Template struct (`match_ast: Option<Expr>`).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Apply match filter during rendering & add tests",
+            "description": "During `render config` execution, evaluate the parsed match AST for each node and skip nodes that do not satisfy the expression. Provide unit and e2e tests.",
+            "dependencies": [
+              2
+            ],
+            "details": "• In `Renderer::render_all()`, early-return if `template.match_ast` evaluates to false for a node.\n• Add unit test using node JSON with vendor \"cisco\" and \"juniper\"; template header `# match: vendor == \"cisco\"` should render only Cisco.\n• CLI integration test: run `render config samples/cisco.json` and assert only Cisco output produced.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "title": "Implement `config-slicer` crate with Juniper & IOS parsers (D-3 • P0)",
+        "description": "Create library that tokenizes vendor configs into AST slices.",
+        "details": "• Use nom parser combinators; create ios.rs, juniper.rs modules.\n• Expose fn slice_cfg(cfg:&str, subtree:&str)->Result<String>.\n• Publish crate path ./crates/config-slicer.",
+        "testStrategy": "Golden file tests: input config + subtree spec produce expected trimmed output; diff verified by insta snapshots.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Crate scaffolding",
+            "description": "Create initial library crate structure for config-slicer.",
+            "dependencies": [],
+            "details": "• Path: ./crates/config-slicer\n• cargo new --lib config-slicer; add to workspace members.\n• Create src/lib.rs with feature‐gated modules ios, juniper, tokenizer.\n• Add dependencies: nom = \"^7\", insta = { version=\"^1\", features=[\"glob\"] }.\n• Configure CI job to run tests in this crate.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Common tokenizer",
+            "description": "Implement reusable tokenizer that turns config text into token stream.",
+            "dependencies": [
+              1
+            ],
+            "details": "• File: src/tokenizer.rs; expose Token, tokenize(&str)->Vec<Token>.\n• Handle comments, indentation levels, line continuations.\n• Unit tests validating token categories and positions.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "IOS parser",
+            "description": "Build Nom-based parser for Cisco IOS configurations.",
+            "dependencies": [
+              2
+            ],
+            "details": "• File: src/ios.rs; parse Vec<Token> into AstNode list.\n• Support hierarchy blocks (interface, router bgp, line vty, etc.).\n• Provide fn slice_ios(tokens:&[Token], subtree:&str)->Result<String>.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Juniper parser",
+            "description": "Build Nom-based parser for Juniper Junos configurations.",
+            "dependencies": [
+              2
+            ],
+            "details": "• File: src/juniper.rs; parse tokens into hierarchical AST.\n• Support set-based and hierarchy formats.\n• Provide fn slice_juniper(tokens:&[Token], subtree:&str)->Result<String>.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Slice API",
+            "description": "Expose public slice_cfg function selecting proper parser.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "• In lib.rs export pub fn slice_cfg(cfg:&str, subtree:&str)->Result<String>.\n• Detect vendor via heuristics or caller hint.\n• Internally tokenize then dispatch to slice_ios or slice_juniper.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Snapshot tests",
+            "description": "Add golden snapshot tests validating slicer output.",
+            "dependencies": [
+              5
+            ],
+            "details": "• Directory: tests/snapshots/.\n• Use insta::assert_snapshot! for multiple vendor samples and subtree specs.\n• Provide helper to load fixtures from tests/fixtures/*.cfg.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Publishing & metadata",
+            "description": "Prepare crate for publication to crates.io.",
+            "dependencies": [
+              6
+            ],
+            "details": "• Fill Cargo.toml: authors, description, license, repository.\n• Add README with usage examples.\n• Tag version bump in CI; add `cargo publish --dry-run` step.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "`unet-cli diff` command shows coloured diff (D-4 • P0)",
+        "description": "Compare rendered template vs live config and colourize output.",
+        "details": "• Use similar algorithm to git diff – unified.\n• Use difference crate with ansi_term for colours.\n• Command: `unet-cli diff --node r1 --template interfaces`.\n• Fetch live config via SNMP/SSH plugin, slice via config-slicer, compare.",
+        "testStrategy": "Mock live config returning string; assert diff output contains `\u001b[31m-` for deletions.\nExit code 2 when diff present.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Rendered template fetch logic",
+            "description": "Generate and fetch the rendered configuration from the template engine for a given node/template pair.",
+            "dependencies": [],
+            "details": "Invoke existing MiniJinja rendering pipeline, wrap in a helper function returning a String. Ensure correct template/path resolution and error propagation so later steps can consume the rendered config.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Live config retrieval stub",
+            "description": "Create a stubbed implementation that simulates fetching a device’s live configuration.",
+            "dependencies": [],
+            "details": "Provide a trait `LiveConfigProvider` with a mock implementation returning deterministic sample config strings. This will be replaced by SNMP/SSH integration later but is sufficient for test-driven diff development.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Unified diff algorithm implementation",
+            "description": "Compute a unified diff between rendered and live configs using the `difference` crate.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Take two strings, produce unified diff lines with context. Ensure algorithm outputs additions, deletions, and unchanged lines in correct order for later colourisation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Colourised diff output",
+            "description": "Apply ANSI colour codes to diff results for terminal display.",
+            "dependencies": [
+              3
+            ],
+            "details": "Use `ansi_term` to colour additions green and deletions red. Preserve diff markers (+/-/ ) and ensure compatibility with pipe/TTY detection.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Exit-code handling and tests",
+            "description": "Return exit code 0 when no diff and 2 when differences exist; add tests for both scenarios.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Implement CLI flow checking diff presence. Write integration tests asserting correct codes and that coloured output contains expected ANSI markers in diff scenario.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "Support `{% include %}` / `{% import %}` in templates (D-5 • P1)",
+        "description": "Leverage MiniJinja loader to allow composite templates.",
+        "details": "• Implement FileSystemLoader pointed at ./templates.\n• Document search path precedence.\n• Add unit tests for import macros.",
+        "testStrategy": "Render template that includes sub-template and assert final output contains expected merged text.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Configure FileSystemLoader for MiniJinja",
+            "description": "Initialize MiniJinja with a FileSystemLoader pointing at the ./templates directory and document search-path precedence.",
+            "dependencies": [],
+            "details": "• Add MiniJinja::Environment builder in template.rs.\n• Use FileSystemLoader::new([\"./templates\"]).\n• If ENV var TEMPLATE_PATH is set, prepend it to the search list.\n• Update README with precedence order: ENV path > ./templates.\n• Ensure loader is wired into web server startup.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Create include/import template examples",
+            "description": "Add sample templates demonstrating {% include %} and {% import %} usage to the repository.",
+            "dependencies": [
+              1
+            ],
+            "details": "• templates/base.html – defines layout blocks.\n• templates/macros.html – exports a macro greet(name).\n• templates/home.html – `{% extends \"base.html\" %}` and `{% import \"macros.html\" as m %}`.\n• Document these examples in docs/templates.md with expected rendered output.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement unit tests for include/import rendering",
+            "description": "Write Rust tests asserting that templates using include/import render correctly through MiniJinja.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• tests/template_include.rs: load env via helper that configures loader.\n• Render home.html with context `{ \"user\": \"Alice\" }` and assert output contains header/footer from base and greeting from macros.\n• Add negative test for missing template path returning TemplateNotFound.\n• Run tests in CI job `cargo test --features web`.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "title": "Add `--offline` flag to CLI (E-1 • P0)",
+        "description": "Allow running policy and template commands without network/database.",
+        "details": "• `clap` flag sets OfflineMode bool in config.\n• Gate any HTTP/DB calls behind if !offline.\n• Emit warning if user attempts unsupported subcommand.",
+        "testStrategy": "Run `unet-cli render node.json --offline` with no DB available and assert success.\nRun command requiring server with offline -> error message.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Introduce --offline flag and propagate to runtime config",
+            "description": "Add a new --offline boolean flag to the CLI using clap, expose it in the Config struct, and provide a helper accessor.",
+            "dependencies": [],
+            "details": "• Modify cli.rs to include .arg(\"--offline\")\n• Update Config { offline: bool } with default false\n• In main(), pass matches.get_one::<bool>(\"offline\") to Config builder\n• Ensure Config is clonable so other layers can inspect offline flag",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Guard HTTP/DB calls when offline mode is enabled",
+            "description": "Wrap all external network and database calls with offline checks and emit user-friendly errors/warnings.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Audit crate for calls to http_client and db_pool\n• Introduce helper fn ensure_online() that returns Result<(), OfflineError>\n• Replace direct calls with ensure_online()?; actual_call()\n• For commands inherently requiring connectivity, short-circuit with Err(OfflineUnsupported)",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integration & unit tests for offline mode behavior",
+            "description": "Add tests confirming commands succeed without connectivity and fail when required resources are blocked by offline mode.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• In tests/cli_offline.rs spawn CLI with `--offline` and assert exit code 0 for render\n• Mock or drop DB env vars to simulate unavailable database\n• Run policy check requiring server with `--offline` and assert non-zero exit + error message\n• Use assert_cmd + predicates crates for assertions",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "title": "Implement canary workflow `push-canary` (E-2 • P1)",
+        "description": "Push rendered configs to staging devices.",
+        "details": "• `unet-cli push-canary <dir>` iterates rendered files, pushes via NETCONF/SSH to devices tagged canary.\n• Waits for health check; rolls back on error.",
+        "testStrategy": "Integration test mocks SSH push using assert_cmd with fake server; checks rollback path triggered on failure code.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define device tagging schema and retrieval API",
+            "description": "Introduce a tagging system that marks devices with role=canary and expose a retrieval function usable by CLI and push engine.",
+            "dependencies": [],
+            "details": "• Extend device inventory model with Vec<String> tags field.\n• Provide fn get_canary_devices() -> Vec<Device> in unet-core.\n• Persist tags in existing datastore tables.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement rendered file iteration utility",
+            "description": "Create a module that walks a directory of rendered configs and returns (device_id, file_path) pairs in deterministic order.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Use walkdir to iterate files, sorted by filename.\n• Parse filename pattern <device_id>.xml|cfg.\n• Expose fn iter_rendered(dir:&Path)->Result<Vec<(DeviceId,PathBuf)>>.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Develop NETCONF/SSH push core",
+            "description": "Build logic to open NETCONF or fallback SSH sessions to devices and deliver config payloads.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "• Use tokio-openssh for SSH, y-nom for NETCONF framing.\n• Expose async fn push_config(device:&Device, cfg:&str)->Result<()>.\n• Emit structured errors with enum PushError {Connect,Auth,Apply}.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement post-push health check loop",
+            "description": "Continuously poll device health endpoints after push, with timeout and jitter.",
+            "dependencies": [
+              3
+            ],
+            "details": "• HealthChecker polls /healthz or runs show commands.\n• Stop when N consecutive OKs or timeout hits.\n• Return Result<()> capturing first failure reason.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Add rollback mechanism on failure",
+            "description": "On health-check failure, restore previous startup/running config safely.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "• Store pre-push candidate via get-config.\n• On failure, issue discard and commit-replace.\n• Validate rollback success and bubble errors upward.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Wire CLI UX: `unet-cli push-canary <dir>`",
+            "description": "Expose user-facing command that orchestrates iteration, push, health check, and rollback.",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "• Clap subcommand with --timeout & --parallel flags.\n• Streams progress via indicatif.\n• Exit code 0 on success, 1 on rollback, 2 on fatal.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Create integration tests for canary workflow",
+            "description": "End-to-end tests using fake SSH/NETCONF servers to validate success path and rollback path.",
+            "dependencies": [
+              6
+            ],
+            "details": "• Use assert_cmd + rexpect to stand up mock devices.\n• Scenario A: healthy push → expect OK exit.\n• Scenario B: induced failure → expect rollback and exit 1.\n• Capture logs and assert ordering.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 23,
+        "title": "`--debug-policy` flag prints rule trace (E-3 • P1)",
+        "description": "Provide verbose evaluation tracing for a single node.",
+        "details": "• Add flag to policy subcommand; emits printlns of MATCH sets, ASSERT results with line numbers.\n• Use colored crate for readability.",
+        "testStrategy": "CLI test ensures trace lines contain rule IDs and evaluation outcome.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add --debug-policy CLI flag and propagate to evaluator",
+            "description": "Introduce a command-line flag that enables verbose policy tracing.",
+            "dependencies": [],
+            "details": "• Modify policy subcommand definition in unet-cli to accept a boolean --debug-policy flag (default false).\n• Update struct/enum that carries evaluation options to include debug_policy: bool.\n• Pass this flag through the command routing layer down to the evaluator entry point so subsequent logic can consult it.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Hook evaluator for trace events with colourised output",
+            "description": "Emit coloured MATCH/ASSERT trace lines when debug flag is enabled.",
+            "dependencies": [
+              1
+            ],
+            "details": "• In evaluator module, wrap key decision points (rule MATCH set creation, ASSERT evaluations) in debug_policy checks.\n• Use the colored crate (or ansi_term if already used) to render: rule IDs in bold cyan, “MATCH” in green, “FAIL” in red, line numbers in dim grey.\n• Provide helper fn trace(rule_id, outcome, line_no) -> println! when debug is active.\n• Ensure no performance hit when flag is off (early return).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add integration tests for trace output",
+            "description": "Verify CLI prints expected coloured trace lines when flag is enabled.",
+            "dependencies": [
+              2
+            ],
+            "details": "• In unet-cli/tests/debug_policy.rs start a Command for `unet-cli policy --debug-policy <sample_file>`.\n• Capture stdout with assert_cmd; assert that at least one line matches regex `\\x1b\\[[0-9;]*mMATCH` and contains rule ID & line number.\n• Add negative test where flag is omitted to confirm no trace lines.\n• Gate tests behind `--nocapture` friendly output to CI.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "title": "Implement MCP-compliant `/mcp/context` endpoint (F-1 • P0)",
+        "description": "Expose network context according to MCP JSON schema.",
+        "details": "• Add route GET /mcp/context returning 200 application/json.\n• Follow spec: version, nodes[], links[].\n• Validate output against schemas/mcp_context.json during CI using jsonschema crate.",
+        "testStrategy": "CI test fetches endpoint, loads schema file, calls `schema.validate(&value)` and asserts empty errors vec.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design data model & schema mapping",
+            "description": "Create Rust structs mirroring the MCP context JSON schema and link them with the on-disk schema file.",
+            "dependencies": [],
+            "details": "• Inspect schemas/mcp_context.json and derive a strongly-typed representation (Version, Node, Link, etc.).\n• Annotate structs with serde for camelCase fields.\n• Add crate-level module mcp_context.rs exporting Context struct.\n• Update Cargo features/modules if necessary.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement `/mcp/context` route & marshalling",
+            "description": "Expose GET /mcp/context that builds Context struct and serializes it to JSON.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Add route in web server router returning 200 and application/json.\n• Populate Context from current in-memory graph or mock data.\n• Use serde_json::to_value/ to_string to marshal response.\n• Handle errors with 500 fallback.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate CI JSON-schema validation",
+            "description": "Ensure build fails if route output violates schema using jsonschema crate in CI workflow.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Write test helper that fetches /mcp/context or uses generated value.\n• Load schemas/mcp_context.json with Schema::compile.\n• Call schema.validate(&value) and assert empty iterator.\n• Add step to GitHub Actions or Cargo Makefile.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Write unit & integration tests",
+            "description": "Cover happy path and edge cases; aim for >90% branch coverage of route and model.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Unit tests: serialization round-trip, optional fields.\n• Integration test: spin up test server, GET /mcp/context, assert status 200 & JSON matches sample snapshot.\n• Ensure tests run under cargo tarpaulin to keep coverage metrics.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Server-sent events stream for live diffs (F-2 • P2)",
+        "description": "Provide SSE endpoint streaming diff updates to front-end.",
+        "details": "• Use axum::extract::sse.\n• Broadcast from SNMP collector on diff changes via tokio::broadcast::channel.\n• Front-end PoC HTML page uses EventSource to display JSON.",
+        "testStrategy": "E2E test connects via reqwest::Client::get().sse(), waits for at least one event.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up broadcast channel for diff events",
+            "description": "Create a global tokio::broadcast::channel carrying serialized diff JSON strings and register it in shared application state.",
+            "dependencies": [],
+            "details": "Define `type DiffSender = broadcast::Sender<String>;` and `type DiffReceiver = broadcast::Receiver<String>;` in a new module. Expose the sender through Axum `Extension<AppState>` so other components can clone and use it.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement SSE extractor route",
+            "description": "Add GET /api/diff/stream endpoint that subscribes to the channel and streams Server-Sent Events to clients.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use `Sse::new` with `keep_alive` configured. Convert incoming broadcast messages into `Event::json` frames; map lag errors to resubscription. Attach route in router.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Hook diff producer into SNMP collector",
+            "description": "Publish diff objects to the broadcast channel whenever the SNMP diffing logic detects a change.",
+            "dependencies": [
+              1
+            ],
+            "details": "Inject `DiffSender` into the collector task; on each diff, serialize via `serde_json::to_string` and call `sender.send(payload)`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Add heartbeat handling",
+            "description": "Emit periodic heartbeat comments to keep SSE connections alive and allow client reconnection detection.",
+            "dependencies": [
+              2
+            ],
+            "details": "Spawn a task that sends `Event::comment(\"heartbeat\")` every 15s via an internal mpsc -> broadcast adapter to avoid blocking producer path. Ensure route filters out heartbeats if client asks `?heartbeats=false`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Create front-end sample HTML page",
+            "description": "Provide a PoC static page that uses EventSource to display incoming diff JSON and heartbeat status.",
+            "dependencies": [
+              2
+            ],
+            "details": "Include minimal HTML/JS: `const es = new EventSource('/api/diff/stream'); es.onmessage = e => append(JSON.parse(e.data)); es.onerror = ...`. Document in README how to open.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Write E2E test for SSE diff stream",
+            "description": "Implement async test that starts the app, triggers a mock diff, and asserts at least one event is received within timeout.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Use `reqwest::Client::new().get(url).send().await?.bytes_stream()` to parse SSE via `reqwest_eventsource`. Assert heartbeat or diff event arrives before 5 s and content matches schema.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "title": "GitHub Actions matrix build (linux-musl, macOS, windows-gnu) (G-1 • P0)",
+        "description": "Ensure cross-platform binaries on every push.",
+        "details": "• Modify .github/workflows/ci.yml: jobs.build.strategy.matrix.os and target triple.\n• Use `cross` for musl.\n• Upload artifacts via actions/upload-artifact.",
+        "testStrategy": "Workflow must complete successfully in PR checks; artifact existence verified via action step: run: test -f ./target/release/unet-cli.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Expand CI matrix to include all target triples",
+            "description": "Modify .github/workflows/ci.yml so jobs.build.strategy.matrix enumerates:\n• linux-gnu (x86_64-unknown-linux-gnu)\n• linux-musl (x86_64-unknown-linux-musl)\n• macos (x86_64-apple-darwin)\n• windows-gnu (x86_64-pc-windows-gnu)\nInclude corresponding setup-rust toolchain installation per target.",
+            "dependencies": [],
+            "details": "Edit existing build job:\nstrategy:\n  matrix:\n    include:\n      - os: ubuntu-latest\n        target: x86_64-unknown-linux-gnu\n      - os: ubuntu-latest\n        target: x86_64-unknown-linux-musl\n      - os: macos-latest\n        target: x86_64-apple-darwin\n      - os: windows-latest\n        target: x86_64-pc-windows-gnu\nUse `actions/setup-rust` with `target: ${{ matrix.target }}`.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Integrate `cross` for musl builds",
+            "description": "Install and invoke `cross` when matrix.target == x86_64-unknown-linux-musl to handle musl toolchain and static linking.",
+            "dependencies": [
+              1
+            ],
+            "details": "Insert conditional step:\n- name: Install cross\n  if: matrix.target == 'x86_64-unknown-linux-musl'\n  run: cargo install cross --git https://github.com/cross-rs/cross && rustup toolchain install stable --target ${{ matrix.target }}\n- name: Build with cross (musl)\n  if: matrix.target == 'x86_64-unknown-linux-musl'\n  run: cross build --release --target ${{ matrix.target }}\nRetain standard `cargo build --release --target` step for all other targets.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Upload compiled binaries as artifacts",
+            "description": "Add `actions/upload-artifact` step after successful build to persist platform-specific binaries for later download.",
+            "dependencies": [
+              2
+            ],
+            "details": "- name: Upload artifact\n  uses: actions/upload-artifact@v3\n  with:\n    name: unet-cli-${{ matrix.target }}\n    path: target/${{ matrix.target }}/release/unet-cli*",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Add artifact verification job",
+            "description": "Create separate `verify` job that downloads each artifact, checks existence, runs `--help`, and on musl variant verifies static linking with `ldd` absence.",
+            "dependencies": [
+              3
+            ],
+            "details": "New job `verify` with strategy.matrix.target matching build matrix.\nSteps:\n- uses: actions/download-artifact@v3\n  with: { name: unet-cli-${{ matrix.target }} }\n- run: test -f unet-cli* && chmod +x unet-cli*\n- run: ./unet-cli* --help\n- if: matrix.target == 'x86_64-unknown-linux-musl'\n  run: (ldd ./unet-cli* || true) | grep -q \"not a dynamic executable\"",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 27,
+        "title": "Enforce `cargo audit`, `clippy --deny warnings`, `fmt` in CI (G-2 • P0)",
+        "description": "Hard-fail pipeline on security or lint issues.",
+        "details": "• Add steps after build:\n  - cargo fmt -- --check\n  - cargo clippy --all-targets --all-features -- -D warnings\n  - cargo audit --json > report.json\n• Fail job if audit finds Vulnerable == true.",
+        "testStrategy": "Push intentional fmt error in test branch; CI should fail.\nMock audit ignore file to pass baseline.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Integrate `cargo fmt --check` into CI",
+            "description": "Add an explicit formatting gate to the existing CI workflow to ensure all committed code is rustfmt‐compliant.",
+            "dependencies": [],
+            "details": "• Edit `.github/workflows/ci.yml` (or equivalent) to insert a `cargo fmt --all -- --check` step after dependency caching but before build/test.\n• Ensure the step is marked `if: always()` so it still runs when earlier steps are skipped.\n• Update CONTRIBUTING.md with instructions to run `cargo fmt` locally.\n• Verify locally by committing an intentionally mis-formatted file and confirming the pipeline fails.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Add `cargo clippy --deny warnings` step",
+            "description": "Fail the pipeline on any Clippy lint warnings across all targets and feature flags.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Extend the same CI workflow with a step: `cargo clippy --all-targets --all-features -- -D warnings`.\n• Configure caching for Clippy to reduce runtime (`actions/cache` with `~/.cargo` and `target` key).\n• Silence benign lints via `#![allow(...)]` or `clippy.toml` only where strictly necessary.\n• Confirm locally that introducing a simple warning (e.g., unused variable) makes the job fail.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate `cargo audit` + failing examples/tests",
+            "description": "Run a security audit in CI and create test artifacts that intentionally fail each new gate, validating the hard-fail behaviour.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Add a step: `cargo audit --json > audit.json` followed by a small script (bash or Node) that greps `\"vulnerability\":` and exits non-zero if any are present, unless listed in `audit.toml` ignore file.\n• Commit an `audit.toml` baseline to suppress known acceptable warnings.\n• Create a throwaway branch `ci-fails` (not merged) that: (a) adds a crate with a known CVE, (b) introduces a Clippy warning, (c) mis-formats a file. Use this branch to prove the pipeline fails for PR checks.\n• Document the audit process in SECURITY.md, referencing how to update `audit.toml`.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 28,
+        "title": "Chocolatey package script for Windows (G-3 • P1)",
+        "description": "Package μNet CLI as choco nupkg.",
+        "details": "• Create .chocolatey/unet.nuspec.\n• Build windows-gnu binary, zip into tools/.\n• choco pack & internal test feed.\n• Add install/uninstall PowerShell scripts.",
+        "testStrategy": "CI Windows job runs choco install from local .nupkg, runs `unet-cli --version` returns correct string.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Generate Chocolatey nuspec",
+            "description": "Create .chocolatey/unet.nuspec containing metadata, dependencies, and file mappings for μNet CLI.",
+            "dependencies": [],
+            "details": "Include id, version pulled from Cargo.toml, authors, projectUrl, tags, and <files> section pointing to tools/*.zip and scripts.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Write PowerShell install/uninstall scripts",
+            "description": "Implement chocolateyInstall.ps1 and chocolateyUninstall.ps1 to unzip binary to $toolsDir, add to PATH, and clean up on uninstall.",
+            "dependencies": [
+              1
+            ],
+            "details": "Scripts should verify SHA256, support upgrade path, and remove PATH entry on uninstall.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build Windows GNU binary and prepare artifact",
+            "description": "Cross-compile μNet CLI for x86_64-pc-windows-gnu, create ZIP archive containing unet.exe, LICENSE, and README.",
+            "dependencies": [],
+            "details": "Use cargo build --release --target x86_64-pc-windows-gnu then 7z a tools/unet-cli.zip.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Run choco pack and publish to internal feed",
+            "description": "Automate packaging step that consumes nuspec, scripts, and ZIP to produce unet.<ver>.nupkg and push to internal repository.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Use choco pack; validate package with choco install --source . --pre --force.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Add CI job for Windows install validation",
+            "description": "Create GitHub Actions workflow that installs the generated nupkg via Chocolatey and asserts `unet-cli --version` output.",
+            "dependencies": [
+              4
+            ],
+            "details": "Use windows-latest runner, add setup-chocolatey action, install from local artifact, cache cargo registry to speed up.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Update documentation with Windows packaging details",
+            "description": "Document Chocolatey installation steps, package maintenance workflow, and CI status badge.",
+            "dependencies": [
+              5
+            ],
+            "details": "Update README.md and docs/installation.md; include `choco install unet` example and troubleshooting notes.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "title": "Auto-publish `cargo doc` + mdBook to GH Pages (G-4 • P1)",
+        "description": "Deploy API docs and handbook on every tag.",
+        "details": "• Add pages.yml workflow triggered on push tags.\n• Build cargo doc --all-features --no-deps.\n• Build mdbook build docs/.\n• Deploy using peaceiris/actions-gh-pages with separate directories api/ and guide/.",
+        "testStrategy": "Create dry-run tag in fork; workflow should push gh-pages branch; check URL 404 -> 200.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create initial pages workflow skeleton",
+            "description": "Add .github/workflows/pages.yml containing base job definitions and default branch permissions.",
+            "dependencies": [],
+            "details": "• Define name: \"Publish Docs\"\n• Set concurrency group to avoid overlapping deploys\n• Include checkout@v4 step\n• Set permissions: contents: read, pages: write, id-token: write",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Add doc & book build steps",
+            "description": "Configure workflow to compile Rust API docs and build mdBook guide.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Install Rust toolchain via actions-rs/toolchain\n• Run `cargo doc --all-features --no-deps --workspace --target-dir target` \n• Run `mdbook build docs` producing `book/`\n• Upload both outputs as workflow artifacts to reuse in deploy job",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Deploy artifacts with peaceiris/actions-gh-pages",
+            "description": "Publish generated api/ and guide/ directories to gh-pages branch.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Use actions/download-artifact to retrieve book and cargo docs\n• Move/rename: `target/doc` → `api/`, `book` → `guide/`\n• Run peaceiris/actions-gh-pages@v3 with `publish_dir: ./` and custom cname if needed\n• Preserve commit history and enable force push",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Configure tag trigger and matrix filtering",
+            "description": "Ensure workflow triggers only on version tags and skips on branches.",
+            "dependencies": [
+              3
+            ],
+            "details": "• Add `on: push: tags: [ 'v*.*.*' ]` to workflow\n• Add `if: startsWith(github.ref, 'refs/tags/')` guards on jobs\n• Optionally parameterize Rust toolchain via matrix for future expansion",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement dry-run test strategy",
+            "description": "Validate workflow in a fork using a disposable prerelease tag without pushing to gh-pages.",
+            "dependencies": [
+              4
+            ],
+            "details": "• Add `dry-run` boolean input \n• When true, replace deploy step with echo commands and skip gh-pages push\n• Create CI job in fork that sets input dry-run=true on tag v0.0.0-test\n• Confirm workflow completes and asserts 200 on expected pages URL after manual push",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 30,
+        "title": "Update template engine documentation (H-1 • P0)",
+        "description": "Refresh docs/04_template_engine.md with match syntax & examples.",
+        "details": "• Explain `# match:` header, include code snippets.\n• Document custom filters added earlier.\n• Use mdbook test to ensure snippets compile where possible.",
+        "testStrategy": "Run `mdbook test` and `markdown-link-check` on file; no broken links.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Revise template_engine.md content",
+            "description": "Refresh the documentation file with new match syntax and custom filter explanations.",
+            "dependencies": [],
+            "details": "• Open docs/04_template_engine.md\n• Add `# match:` header explanation, syntax rules, and use-cases.\n• Document custom filters ip_cidr(), to_upper(), indent(n) with short descriptions.\n• Insert basic usage examples without full code blocks yet.\n• Commit as WIP for further snippet integration.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Add compiling examples and run mdbook test",
+            "description": "Embed Rust code snippets that compile and validate them with mdbook test.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Expand examples into full ````rust,no_run` blocks that can compile where feasible.\n• Update mdbook summary if new pages/sections added.\n• Execute `mdbook test docs` locally; iterate until all snippets pass.\n• Push updated docs once CI green for mdbook step.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Perform markdown link check and fix broken links",
+            "description": "Ensure external and internal links in the updated documentation are valid.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Run `markdown-link-check docs/04_template_engine.md -q`.\n• Replace or remove any broken URLs; update anchor references after content changes.\n• Re-run link check until zero failures.\n• Open PR review and mark Task 30 as complete.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 31,
+        "title": "Add CONTRIBUTING.md & CODE_OF_CONDUCT.md (H-2 • P0)",
+        "description": "Provide contributor guidelines and CoC.",
+        "details": "• Base on Rust project templates (Contributor Covenant v2.1).\n• Outline branch naming, commit style, pre-commit checks.\n• Link to GH Discussions for questions.",
+        "testStrategy": "Markdown lint GitHub Action passes; links resolve (check with lychee).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create CODE_OF_CONDUCT.md and CONTRIBUTING.md",
+            "description": "Author initial CODE_OF_CONDUCT.md (Contributor Covenant v2.1) and CONTRIBUTING.md with project-specific contribution guidelines.",
+            "dependencies": [],
+            "details": "• Base CoC on Contributor Covenant v2.1, updating contact email to project maintainers.\n• CONTRIBUTING.md must cover branch naming (feat/<scope>, fix/<scope>), commit message Conventional Commits, mandatory `cargo fmt && cargo clippy --all-features` and `pre-commit` hooks.\n• Explain how to run tests, open issues/PRs, and direct questions to GitHub Discussions.\n• Validate locally with markdownlint-cli and lychee link checker.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Add markdownlint CI workflow",
+            "description": "Introduce GitHub Action that enforces Markdown style and link validity on every PR.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Add `.github/workflows/markdownlint.yml` using `DavidAnson/markdownlint-cli2-action`.\n• Run on `push` and `pull_request` events; cache npm for speed.\n• Execute `markdownlint-cli2 \"**/*.md\"` and `lycheeverse/lychee-action` for link checks.\n• Fail the job on any lint or broken link errors; ensure docs from subtask 1 pass.\n• Update README badges to include markdownlint status.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 32,
+        "title": "Label at least 10 good-first-issues (H-3 • P1)",
+        "description": "Improve newcomer onboarding.",
+        "details": "• Audit open issues; pick bite-sized tasks.\n• Apply labels `good first issue`, `help wanted`, `A-…` epic tags.\n• Create GH Issue template for newcomers.",
+        "testStrategy": "Repo issues list shows >=10 open issues with correct label; script using gh cli asserts count.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit & label newcomer-friendly issues",
+            "description": "Review all open GitHub issues and select at least 10 bite-sized tasks suitable for newcomers, applying correct labels.",
+            "dependencies": [],
+            "details": "• Use `gh issue list --state open` to enumerate issues.\n• Exclude epic/meta issues or those already assigned/high complexity.\n• For each chosen issue:\n  – Apply labels `good first issue`, `help wanted`, and relevant `A-*` epic tag via `gh issue edit <id> --add-label`.\n  – Verify no breaking changes or proprietary context required.\n• Push label updates and capture issue numbers in a comment on Task 32.\nAcceptance: Repo shows ≥10 open issues with the specified labels; CI script `scripts/check_good_first_issues.sh` passes.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Add GitHub issue template for newcomers",
+            "description": "Create a dedicated issue template guiding newcomers to file high-quality PRs and understand project conventions.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Add `.github/ISSUE_TEMPLATE/newcomer.yml` with YAML front-matter: `name: \"Newcomer Task\"`, `labels: [good first issue, help wanted]`, `description: ...`.\n• Sections: Problem statement, Proposed solution, Checklist (code style, tests, docs), Mentor contact, Environment info.\n• Include comments explaining how to preview labels and reference contributor guide.\n• Commit template to a feature branch `onboarding/issue-template` and open PR.\nAcceptance: Template appears in “New issue” dialog, pre-selects labels, and renders correctly in Markdown preview.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Expose Prometheus metrics (I-1 • P1)",
+        "description": "Add `/metrics` endpoint with policy evaluation counters.",
+        "details": "• Use prometheus crate + axum_prometheus middleware.\n• Counters: unet_policy_eval_total, unet_policy_violation_total, http_requests_total.\n• Register custom histogram for evaluator latency.",
+        "testStrategy": "curl /metrics returns text/plain with expected metric names.\nUnit test increments via evaluator; scrapes and asserts value >0.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Integrate Prometheus middleware and expose /metrics",
+            "description": "Add axum_prometheus middleware to the HTTP server and mount the /metrics route that serves the registry in text format.",
+            "dependencies": [],
+            "details": "• Add prometheus and axum-prometheus crates to Cargo.toml.\n• Instantiate PrometheusMetricLayer::pair() in main.rs and attach layer to Axum router.\n• Mount the provided /metrics service via router.route(\"/metrics\", metrics_handle).\n• Ensure application compiles and /metrics returns 200 OK with default metrics.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Define and register custom Prometheus metrics",
+            "description": "Create a metrics module that declares counters and histogram required by Task 33 and registers them with the global registry created in subtask 1.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Define lazy_static/once_cell Metrics struct containing:\n  – unet_policy_eval_total (Counter)\n  – unet_policy_violation_total (Counter)\n  – http_requests_total (CounterVec with labels method,status)\n  – evaluator_latency_seconds (Histogram)\n• Register each metric with the registry from subtask 1.\n• Provide helper methods for incrementing/observing values.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Instrument HTTP layer for request counting",
+            "description": "Hook into Axum middleware to increment http_requests_total for every incoming request, labeled by method and response status.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Implement custom tower layer or use axum_tracing_opentelemetry style extractor.\n• On response future completion, increment Metrics::http_requests_total.with_label_values(&[method, status]).inc().\n• Add the layer to the router stack before routing so all endpoints are covered.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Instrument policy evaluator with counters and latency histogram",
+            "description": "Wrap the policy evaluation function to record total evaluations, violations, and latency.",
+            "dependencies": [
+              2
+            ],
+            "details": "• At entry of evaluate(), start timer via std::time::Instant.\n• On successful completion, increment unet_policy_eval_total.\n• If evaluation returns violations, increment unet_policy_violation_total accordingly.\n• Record elapsed duration in evaluator_latency_seconds.observe(sec_f64).\n• Ensure thread-safe access to Metrics struct (Arc or global).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Write tests for metrics exposure and instrumentation",
+            "description": "Add integration and unit tests confirming metrics are exposed and updated.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "• Spawn test server and call sample endpoints; fetch /metrics and assert text/plain content includes custom metric names.\n• Call evaluator in unit test, then scrape registry and assert counters increased and histogram count >0.\n• Use prometheus::Registry::gather() to inspect metric families without HTTP.\n• Add cargo test to CI pipeline.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 34,
+        "title": "Jaeger tracing behind feature flag (I-2 • P2)",
+        "description": "Optionally emit OpenTelemetry spans to Jaeger.",
+        "details": "• Add feature `tracing-jaeger`.\n• Use opentelemetry-otlp + tracing_subscriber.\n• CLI flags --tracing-endpoint, --tracing-sample-rate.\n• Instrument critical paths (policy evaluate, render, diff).",
+        "testStrategy": "Run binary with env RUST_LOG=trace, feature enabled; use docker jaeger-all-in-one, ensure spans appear in UI.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Introduce `tracing-jaeger` feature flag and dependencies",
+            "description": "Add a new optional Cargo feature `tracing-jaeger` that pulls in `opentelemetry`, `opentelemetry-otlp`, and `tracing_subscriber` crates.",
+            "dependencies": [],
+            "details": "• Update all Cargo.toml files that build binaries to include:\n```\n[features]\ntracing-jaeger = [\"opentelemetry\", \"opentelemetry-otlp\", \"tracing-subscriber\", \"tracing\"]\n```\n• Ensure default features remain unchanged so builds without the flag compile cleanly.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement OTLP exporter setup gated by feature flag",
+            "description": "Create a `telemetry.rs` module that initializes an OTLP exporter and a `tracing_subscriber` layer when the feature is enabled.",
+            "dependencies": [
+              1
+            ],
+            "details": "• Function `pub fn init_tracing(endpoint: &str, sample_rate: f64)` behind `cfg!(feature = \"tracing-jaeger\")`.\n• Use `opentelemetry_otlp::SpanExporter::builder().with_endpoint(endpoint)`.\n• Provide graceful noop fallback (`init_tracing()` does nothing) when feature disabled.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add CLI flags `--tracing-endpoint` and `--tracing-sample-rate`",
+            "description": "Expose runtime configuration for the OTLP exporter via command-line options and propagate them to `telemetry::init_tracing`.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Extend structopt/clap definition in main CLI binary.\n• Defaults: endpoint = \"http://localhost:4317\", sample_rate = 1.0.\n• Display helpful `--help` text gated by the feature flag.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Instrument critical code paths with tracing spans",
+            "description": "Add `tracing::instrument` annotations and manual span creation for policy evaluation, template rendering, and diff generation.",
+            "dependencies": [
+              2
+            ],
+            "details": "• Attach relevant attributes (entity IDs, counts, durations).\n• Ensure spans are only compiled when the feature is active via `cfg(feature = \"tracing-jaeger\")` guards.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Create minimal sample application demonstrating tracing",
+            "description": "Provide `examples/tracing_demo.rs` that initializes telemetry and executes representative code paths so developers can try tracing quickly.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "• Include README snippet explaining `cargo run --example tracing_demo --features tracing-jaeger -- --tracing-endpoint ...`.\n• The sample should emit at least two nested spans and one event.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Docker-based integration test with Jaeger all-in-one",
+            "description": "Automate verification that spans reach Jaeger using `docker-compose` and a GitHub Actions workflow.",
+            "dependencies": [
+              5
+            ],
+            "details": "• Compose file launches jaegertracing/all-in-one:1.56.\n• Integration test script builds binary with the feature, runs it pointing to `localhost:4317`, waits, then queries Jaeger `/api/traces` to assert >0 spans.\n• Add job `jaeger-test` to CI matrix.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-14T03:34:18.848Z",
+      "updated": "2025-07-14T03:34:18.849Z",
+      "description": "Tasks for public-release context"
+    }
+  }
+}

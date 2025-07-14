@@ -1,0 +1,14 @@
+# Task ID: 34
+# Title: Jaeger tracing behind feature flag (I-2 • P2)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Optionally emit OpenTelemetry spans to Jaeger.
+# Details:
+• Add feature `tracing-jaeger`.
+• Use opentelemetry-otlp + tracing_subscriber.
+• CLI flags --tracing-endpoint, --tracing-sample-rate.
+• Instrument critical paths (policy evaluate, render, diff).
+
+# Test Strategy:
+Run binary with env RUST_LOG=trace, feature enabled; use docker jaeger-all-in-one, ensure spans appear in UI.

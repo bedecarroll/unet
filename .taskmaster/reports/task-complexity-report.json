@@ -1,0 +1,285 @@
+{
+	"meta": {
+		"generatedAt": "2025-07-14T03:58:48.198Z",
+		"tasksAnalyzed": 34,
+		"totalTasks": 34,
+		"analysisCount": 34,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Finalize SQLite datastore with SeaORM migrations",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Decompose into schema/migration authoring, entity refactor, connection handling, bootstrap util, CRUD refactor, and test/CI subtasks.",
+			"reasoning": "Touches DB schema, ORM setup, connection parsing, full CRUD swap-out, and CI; moderate depth but clear scope."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Implement CSV demo backend behind `demo-csv` feature",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down into feature gating, CSV parser module, Datastore trait impl, CLI ingest command, and tests/CI.",
+			"reasoning": "Mostly straightforward I/O and feature flag work; limited concurrency or complex logic."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Scaffold Postgres support behind `postgres` feature flag",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Split into Cargo feature wiring, driver abstraction, dual migrations, env/DSN handling, and CI with Postgres service.",
+			"reasoning": "Adds a new DB target and CI job; moderate effort with some cross-DB nuances."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Add lifecycle enum & timestamps to core models",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create enum & validation, extend entities/migrations, implement before_save hook, and write unit tests.",
+			"reasoning": "Localised model changes plus simple validation and tests; limited external impact."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Add `custom_data` JSON column & round-trip through API/CLI",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Outline migration update, DTO/schema changes, serialization logic, policy engine access, and test coverage.",
+			"reasoning": "JSON column support across two DBs and API layers; moderate but well-defined."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Write derived rows & delta view from SNMP collector",
+			"complexityScore": 7,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Divide into SNMP collector crate, data mapping, derived tables, diff view SQL, REST endpoint, mocks, and E2E test.",
+			"reasoning": "Involves network IO, new crate, DB writes, SQL view logic, and API—all interacting components."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Require `--insecure` flag to run without auth",
+			"complexityScore": 2,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break into CLI flag addition, server guard check, and tests/error messaging.",
+			"reasoning": "Small change to flag parsing and startup checks; low complexity."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Username/password auth with BCrypt & 401 responses",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Plan user table migration, password hashing, Basic auth middleware, 401 handling, user CRUD endpoint, and tests.",
+			"reasoning": "Introduces auth storage, hashing, and middleware; typical web-auth scope."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Bearer-token header authentication",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Subtasks: DB column & migration, token generation endpoint, middleware, rate limiting, revocation logic, and tests.",
+			"reasoning": "Token lifecycle and rate limiting add extra logic over basic auth; mid-high complexity."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Route-level RBAC middleware",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Detail role enum/storage, middleware layer, route wiring, CLI feedback, and unit/integration tests.",
+			"reasoning": "Requires role propagation and per-route checks but uses existing auth base."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Finalize DSL grammar for policy engine",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Separate into grammar extension, comment/string handling, AST mapping, parse API, fixtures, and snapshot tests.",
+			"reasoning": "Grammar work demands precision and exhaustive tests; moderate-high difficulty."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Implement policy evaluator core with >90% branch coverage",
+			"complexityScore": 8,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "Break into context model, visitor impl, MATCH logic, ASSERT evaluation, SET mutation, violation struct, benchmarks, and coverage gating.",
+			"reasoning": "Complex algorithmic logic plus performance and high test coverage targets."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Background Git sync fetching policy rules",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Plan config flags, periodic task, git pull/reset logic, broadcast channel, and integration tests.",
+			"reasoning": "Concurrent background task with git2 interactions; moderate."
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "CLI command `policy check` exits non-zero on violations",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create subcommand parsing, CSV loader, evaluation call, output formatting, and exit-code tests.",
+			"reasoning": "Extends CLI with evaluation call; modest complexity."
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "Cache compiled AST for large rule sets",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Design cache path/hash, serialize/deserialise logic, mtime comparison, in-proc LRU, and perf tests.",
+			"reasoning": "Requires filesystem caching and performance measurement but no external services."
+		},
+		{
+			"taskId": 16,
+			"taskTitle": "Integrate MiniJinja with custom filters",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Subtasks: add dependency, implement filters, context builder, render CLI, and unit/e2e tests.",
+			"reasoning": "Template engine integration with CLI path; moderate effort."
+		},
+		{
+			"taskId": 17,
+			"taskTitle": "Parse `# match:` header for subtree matching",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Identify header parser, reuse expression grammar, integrate filter step, and tests.",
+			"reasoning": "Simple parsing addition leveraging existing grammar."
+		},
+		{
+			"taskId": 18,
+			"taskTitle": "Implement `config-slicer` crate with Juniper & IOS parsers",
+			"complexityScore": 7,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Decompose into crate scaffolding, common tokeniser, IOS parser, Juniper parser, slice API, snapshot tests, and publishing.",
+			"reasoning": "Multiple parsers with nom combinators and golden tests; high parsing complexity."
+		},
+		{
+			"taskId": 19,
+			"taskTitle": "`unet-cli diff` command shows coloured diff",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Plan rendered fetch, live config retrieval stub, diff algorithm, colourised output, and exit-code handling tests.",
+			"reasoning": "Combines IO, diffing, colour formatting; medium complexity."
+		},
+		{
+			"taskId": 20,
+			"taskTitle": "Support `{% include %}` / `{% import %}` in templates",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Set up FileSystemLoader, implement include/import examples, and write unit tests.",
+			"reasoning": "Mostly configuration of MiniJinja loader with minor tests."
+		},
+		{
+			"taskId": 21,
+			"taskTitle": "Add `--offline` flag to CLI",
+			"complexityScore": 2,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Add flag to clap config, propagate to runtime config, guard external calls, and write tests.",
+			"reasoning": "Minimal flag management and conditional logic."
+		},
+		{
+			"taskId": 22,
+			"taskTitle": "Implement canary workflow `push-canary`",
+			"complexityScore": 7,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Outline device tagging, file iteration, NETCONF/SSH push, health check loop, rollback, CLI UX, and integration tests.",
+			"reasoning": "Involves remote device communication, rollback safety, and orchestration logic."
+		},
+		{
+			"taskId": 23,
+			"taskTitle": "`--debug-policy` flag prints rule trace",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Introduce flag, hook into evaluator for trace events, colourised output, and tests.",
+			"reasoning": "Adds verbose logging path; straightforward."
+		},
+		{
+			"taskId": 24,
+			"taskTitle": "Implement MCP-compliant `/mcp/context` endpoint",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create route, build JSON schema struct, marshal data, CI schema validation, and tests.",
+			"reasoning": "Standard REST endpoint with schema validation; moderate."
+		},
+		{
+			"taskId": 25,
+			"taskTitle": "Server-sent events stream for live diffs",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Plan broadcast channel, SSE extractor route, diff producer hook, heartbeat handling, front-end sample, and E2E test.",
+			"reasoning": "Concurrency with broadcast channels and SSE lifecycle adds complexity."
+		},
+		{
+			"taskId": 26,
+			"taskTitle": "GitHub Actions matrix build (linux-musl, macOS, windows-gnu)",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Update workflow matrix, integrate cross for musl, artifact upload, and verification scripts.",
+			"reasoning": "CI YAML changes with binary verification; moderate effort."
+		},
+		{
+			"taskId": 27,
+			"taskTitle": "Enforce `cargo audit`, `clippy`, `fmt` in CI",
+			"complexityScore": 3,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Add formatting step, clippy deny warnings, audit scan, and failing examples/tests.",
+			"reasoning": "Workflow enhancement; limited coding."
+		},
+		{
+			"taskId": 28,
+			"taskTitle": "Chocolatey package script for Windows",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create nuspec, package scripts, build binary, choco pack, CI install test, and docs update.",
+			"reasoning": "Windows packaging nuances, scripting, and CI validation increase complexity."
+		},
+		{
+			"taskId": 29,
+			"taskTitle": "Auto-publish `cargo doc` + mdBook to GH Pages",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Draft pages workflow, build docs/book, deploy with action, tag trigger, and dry-run test.",
+			"reasoning": "Multi-step CI deployment with static site generation; moderate."
+		},
+		{
+			"taskId": 30,
+			"taskTitle": "Update template engine documentation",
+			"complexityScore": 2,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Revise markdown, add examples/snippets, run mdbook and link check tests.",
+			"reasoning": "Pure documentation work; low complexity."
+		},
+		{
+			"taskId": 31,
+			"taskTitle": "Add CONTRIBUTING.md & CODE_OF_CONDUCT.md",
+			"complexityScore": 2,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Draft CoC, write contributing guide, and add markdown lint CI step.",
+			"reasoning": "Static docs; minimal technical depth."
+		},
+		{
+			"taskId": 32,
+			"taskTitle": "Label at least 10 good-first-issues",
+			"complexityScore": 2,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Audit existing issues, label/select newcomers tasks, and add issue template.",
+			"reasoning": "GH project maintenance; simple administrative task."
+		},
+		{
+			"taskId": 33,
+			"taskTitle": "Expose Prometheus metrics",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Integrate prometheus middleware, define custom metrics, expose `/metrics` route, instrument evaluator, and tests.",
+			"reasoning": "Requires middleware wiring and metric instrumentation; moderate."
+		},
+		{
+			"taskId": 34,
+			"taskTitle": "Jaeger tracing behind feature flag",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Add feature flag, configure OTLP exporter, CLI flags, span instrumentation, sample app, and docker-based test.",
+			"reasoning": "Observability stack setup with optional build paths; mid-high complexity."
+		}
+	]
+}

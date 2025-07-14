@@ -1,0 +1,12 @@
+# Task ID: 23
+# Title: `--debug-policy` flag prints rule trace (E-3 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Provide verbose evaluation tracing for a single node.
+# Details:
+• Add flag to policy subcommand; emits printlns of MATCH sets, ASSERT results with line numbers.
+• Use colored crate for readability.
+
+# Test Strategy:
+CLI test ensures trace lines contain rule IDs and evaluation outcome.

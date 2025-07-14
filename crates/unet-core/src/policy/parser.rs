@@ -116,12 +116,14 @@ impl PolicyParser {
     }
 
     fn parse_condition(pair: Pair<Rule>) -> Result<Condition, ParseError> {
-        Self::parse_or_condition(pair.into_inner().next().unwrap())
+        let inner_pair = Self::next_pair(pair.into_inner(), "condition inner")?;
+        Self::parse_or_condition(inner_pair)
     }
 
     fn parse_or_condition(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
-        let mut left = Self::parse_and_condition(inner.next().unwrap())?;
+        let mut left =
+            Self::parse_and_condition(Self::next_pair(inner.by_ref(), "or condition left side")?)?;
 
         for right_pair in inner {
             let right = Self::parse_and_condition(right_pair)?;
@@ -133,7 +135,8 @@ impl PolicyParser {
 
     fn parse_and_condition(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
-        let mut left = Self::parse_not_condition(inner.next().unwrap())?;
+        let mut left =
+            Self::parse_not_condition(Self::next_pair(inner.by_ref(), "and condition left side")?)?;
 
         for right_pair in inner {
             let right = Self::parse_not_condition(right_pair)?;
@@ -351,6 +354,19 @@ impl PolicyParser {
                 location: None,
             }),
         }
+    }
+
+    /// Helper to safely extract the next pair from an iterator
+    ///
+    /// This replaces the pattern `iter.next().unwrap()` with proper error handling
+    fn next_pair<'a>(
+        mut iter: impl Iterator<Item = Pair<'a, Rule>>,
+        context: &str,
+    ) -> Result<Pair<'a, Rule>, ParseError> {
+        iter.next().ok_or_else(|| ParseError {
+            message: format!("Expected {context} in parse tree but none found"),
+            location: None,
+        })
     }
 }
 

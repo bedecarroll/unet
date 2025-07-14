@@ -1,0 +1,13 @@
+# Task ID: 15
+# Title: Cache compiled AST for large rule sets (C-5 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Persist bincode-encoded AST to disk to accelerate startup.
+# Details:
+• After parsing, serialize RuleSet to ~/.cache/unet/<hash>.bin.
+• On next run, compare file mtime of rules; if unchanged, load cache.
+• Use lru-cache for in-proc cache of 10k entries.
+
+# Test Strategy:
+Benchmark startup time with and without cache; assert <10 ms for 10k rules in CI perf job using hyperfine.

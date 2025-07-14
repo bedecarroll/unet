@@ -192,7 +192,7 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            address: network::parse_socket_addr(defaults::LOCALHOST_SNMP)
+            address: network::parse_socket_addr(defaults::network::LOCALHOST_SNMP)
                 .expect("Default LOCALHOST_SNMP constant should always be valid"),
             version: 2,
             credentials: SnmpCredentials::default(),

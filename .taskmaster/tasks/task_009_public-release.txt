@@ -1,0 +1,14 @@
+# Task ID: 9
+# Title: Bearer-token header authentication (B-3 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Add token-based auth to prepare for future OIDC.
+# Details:
+• Extend users table with column api_token (UUIDv4) nullable.
+• Generate token via POST /api/tokens returning bearer.
+• Middleware checks Authorization: Bearer <token> (using axum extractors).
+• Rate-limit token issuance to 5/min IP.
+
+# Test Strategy:
+Integration test issues token, then calls protected route with bearer header; expects 200. Missing or bad token -> 401.

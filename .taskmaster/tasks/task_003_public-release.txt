@@ -1,0 +1,14 @@
+# Task ID: 3
+# Title: Scaffold Postgres support behind `postgres` feature flag (A-1 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Add initial PostgreSQL compatibility with SeaORM.
+# Details:
+• Add `postgres` feature; update Cargo.toml to include `sea-orm = { features=["sqlx-postgres"] }`.
+• Abstract connection string handling: env var DATABASE_URL takes precedence.
+• Generate migrations compatible with both SQLite & Postgres (use conditional DDL or separate dirs).
+• Provide `cfg_if!` switch in datastore.rs to pick runtime driver.
+
+# Test Strategy:
+CI job `postgres-test` uses `postgres:16-alpine` service; runs `DATABASE_URL=postgres://postgres:postgres@localhost/unet` cargo test` with `--features postgres` and asserts green.

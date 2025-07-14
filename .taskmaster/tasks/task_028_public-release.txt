@@ -1,0 +1,14 @@
+# Task ID: 28
+# Title: Chocolatey package script for Windows (G-3 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Package μNet CLI as choco nupkg.
+# Details:
+• Create .chocolatey/unet.nuspec.
+• Build windows-gnu binary, zip into tools/.
+• choco pack & internal test feed.
+• Add install/uninstall PowerShell scripts.
+
+# Test Strategy:
+CI Windows job runs choco install from local .nupkg, runs `unet-cli --version` returns correct string.

@@ -1,0 +1,16 @@
+# Task ID: 6
+# Title: Write derived rows & delta view from SNMP collector (A-4 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Generate "derived" inventory from live SNMP data and expose mismatch diffs.
+# Details:
+• Create crate snmp-collector using snmp-parser + async-std.
+• For each device: collect ifTable, lldpRemSysName.
+• Insert rows into derived_* tables with foreign key to desired id.
+• Materialize SQL VIEW v_diffs as EXCEPT between desired & derived.
+• Expose REST `/api/diffs` that SELECTs view.
+
+# Test Strategy:
+Mock SNMP session with snmp-mock & assert derived rows exist.
+E2E test calls REST endpoint, intentionally diverges desired state, expects diff JSON list length >0.

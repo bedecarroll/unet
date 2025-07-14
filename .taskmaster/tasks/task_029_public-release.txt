@@ -1,0 +1,14 @@
+# Task ID: 29
+# Title: Auto-publish `cargo doc` + mdBook to GH Pages (G-4 • P1)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Deploy API docs and handbook on every tag.
+# Details:
+• Add pages.yml workflow triggered on push tags.
+• Build cargo doc --all-features --no-deps.
+• Build mdbook build docs/.
+• Deploy using peaceiris/actions-gh-pages with separate directories api/ and guide/.
+
+# Test Strategy:
+Create dry-run tag in fork; workflow should push gh-pages branch; check URL 404 -> 200.

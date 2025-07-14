@@ -1,0 +1,14 @@
+# Task ID: 21
+# Title: Add `--offline` flag to CLI (E-1 • P0)
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Allow running policy and template commands without network/database.
+# Details:
+• `clap` flag sets OfflineMode bool in config.
+• Gate any HTTP/DB calls behind if !offline.
+• Emit warning if user attempts unsupported subcommand.
+
+# Test Strategy:
+Run `unet-cli render node.json --offline` with no DB available and assert success.
+Run command requiring server with offline -> error message.
