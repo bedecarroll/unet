@@ -78,11 +78,7 @@ pub async fn list_nodes(
         }),
     };
 
-    let result = app_state
-        .datastore
-        .list_nodes(&options)
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
+    let result = app_state.datastore.list_nodes(&options).await?;
 
     // Convert to NodeResponse with optional status
     let include_status = query.include_status.unwrap_or(false);
@@ -140,11 +136,7 @@ pub async fn create_node(
         .into_node()
         .map_err(|e| ServerError::BadRequest(format!("Node validation failed: {e}")))?;
 
-    let created_node = app_state
-        .datastore
-        .create_node(&node)
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
+    let created_node = app_state.datastore.create_node(&node).await?;
 
     let response = NodeResponse::from_node(created_node);
     Ok(Json(ApiResponse::success(response)))
@@ -207,11 +199,7 @@ pub async fn update_node(
         node.custom_data = custom_data;
     }
 
-    let updated_node = app_state
-        .datastore
-        .update_node(&node)
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
+    let updated_node = app_state.datastore.update_node(&node).await?;
 
     let response = NodeResponse::from_node(updated_node);
     Ok(Json(ApiResponse::success(response)))
@@ -257,8 +245,7 @@ pub async fn get_node_status(
     let status = app_state
         .datastore
         .get_node_status(&id)
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?
+        .await?
         .unwrap_or_else(|| NodeStatus::new(id));
 
     Ok(Json(ApiResponse::success(status)))
@@ -282,11 +269,7 @@ pub async fn get_node_interfaces(
         })?;
 
     // Get interfaces from datastore
-    let interfaces = app_state
-        .datastore
-        .get_node_interfaces(&id)
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
+    let interfaces = app_state.datastore.get_node_interfaces(&id).await?;
 
     Ok(Json(ApiResponse::success(interfaces)))
 }
@@ -312,8 +295,7 @@ pub async fn get_node_metrics(
     let metrics = app_state
         .datastore
         .get_node_metrics(&id)
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?
+        .await?
         .ok_or_else(|| ServerError::NotFound(format!("No metrics available for node {id}")))?;
 
     Ok(Json(ApiResponse::success(metrics)))

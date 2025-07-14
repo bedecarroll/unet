@@ -12,6 +12,7 @@
 //! - [`poller`] - Background polling implementation
 //! - [`types`] - SNMP-specific data types
 
+use crate::config::{defaults, network};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -191,7 +192,8 @@ pub struct SessionConfig {
 impl Default for SessionConfig {
     fn default() -> Self {
         Self {
-            address: "127.0.0.1:161".parse().unwrap(),
+            address: network::parse_socket_addr(defaults::LOCALHOST_SNMP)
+                .expect("Default LOCALHOST_SNMP constant should always be valid"),
             version: 2,
             credentials: SnmpCredentials::default(),
             timeout: Duration::from_secs(5),
@@ -625,7 +627,8 @@ mod tests {
         let config = SnmpClientConfig::default();
         let client = SnmpClient::new(config);
 
-        let address = "127.0.0.1:161".parse().unwrap();
+        let address = network::parse_socket_addr(defaults::LOCALHOST_SNMP)
+            .expect("Test should use valid SNMP address");
         let oids = vec!["1.3.6.1.2.1.1.1.0", "1.3.6.1.2.1.1.5.0"];
 
         let result = client.get(address, &oids, None).await;

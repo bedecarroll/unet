@@ -530,10 +530,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
 
         if !policies_path.exists() {
             // Skip test if policies directory doesn't exist
-            println!(
-                "Skipping test: policies directory not found at {:?}",
-                policies_path
-            );
+            println!("Skipping test: policies directory not found at {policies_path:?}");
             return;
         }
 
@@ -581,7 +578,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
             panic!("Expected at least 1 policy file");
         }
 
-        if result.loaded.len() == 0 && result.errors.len() > 0 {
+        if result.loaded.is_empty() && !result.errors.is_empty() {
             // There were parsing errors, so let's see what they are
             for (path, error) in &result.errors {
                 println!("Policy file {} failed to parse: {}", path.display(), error);
@@ -590,7 +587,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         }
 
         assert!(
-            result.loaded.len() >= 1,
+            !result.loaded.is_empty(),
             "Expected at least 1 loaded policy, found {}",
             result.loaded.len()
         );

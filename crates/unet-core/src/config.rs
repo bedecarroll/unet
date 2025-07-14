@@ -6,7 +6,124 @@
 use crate::error::{Error, Result};
 use config::{Config as ConfigBuilder, Environment, File};
 use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, SocketAddr};
 use std::path::Path;
+use std::str::FromStr;
+
+/// Network configuration constants
+pub mod defaults {
+    /// Default HTTP server port
+    pub const DEFAULT_SERVER_PORT: u16 = 8080;
+    /// Default SNMP port
+    pub const SNMP_DEFAULT_PORT: u16 = 161;
+    /// Default SNMP trap port
+    pub const SNMP_TRAP_PORT: u16 = 162;
+    /// Localhost IP address
+    pub const LOCALHOST: &str = "127.0.0.1";
+    /// Default localhost with SNMP port
+    pub const LOCALHOST_SNMP: &str = "127.0.0.1:161";
+}
+
+/// Network parsing utilities
+pub mod network {
+    use super::{Error, FromStr, IpAddr, Result, SocketAddr};
+
+    /// Parse a socket address string with proper error handling
+    ///
+    /// This function provides better error handling than the standard library's
+    /// `parse().unwrap()` pattern and supports both IPv4 and IPv6 addresses.
+    ///
+    /// # Arguments
+    /// * `addr_str` - The address string to parse (e.g., "127.0.0.1:161", "[`::1`]:161")
+    ///
+    /// # Returns
+    /// * `Ok(SocketAddr)` - Successfully parsed socket address
+    /// * `Err(Error)` - Parsing failed with descriptive error message
+    ///
+    /// # Errors
+    /// Returns an error if the address string cannot be parsed as a valid socket address.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use unet_core::config::network::parse_socket_addr;
+    ///
+    /// let addr = parse_socket_addr("127.0.0.1:161")?;
+    /// assert_eq!(addr.port(), 161);
+    /// ```
+    pub fn parse_socket_addr(addr_str: &str) -> Result<SocketAddr> {
+        SocketAddr::from_str(addr_str).map_err(|e| {
+            Error::config(format!(
+                "Invalid socket address '{addr_str}': {e}. Expected format: 'IP:PORT' (e.g., '127.0.0.1:161' or '[::1]:161')"
+            ))
+        })
+    }
+
+    /// Parse an IP address string with proper error handling
+    ///
+    /// # Arguments
+    /// * `ip_str` - The IP address string to parse (e.g., "127.0.0.1", "`::1`")
+    ///
+    /// # Returns
+    /// * `Ok(IpAddr)` - Successfully parsed IP address
+    /// * `Err(Error)` - Parsing failed with descriptive error message
+    ///
+    /// # Errors
+    /// Returns an error if the IP address string cannot be parsed as a valid IP address.
+    pub fn parse_ip_addr(ip_str: &str) -> Result<IpAddr> {
+        IpAddr::from_str(ip_str).map_err(|e| {
+            Error::config(format!(
+                "Invalid IP address '{ip_str}': {e}. Expected IPv4 (e.g., '192.168.1.1') or IPv6 (e.g., '::1') format"
+            ))
+        })
+    }
+
+    /// Create a socket address from an IP and port with validation
+    ///
+    /// # Arguments
+    /// * `ip_str` - The IP address string
+    /// * `port` - The port number (1-65535)
+    ///
+    /// # Returns
+    /// * `Ok(SocketAddr)` - Successfully created socket address
+    /// * `Err(Error)` - Invalid IP or port
+    ///
+    /// # Errors
+    /// Returns an error if the IP address is invalid or the port is 0.
+    pub fn create_socket_addr(ip_str: &str, port: u16) -> Result<SocketAddr> {
+        if port == 0 {
+            return Err(Error::config(
+                "Port number cannot be 0. Valid range is 1-65535",
+            ));
+        }
+        let ip = parse_ip_addr(ip_str)?;
+        Ok(SocketAddr::new(ip, port))
+    }
+
+    /// Parse socket address with default port if not specified
+    ///
+    /// # Arguments
+    /// * `addr_str` - Address string, optionally with port (e.g., "127.0.0.1" or "127.0.0.1:161")
+    /// * `default_port` - Default port to use if not specified
+    ///
+    /// # Returns
+    /// * `Ok(SocketAddr)` - Successfully parsed or constructed socket address
+    /// * `Err(Error)` - Parsing failed
+    ///
+    /// # Errors
+    /// Returns an error if neither socket address nor IP address parsing succeeds.
+    pub fn parse_socket_addr_with_default_port(
+        addr_str: &str,
+        default_port: u16,
+    ) -> Result<SocketAddr> {
+        // Try parsing as full socket address first
+        if let Ok(addr) = parse_socket_addr(addr_str) {
+            return Ok(addr);
+        }
+
+        // If that fails, try parsing as IP and add default port
+        create_socket_addr(addr_str, default_port)
+    }
+}
 
 /// μNet Core configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,8 +391,8 @@ impl Default for Config {
                 retries: 3,
             },
             server: ServerConfig {
-                host: "127.0.0.1".to_string(),
-                port: 8080,
+                host: defaults::LOCALHOST.to_string(),
+                port: defaults::DEFAULT_SERVER_PORT,
                 max_request_size: 1_048_576, // 1MB
             },
             git: GitConfig {
@@ -345,5 +462,67 @@ mod tests {
         unsafe {
             std::env::remove_var("DATABASE_URL");
         }
+    }
+
+    #[test]
+    fn test_network_parse_socket_addr() {
+        // Valid IPv4 addresses
+        assert!(network::parse_socket_addr("127.0.0.1:161").is_ok());
+        assert!(network::parse_socket_addr("192.168.1.1:22").is_ok());
+        assert!(network::parse_socket_addr("0.0.0.0:8080").is_ok());
+
+        // Valid IPv6 addresses
+        assert!(network::parse_socket_addr("[::1]:161").is_ok());
+        assert!(network::parse_socket_addr("[2001:db8::1]:80").is_ok());
+
+        // Invalid addresses
+        assert!(network::parse_socket_addr("invalid").is_err());
+        assert!(network::parse_socket_addr("127.0.0.1").is_err()); // Missing port
+        assert!(network::parse_socket_addr("127.0.0.1:99999").is_err()); // Invalid port
+        assert!(network::parse_socket_addr("300.300.300.300:80").is_err()); // Invalid IP
+    }
+
+    #[test]
+    fn test_network_parse_ip_addr() {
+        // Valid IPv4 addresses
+        assert!(network::parse_ip_addr("127.0.0.1").is_ok());
+        assert!(network::parse_ip_addr("192.168.1.1").is_ok());
+        assert!(network::parse_ip_addr("0.0.0.0").is_ok());
+
+        // Valid IPv6 addresses
+        assert!(network::parse_ip_addr("::1").is_ok());
+        assert!(network::parse_ip_addr("2001:db8::1").is_ok());
+
+        // Invalid addresses
+        assert!(network::parse_ip_addr("invalid").is_err());
+        assert!(network::parse_ip_addr("300.300.300.300").is_err());
+        assert!(network::parse_ip_addr("127.0.0.1:80").is_err()); // Has port
+    }
+
+    #[test]
+    fn test_network_create_socket_addr() {
+        // Valid combinations
+        assert!(network::create_socket_addr("127.0.0.1", 161).is_ok());
+        assert!(network::create_socket_addr("::1", 22).is_ok());
+
+        // Invalid port
+        assert!(network::create_socket_addr("127.0.0.1", 0).is_err());
+
+        // Invalid IP
+        assert!(network::create_socket_addr("invalid", 80).is_err());
+    }
+
+    #[test]
+    fn test_network_parse_socket_addr_with_default_port() {
+        // Address with port should use specified port
+        let addr = network::parse_socket_addr_with_default_port("127.0.0.1:22", 161).unwrap();
+        assert_eq!(addr.port(), 22);
+
+        // Address without port should use default
+        let addr = network::parse_socket_addr_with_default_port("127.0.0.1", 161).unwrap();
+        assert_eq!(addr.port(), 161);
+
+        // Invalid address should fail
+        assert!(network::parse_socket_addr_with_default_port("invalid", 161).is_err());
     }
 }

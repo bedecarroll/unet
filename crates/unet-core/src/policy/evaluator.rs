@@ -1697,11 +1697,7 @@ mod tests {
                 PolicyPriority::Critical,
                 2,
             ),
-            OrchestrationRule::with_priority_and_order(
-                base_rule.clone(),
-                PolicyPriority::Medium,
-                0,
-            ),
+            OrchestrationRule::with_priority_and_order(base_rule, PolicyPriority::Medium, 0),
         ];
 
         let sorted = PolicyOrchestrator::sort_rules_by_priority(rules);
@@ -1897,19 +1893,21 @@ mod tests {
                 .custom_data
                 .get("assigned_templates")
                 .and_then(|t| t.as_array())
-                .map(|arr| arr.contains(&json!(template_path)))
-                .unwrap_or(false)
+                .is_some_and(|arr| arr.contains(&json!(template_path)))
         );
     }
 
-    #[tokio::test]
-    async fn test_transaction_rollback() {
+    // Helper function to create test node and datastore
+    async fn setup_transaction_test() -> (
+        crate::models::Node,
+        crate::datastore::csv::CsvStore,
+        uuid::Uuid,
+    ) {
         use crate::datastore::csv::CsvStore;
         use crate::models::{DeviceRole, Node, Vendor};
         use serde_json::json;
         use tempfile::tempdir;
 
-        // Create a test node with initial custom_data
         let mut node = Node::new(
             "test-node".to_string(),
             "test.example.com".to_string(),
@@ -1919,14 +1917,17 @@ mod tests {
         node.model = "ISR4431".to_string();
         node.custom_data = json!({"location": {"rack": "R1", "building": "DC1"}});
 
-        // Create CSV datastore in temp directory
         let temp_dir = tempdir().unwrap();
         let datastore = CsvStore::new(temp_dir.path()).await.unwrap();
         let node_id = node.id;
         datastore.create_node(&node).await.unwrap();
 
-        // Create multiple policy rules that modify the node
-        let rules = vec![
+        (node, datastore, node_id)
+    }
+
+    // Helper function to create test policy rules
+    fn create_transaction_test_rules() -> Vec<PolicyRule> {
+        vec![
             PolicyRule {
                 id: Some("rule1".to_string()),
                 condition: Condition::Comparison {
@@ -1980,7 +1981,15 @@ mod tests {
                     template_path: "templates/cisco-router.j2".to_string(),
                 },
             },
-        ];
+        ]
+    }
+
+    #[tokio::test]
+    async fn test_transaction_execution() {
+        use serde_json::json;
+
+        let (_node, datastore, node_id) = setup_transaction_test().await;
+        let rules = create_transaction_test_rules();
 
         let context = EvaluationContext::new(json!({
             "node": {
@@ -1990,7 +1999,7 @@ mod tests {
         }));
 
         // Execute rules with transaction
-        let (results, transaction) =
+        let (results, _transaction) =
             PolicyEvaluator::execute_rules_with_transaction(&rules, &context, &datastore, &node_id)
                 .await
                 .unwrap();
@@ -2015,6 +2024,27 @@ mod tests {
             .as_array()
             .unwrap();
         assert!(assigned_templates.contains(&json!("templates/cisco-router.j2")));
+    }
+
+    #[tokio::test]
+    async fn test_transaction_rollback() {
+        use serde_json::json;
+
+        let (_node, datastore, node_id) = setup_transaction_test().await;
+        let rules = create_transaction_test_rules();
+
+        let context = EvaluationContext::new(json!({
+            "node": {
+                "vendor": "cisco",
+                "model": "ISR4431"
+            }
+        }));
+
+        // Execute rules with transaction
+        let (_results, transaction) =
+            PolicyEvaluator::execute_rules_with_transaction(&rules, &context, &datastore, &node_id)
+                .await
+                .unwrap();
 
         // Execute transaction rollback
         let rollback_result = PolicyEvaluator::rollback_transaction(&transaction, &datastore)

@@ -556,11 +556,12 @@ impl PollingHandle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::defaults;
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
     fn test_polling_task_creation() {
-        let target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161);
+        let target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), defaults::SNMP_DEFAULT_PORT);
         let node_id = Uuid::new_v4();
         let oids = vec!["1.3.6.1.2.1.1.1.0".to_string()];
         let interval = Duration::from_secs(300);
@@ -578,7 +579,7 @@ mod tests {
 
     #[test]
     fn test_polling_task_health() {
-        let target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161);
+        let target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), defaults::SNMP_DEFAULT_PORT);
         let node_id = Uuid::new_v4();
         let oids = vec!["1.3.6.1.2.1.1.1.0".to_string()];
         let interval = Duration::from_secs(300);
@@ -616,7 +617,6 @@ mod tests {
         let (scheduler, _handle) = PollingScheduler::new(polling_config, snmp_config);
 
         // Verify scheduler was created with empty task list
-        let tasks = scheduler.tasks.read().await;
-        assert!(tasks.is_empty());
+        assert!(scheduler.tasks.read().await.is_empty());
     }
 }

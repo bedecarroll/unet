@@ -336,6 +336,7 @@ impl PolicyService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::network;
     use crate::models::{DeviceRole, Lifecycle, Vendor};
     use uuid::Uuid;
 
@@ -349,7 +350,9 @@ mod tests {
             model: "ISR4321".to_string(),
             role: DeviceRole::Router,
             lifecycle: Lifecycle::Live,
-            management_ip: Some("192.168.1.1".parse().unwrap()),
+            management_ip: Some(
+                network::parse_ip_addr("192.168.1.1").expect("Test IP address should be valid"),
+            ),
             location_id: None,
             platform: None,
             version: Some("15.1".to_string()),

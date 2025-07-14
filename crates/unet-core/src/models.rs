@@ -1554,7 +1554,7 @@ mod tests {
     fn test_node_new_no_domain() {
         let node = Node::new(
             "router1".to_string(),
-            "".to_string(),
+            String::new(),
             Vendor::Cisco,
             DeviceRole::Router,
         );
@@ -1580,7 +1580,7 @@ mod tests {
     #[test]
     fn test_node_validation_empty_name() {
         let mut node = Node::new(
-            "".to_string(),
+            String::new(),
             "example.com".to_string(),
             Vendor::Cisco,
             DeviceRole::Router,
@@ -1906,7 +1906,7 @@ mod tests {
         let dest_node_id = Uuid::new_v4();
 
         let link = Link::new(
-            "".to_string(),
+            String::new(),
             source_node_id,
             "eth0".to_string(),
             dest_node_id,
@@ -1929,7 +1929,7 @@ mod tests {
         let link = Link::new(
             "link1".to_string(),
             source_node_id,
-            "".to_string(),
+            String::new(),
             dest_node_id,
             "eth1".to_string(),
         );
@@ -2295,7 +2295,7 @@ mod tests {
 
     #[test]
     fn test_location_validation_empty_name() {
-        let location = Location::new_root("".to_string(), "country".to_string());
+        let location = Location::new_root(String::new(), "country".to_string());
         assert!(location.validate().is_err());
         assert!(
             location
@@ -2307,7 +2307,7 @@ mod tests {
 
     #[test]
     fn test_location_validation_empty_type() {
-        let location = Location::new_root("USA".to_string(), "".to_string());
+        let location = Location::new_root("USA".to_string(), String::new());
         assert!(location.validate().is_err());
         assert!(
             location

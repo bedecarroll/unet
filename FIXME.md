@@ -2,73 +2,82 @@
 
 > **IMPORTANT**: Changing clippy levels, adding `#[allow(...)]` attributes, or leaving dead code/unused "placeholder" functions/unused variables is **EXPRESSLY FORBIDDEN**. We must fix all underlying issues properly.
 
+> **✅ SIMPLE TASKS COMPLETED**: All 4 SIMPLE priority tasks have been completed:
+> - ✅ Network constants centralized (`config::defaults`)
+> - ✅ Test error messages improved (descriptive `expect()`)  
+> - ✅ SNMP address parsing helpers added (`config::network`)
+> - ✅ Error conversion patterns simplified (using `From` traits)
+
 This document outlines code quality issues found during analysis and provides detailed steps for fixing each category of problems.
 
 ## Task Complexity Rankings (Least to Most Complex)
 
 ### 🟢 **SIMPLE** (1-2 hours each)
-1. **Hardcoded Values - Network Configuration** - Replace magic numbers with constants
-2. **Test Code Improvements** - Add descriptive `expect()` messages  
-3. **SNMP Address Parsing** - Create parsing helper function
-4. **Error Conversion Pattern** - Create `From` trait implementations
+✅ **ALL SIMPLE TASKS COMPLETED**
 
 ### 🟡 **MODERATE** (3-8 hours each)
-5. **Configuration Parsing Issues** - Replace `unwrap()` with proper error handling
-6. **Database Transaction Patterns** - Create transaction helper functions
-7. **Error Codes and Messages** - Centralize error handling system
-8. **Database and Performance Tuning** - Create configuration constants
-9. **Split: `/crates/unet-core/src/policy/tests.rs` (847 lines)** - Simple test organization
-10. **Split: `/crates/unet-cli/src/commands/policy.rs` (531 lines)** - CLI command splitting
-11. **Split: `/crates/unet-core/src/config.rs` (349 lines)** - Configuration module
-12. **Split: `/crates/unet-cli/src/commands/links.rs` (323 lines)** - CLI command splitting
-13. **Split: `/crates/unet-cli/src/commands/locations.rs` (317 lines)** - CLI command splitting
+1. **Configuration Parsing Issues** - Replace `unwrap()` with proper error handling
+2. **Database Transaction Patterns** - Create transaction helper functions
+3. **Error Codes and Messages** - Centralize error handling system
+4. **Database and Performance Tuning** - Create configuration constants
+5. **Split: `/crates/unet-core/src/policy/tests.rs` (845 lines)** - Simple test organization
+6. **Split: `/crates/unet-cli/src/commands/policy.rs` (531 lines)** - CLI command splitting
+7. **Split: `/crates/unet-core/src/config.rs` (515 lines)** - Configuration module
+8. **Split: `/crates/unet-cli/src/commands/links.rs` (323 lines)** - CLI command splitting
+9. **Split: `/crates/unet-cli/src/commands/locations.rs` (317 lines)** - CLI command splitting
 
 ### 🟠 **COMPLEX** (1-3 days each)
-14. **Split: `/crates/unet-core/src/models/derived.rs` (804 lines)** - Well-defined boundaries
-15. **Split: `/crates/unet-core/src/snmp.rs` (639 lines)** - Core functionality with clear separation
-16. **Split: `/crates/unet-core/src/snmp/poller.rs` (622 lines)** - Polling logic separation
-17. **Split: `/crates/unet-core/src/policy/loader.rs` (616 lines)** - Policy loading logic
-18. **Split: `/crates/unet-core/src/error.rs` (505 lines)** - Error type organization
-19. **Split: `/crates/unet-core/src/snmp/oids.rs` (443 lines)** - OID management
-20. **Split: `/crates/unet-core/src/policy/parser.rs` (434 lines)** - Parser logic
-21. **Split: `/crates/unet-server/src/handlers/policies.rs` (393 lines)** - API handlers
-22. **Split: `/crates/unet-core/src/policy_integration.rs` (391 lines)** - Integration logic
-23. **Split: `/crates/unet-server/src/handlers/nodes.rs` (320 lines)** - API handlers
-24. **Split: `/crates/unet-cli/src/commands/nodes.rs` (1,051 lines)** - Large CLI refactoring
-25. **SNMP Session Management** - Connection pooling and lifecycle
-26. **Complex Function Signatures** - API redesign for parameter objects
+10. **Split: `/crates/unet-core/src/models/derived.rs` (804 lines)** - Well-defined boundaries
+11. **Split: `/crates/unet-core/src/snmp.rs` (642 lines)** - Core functionality with clear separation
+12. **Split: `/crates/unet-core/src/snmp/poller.rs` (623 lines)** - Polling logic separation
+13. **Split: `/crates/unet-core/src/policy/loader.rs` (616 lines)** - Policy loading logic
+14. **Split: `/crates/unet-core/src/error.rs` (505 lines)** - Error type organization
+15. **Split: `/crates/unet-core/src/snmp/oids.rs` (443 lines)** - OID management
+16. **Split: `/crates/unet-core/src/policy/parser.rs` (434 lines)** - Parser logic
+17. **Split: `/crates/unet-server/src/handlers/policies.rs` (393 lines)** - API handlers
+18. **Split: `/crates/unet-core/src/policy_integration.rs` (391 lines)** - Integration logic
+19. **Split: `/crates/unet-server/src/handlers/nodes.rs` (318 lines)** - API handlers
+20. **Split: `/crates/unet-cli/src/commands/nodes.rs` (1,051 lines)** - Large CLI refactoring
+21. **SNMP Session Management** - Connection pooling and lifecycle
+22. **Complex Function Signatures** - API redesign for parameter objects
 
 ### 🔴 **VERY COMPLEX** (3-7 days each)
-27. **Datastore Integration Gaps** - Complete API implementations (10 TODO items)
-28. **Missing API Features** - Status tracking and evaluation systems
-29. **Split: `/crates/unet-core/src/models.rs` (2,689 lines)** - Core model refactoring
-30. **Split: `/crates/unet-core/src/policy/evaluator.rs` (2,251 lines)** - Complex policy engine
-31. **Large Trait Interfaces** - DataStore trait decomposition
-32. **Split: `/crates/unet-core/src/datastore.rs` (2,740 lines)** - Massive trait refactoring
+23. **Datastore Integration Gaps** - Complete API implementations (10 TODO items)
+24. **Missing API Features** - Status tracking and evaluation systems
+25. **Split: `/crates/unet-core/src/models.rs` (2,689 lines)** - Core model refactoring
+26. **Split: `/crates/unet-core/src/policy/evaluator.rs` (2,251 lines)** - Complex policy engine
+27. **Large Trait Interfaces** - DataStore trait decomposition
+28. **Split: `/crates/unet-core/src/datastore.rs` (2,740 lines)** - Massive trait refactoring
 
 ### 🟣 **EXTREMELY COMPLEX** (1-4 weeks each)
-33. **SNMP Implementation Stubs** - Complete SNMP protocol implementation
-34. **Advanced Features - Environmental Metrics** - New feature development
-35. **Advanced Features - Git Repository Integration** - External service integration  
-36. **Advanced Features - Policy Orchestration** - Complex business logic
+29. **SNMP Implementation Stubs** - Complete SNMP protocol implementation
+30. **Advanced Features - Environmental Metrics** - New feature development
+31. **Advanced Features - Git Repository Integration** - External service integration  
+32. **Advanced Features - Policy Orchestration** - Complex business logic
 
 ---
 
 ## Recommended Implementation Order
 
-### **Week 1: Quick Wins (Items 1-8)**
-Focus on simple constant replacements and basic error handling improvements. These provide immediate code quality improvements with minimal risk.
+### **✅ Week 1: Quick Wins - COMPLETED**
+~~Focus on simple constant replacements and basic error handling improvements. These provide immediate code quality improvements with minimal risk.~~
 
-### **Week 2: Module Organization (Items 9-13)**  
+**COMPLETED TASKS:**
+- ✅ Hardcoded Values - Network Configuration
+- ✅ Test Code Improvements - Descriptive expect() messages  
+- ✅ SNMP Address Parsing - Helper functions with validation
+- ✅ Error Conversion Pattern - From trait implementations
+
+### **Week 2: Module Organization (Items 1-9)**  
 Tackle smaller file splits and configuration improvements. Build confidence with file splitting process.
 
-### **Week 3-4: Medium Complexity (Items 14-26)**
+### **Week 3-4: Medium Complexity (Items 10-22)**
 Work on larger file splits and system improvements. Establish patterns for complex refactoring.
 
-### **Month 2: Core Refactoring (Items 27-32)**
+### **Month 2: Core Refactoring (Items 23-28)**
 Address the major architectural changes and large file splits. These require careful planning and testing.
 
-### **Month 3+: New Feature Development (Items 33-36)**
+### **Month 3+: New Feature Development (Items 29-32)**
 Implement missing core functionality and advanced features. These are new development rather than refactoring.
 
 ---
@@ -145,45 +154,6 @@ Implement missing core functionality and advanced features. These are new develo
 
 ---
 
-## 2. Panic-Prone Code (~30 unwrap() calls)
-
-### Priority: MEDIUM - Improve Error Handling
-
-#### Configuration Parsing Issues
-**Files affected:**
-- `/crates/unet-core/src/config.rs:320,323,325,327`
-
-**Current issues:** Using `unwrap()` for file operations and path conversion
-**Fix steps:**
-1. Replace all `unwrap()` calls with proper `Result` propagation
-2. Create custom error types for configuration parsing failures
-3. Add validation for file paths and permissions
-4. Implement graceful fallbacks for missing configuration files
-5. Add comprehensive error messages for debugging
-
-#### Test Code Improvements
-**Files affected:** Multiple test files using `unwrap()` and `expect()`
-
-**Fix steps:**
-1. Replace `unwrap()` with descriptive `expect()` messages in tests
-2. Use `assert!` macros with custom messages for better test failures
-3. Create test helper functions for common setup patterns
-4. Add proper cleanup for test resources (temp files, databases)
-
-#### SNMP Address Parsing
-**Files affected:**
-- `/crates/unet-core/src/snmp.rs:194,628`
-- `/crates/unet-core/src/policy_integration.rs:352`
-
-**Fix steps:**
-1. Create a `SocketAddr` parsing helper function with proper error handling
-2. Validate IP addresses and port ranges
-3. Add configuration options for default SNMP ports
-4. Implement address resolution for hostnames
-5. Add comprehensive input validation
-
----
-
 ## 3. Large Files/Functions
 
 ### Priority: MEDIUM - Improve Maintainability
@@ -242,96 +212,7 @@ Implement missing core functionality and advanced features. These are new develo
 
 ---
 
-## 4. Duplicate Code Patterns
-
-### Priority: MEDIUM - Reduce Maintenance Burden
-
-#### Error Conversion Pattern
-**Issue:** Repeated `.map_err(|e| ServerError::Internal(e.to_string()))` (6+ occurrences)
-**Fix steps:**
-1. Create error conversion helper function:
-   ```rust
-   impl From<DataStoreError> for ServerError {
-       fn from(err: DataStoreError) -> Self {
-           match err {
-               DataStoreError::NotFound { .. } => ServerError::NotFound(err.to_string()),
-               DataStoreError::ValidationError { .. } => ServerError::Validation(err.to_string()),
-               _ => ServerError::Internal(err.to_string()),
-           }
-       }
-   }
-   ```
-2. Replace all manual error conversion calls
-3. Add specific error mapping for common cases
-4. Create unit tests for error conversion logic
-5. Document error handling patterns in AGENTS.md
-
-#### Database Transaction Patterns
-**Files affected:** Multiple handlers using similar transaction patterns
-**Fix steps:**
-1. Create transaction helper macros or functions
-2. Implement standard rollback and commit patterns
-3. Add automatic retry logic for transient failures
-4. Create integration tests for transaction behavior
-5. Document transaction best practices
-
-#### SNMP Session Management
-**Files affected:** Repeated session creation and management code
-**Fix steps:**
-1. Create SNMP session pool with connection reuse
-2. Implement automatic session cleanup and timeout handling
-3. Add session health checking and recovery
-4. Create comprehensive SNMP integration tests
-5. Add monitoring for SNMP connection metrics
-
----
-
-## 5. Hardcoded Values/Magic Numbers
-
-### Priority: MEDIUM - Improve Configuration Management
-
-#### Network Configuration
-**Issues found:**
-- `127.0.0.1:161` - SNMP test addresses (2 occurrences)
-- `8080` - Default server port (2 occurrences)  
-- `161` - SNMP port (3 occurrences)
-
-**Fix steps:**
-1. Create configuration constants file:
-   ```rust
-   pub mod defaults {
-       pub const DEFAULT_SERVER_PORT: u16 = 8080;
-       pub const SNMP_DEFAULT_PORT: u16 = 161;
-       pub const SNMP_TRAP_PORT: u16 = 162;
-       pub const LOCALHOST: &str = "127.0.0.1";
-   }
-   ```
-2. Replace all hardcoded values with named constants
-3. Make values configurable through environment variables
-4. Add validation for port ranges and IP addresses
-5. Document configuration options in README
-
-#### Database and Performance Tuning
-**Issues found:** Various timeout and limit values scattered throughout code
-**Fix steps:**
-1. Centralize all performance-related constants
-2. Create tuning profiles (development, production, testing)
-3. Add runtime configuration for critical performance parameters
-4. Implement configuration validation and bounds checking
-5. Add performance monitoring and alerting
-
-#### Error Codes and Messages
-**Issues found:** Hardcoded error codes and messages in multiple files
-**Fix steps:**
-1. Create error code constants with descriptive names
-2. Implement internationalization-ready error message system
-3. Add structured error responses with error codes
-4. Create error message testing and validation
-5. Document all error codes and their meanings
-
----
-
-## 6. File Size Management (Target: 250-300 Lines Per File)
+## 4. File Size Management (Target: 250-300 Lines Per File)
 
 ### Priority: HIGH - Code Organization and Maintainability
 
@@ -416,7 +297,7 @@ commands/nodes/
 └── status.rs (200 lines) - Status, monitoring, and metrics commands
 ```
 
-##### `/crates/unet-core/src/policy/tests.rs` (847 lines)
+##### `/crates/unet-core/src/policy/tests.rs` (845 lines)
 **Split into:**
 ```
 policy/tests/
@@ -438,7 +319,7 @@ models/derived/
 
 #### Medium Files (300-700 lines) - Split When Time Permits
 
-##### `/crates/unet-core/src/snmp.rs` (639 lines)
+##### `/crates/unet-core/src/snmp.rs` (642 lines)
 **Split into:**
 ```
 snmp/
@@ -448,7 +329,7 @@ snmp/
 └── config.rs (90 lines) - Configuration types
 ```
 
-##### `/crates/unet-core/src/snmp/poller.rs` (622 lines)
+##### `/crates/unet-core/src/snmp/poller.rs` (623 lines)
 **Split into:**
 ```
 snmp/poller/
@@ -474,27 +355,27 @@ policy/loader/
 - `/crates/unet-core/src/policy/parser.rs` (434 lines)
 - `/crates/unet-server/src/handlers/policies.rs` (393 lines)
 - `/crates/unet-core/src/policy_integration.rs` (391 lines)
-- `/crates/unet-core/src/config.rs` (349 lines)
+- `/crates/unet-core/src/config.rs` (515 lines)
 - `/crates/unet-cli/src/commands/links.rs` (323 lines)
-- `/crates/unet-server/src/handlers/nodes.rs` (320 lines)
+- `/crates/unet-server/src/handlers/nodes.rs` (318 lines)
 - `/crates/unet-cli/src/commands/locations.rs` (317 lines)
 
 ### Implementation Priority and Timeline
 
-#### Phase 1: Foundation Files (Week 1)
+#### Phase 1: Foundation Files (Week 2)
 1. **models.rs** - Core types used everywhere, split first
 2. **datastore.rs** - Core trait definitions and implementations
 
-#### Phase 2: Complex Logic (Week 2)  
+#### Phase 2: Complex Logic (Week 3)  
 3. **policy/evaluator.rs** - Complex evaluation engine
 4. **snmp.rs** - Core SNMP functionality
 
-#### Phase 3: Specialized Modules (Week 3)
+#### Phase 3: Specialized Modules (Week 4)
 5. **models/derived.rs** - Derived state models
 6. **snmp/poller.rs** - Polling implementation
 7. **policy/loader.rs** - Policy loading logic
 
-#### Phase 4: Supporting Files (Week 4)
+#### Phase 4: Supporting Files (Week 5)
 8. **commands/nodes.rs** - CLI commands
 9. **policy/tests.rs** - Test organization
 10. **Additional files over 300 lines** - Based on priority and usage
@@ -527,7 +408,7 @@ policy/loader/
 
 ---
 
-## 7. Architecture and Design Issues
+## 5. Architecture and Design Issues
 
 ### Priority: LOW-MEDIUM - Long-term Improvements
 
@@ -556,12 +437,12 @@ policy/loader/
 ### Phase 1 (Critical - Fix Immediately)
 1. Implement actual SNMP operations (remove TODO stubs)
 2. Complete datastore integration for links/locations handlers
-3. Replace dangerous `unwrap()` calls in production code paths
+3. Replace remaining `unwrap()` calls in production code paths (~158 calls remaining)
 
 ### Phase 2 (Important - Next Sprint)
-1. Create error conversion helpers to reduce duplication
+1. ~~Create error conversion helpers to reduce duplication~~ ✅ **COMPLETED**
 2. Split large files into logical modules
-3. Centralize configuration constants
+3. ~~Centralize configuration constants~~ ✅ **COMPLETED**
 
 ### Phase 3 (Improvement - Following Sprint)
 1. Add comprehensive error handling and validation

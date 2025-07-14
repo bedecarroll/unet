@@ -18,7 +18,7 @@ mod tests {
     fn test_simple_rule_parsing() {
         let input = r#"WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1""#;
         let result = PolicyGrammar::parse(Rule::rule, input);
-        assert!(result.is_ok(), "Failed to parse simple rule: {:?}", result);
+        assert!(result.is_ok(), "Failed to parse simple rule: {result:?}");
     }
 
     #[test]
@@ -27,8 +27,7 @@ mod tests {
         let result = PolicyGrammar::parse(Rule::rule, input);
         assert!(
             result.is_ok(),
-            "Failed to parse complex condition: {:?}",
-            result
+            "Failed to parse complex condition: {result:?}"
         );
     }
 
@@ -36,11 +35,7 @@ mod tests {
     fn test_regex_literal_parsing() {
         let input = r#"WHEN node.hostname MATCHES /^dist-\d+$/ THEN APPLY "dist-template.jinja""#;
         let result = PolicyGrammar::parse(Rule::rule, input);
-        assert!(
-            result.is_ok(),
-            "Failed to parse regex literal: {:?}",
-            result
-        );
+        assert!(result.is_ok(), "Failed to parse regex literal: {result:?}");
     }
 
     #[test]
@@ -49,8 +44,7 @@ mod tests {
         let result = PolicyGrammar::parse(Rule::rule, input);
         assert!(
             result.is_ok(),
-            "Failed to parse boolean operators: {:?}",
-            result
+            "Failed to parse boolean operators: {result:?}"
         );
     }
 
@@ -58,7 +52,7 @@ mod tests {
     fn test_null_check_parsing() {
         let input = r"WHEN custom_data.location IS NOT NULL THEN SET node.location_id TO custom_data.location";
         let result = PolicyGrammar::parse(Rule::rule, input);
-        assert!(result.is_ok(), "Failed to parse null check: {:?}", result);
+        assert!(result.is_ok(), "Failed to parse null check: {result:?}");
     }
 
     #[test]
@@ -73,6 +67,6 @@ mod tests {
             THEN SET custom_data.backup_priority TO "high"
         "#;
         let result = PolicyGrammar::parse(Rule::policy_file, input);
-        assert!(result.is_ok(), "Failed to parse policy file: {:?}", result);
+        assert!(result.is_ok(), "Failed to parse policy file: {result:?}");
     }
 }

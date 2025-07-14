@@ -15,7 +15,6 @@ use serde_json::json;
 use std::time::{Duration, Instant};
 
 /// Test helper to create a sample node
-
 /// Performance test module for large policy sets
 #[cfg(test)]
 mod performance_tests {
@@ -28,33 +27,27 @@ mod performance_tests {
         // Create 1000 policy rules as text
         let mut policy_text = String::new();
         for i in 0..1000 {
-            policy_text.push_str(&format!(
-                r#"WHEN node.id == "node-{}" THEN SET custom_data.field_{} TO "value_{}"
-"#,
-                i, i, i
-            ));
+            use std::fmt::Write;
+            writeln!(
+                policy_text,
+                r#"WHEN node.id == "node-{i}" THEN SET custom_data.field_{i} TO "value_{i}""#
+            )
+            .expect("Writing to String should not fail");
         }
 
         let rule_creation_time = start.elapsed();
-        println!(
-            "Created 1000 policy rule strings in {:?}",
-            rule_creation_time
-        );
+        println!("Created 1000 policy rule strings in {rule_creation_time:?}");
 
         // Test parsing performance
         let parse_start = Instant::now();
         let result = PolicyParser::parse_file(&policy_text);
         let parse_time = parse_start.elapsed();
 
-        println!("Parsed 1000 rules in {:?}", parse_time);
+        println!("Parsed 1000 rules in {parse_time:?}");
 
         // Verify parsing succeeded
-        assert!(
-            result.is_ok(),
-            "Failed to parse policy text: {:?}",
-            result.err()
-        );
-        let rules = result.unwrap();
+        assert!(result.is_ok(), "Failed to parse policy text: {result:?}");
+        let rules = result.expect("PolicyParser should successfully parse 1000 valid policy rules");
         assert_eq!(
             rules.len(),
             1000,
@@ -65,8 +58,7 @@ mod performance_tests {
         // Performance should be reasonable (< 5 seconds for 1000 rules)
         assert!(
             parse_time < Duration::from_secs(5),
-            "Performance test failed: took {:?}",
-            parse_time
+            "Performance test failed: took {parse_time:?}"
         );
     }
 
@@ -118,18 +110,18 @@ mod performance_tests {
         // Evaluate the rule 1,000 times (reduced for performance)
         let start = Instant::now();
         for _ in 0..1_000 {
-            let result = PolicyEvaluator::evaluate_rule(&rule, &context).unwrap();
+            let result = PolicyEvaluator::evaluate_rule(&rule, &context)
+                .expect("PolicyEvaluator should successfully evaluate performance test rule");
             assert!(matches!(result, EvaluationResult::Satisfied { .. }));
         }
         let elapsed = start.elapsed();
 
-        println!("Evaluated complex rule 1,000 times in {:?}", elapsed);
+        println!("Evaluated complex rule 1,000 times in {elapsed:?}");
 
         // Should complete in reasonable time (< 1 second for 1k evaluations)
         assert!(
             elapsed < Duration::from_secs(1),
-            "Rule evaluation performance test failed: took {:?}",
-            elapsed
+            "Rule evaluation performance test failed: took {elapsed:?}"
         );
     }
 
@@ -325,7 +317,8 @@ mod error_handling_tests {
             },
         };
 
-        let result = PolicyEvaluator::evaluate_rule(&rule, &context).unwrap();
+        let result = PolicyEvaluator::evaluate_rule(&rule, &context)
+            .expect("PolicyEvaluator should handle null value existence check");
         assert!(matches!(result, EvaluationResult::Satisfied { .. }));
 
         // Test not null existence check
@@ -514,7 +507,9 @@ mod error_handling_tests {
             "Empty string should parse to empty rule list"
         );
         assert_eq!(
-            empty_result.unwrap().len(),
+            empty_result
+                .expect("Empty policy string should parse successfully")
+                .len(),
             0,
             "Empty string should result in no rules"
         );
@@ -820,11 +815,10 @@ WHEN node.lifecycle == "Decommissioned" THEN SET custom_data.status TO "inactive
         let result = PolicyParser::parse_file(policy_text);
         assert!(
             result.is_ok(),
-            "Failed to parse comprehensive policy file: {:?}",
-            result.err()
+            "Failed to parse comprehensive policy file: {result:?}"
         );
 
-        let rules = result.unwrap();
+        let rules = result.expect("PolicyParser should successfully parse complete policy file");
         assert_eq!(rules.len(), 5, "Expected 5 rules, got {}", rules.len());
 
         // Verify specific rule types are parsed correctly
