@@ -1,39 +1,12 @@
-//! Parser implementation that converts Pest parse trees to AST
-//!
-//! This module implements the conversion from Pest's parse tree to our
-//! strongly-typed AST structures.
+//! Main policy parser implementation
 
+use super::{error::ParseError, utils::next_pair};
 use crate::policy::ast::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value};
 use crate::policy::grammar::{PolicyGrammar, Rule};
 use pest::{Parser, iterators::Pair};
-use std::fmt;
 
 /// Parser for policy rules
 pub struct PolicyParser;
-
-/// Errors that can occur during parsing
-#[derive(Debug)]
-pub struct ParseError {
-    /// Error message describing what went wrong
-    pub message: String,
-    /// Optional location in source where error occurred (line, column)
-    pub location: Option<(usize, usize)>,
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.location {
-            Some((line, col)) => write!(
-                f,
-                "Parse error at line {}, column {}: {}",
-                line, col, self.message
-            ),
-            None => write!(f, "Parse error: {}", self.message),
-        }
-    }
-}
-
-impl std::error::Error for ParseError {}
 
 impl PolicyParser {
     /// Parse a single policy rule from text
@@ -116,14 +89,14 @@ impl PolicyParser {
     }
 
     fn parse_condition(pair: Pair<Rule>) -> Result<Condition, ParseError> {
-        let inner_pair = Self::next_pair(pair.into_inner(), "condition inner")?;
+        let inner_pair = next_pair(pair.into_inner(), "condition inner")?;
         Self::parse_or_condition(inner_pair)
     }
 
     fn parse_or_condition(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
         let mut left =
-            Self::parse_and_condition(Self::next_pair(inner.by_ref(), "or condition left side")?)?;
+            Self::parse_and_condition(next_pair(inner.by_ref(), "or condition left side")?)?;
 
         for right_pair in inner {
             let right = Self::parse_and_condition(right_pair)?;
@@ -136,7 +109,7 @@ impl PolicyParser {
     fn parse_and_condition(pair: Pair<Rule>) -> Result<Condition, ParseError> {
         let mut inner = pair.into_inner();
         let mut left =
-            Self::parse_not_condition(Self::next_pair(inner.by_ref(), "and condition left side")?)?;
+            Self::parse_not_condition(next_pair(inner.by_ref(), "and condition left side")?)?;
 
         for right_pair in inner {
             let right = Self::parse_not_condition(right_pair)?;
@@ -354,19 +327,6 @@ impl PolicyParser {
                 location: None,
             }),
         }
-    }
-
-    /// Helper to safely extract the next pair from an iterator
-    ///
-    /// This replaces the pattern `iter.next().unwrap()` with proper error handling
-    fn next_pair<'a>(
-        mut iter: impl Iterator<Item = Pair<'a, Rule>>,
-        context: &str,
-    ) -> Result<Pair<'a, Rule>, ParseError> {
-        iter.next().ok_or_else(|| ParseError {
-            message: format!("Expected {context} in parse tree but none found"),
-            location: None,
-        })
     }
 }
 

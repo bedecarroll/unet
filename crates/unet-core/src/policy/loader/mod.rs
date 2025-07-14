@@ -4,11 +4,21 @@
 //! or Git repositories, with validation, caching, and hot-reloading capabilities.
 
 use crate::config::GitConfig;
-use crate::policy::{PolicyError, PolicyParser, PolicyResult, PolicyRule};
+use crate::policy::{PolicyError, PolicyResult, PolicyRule};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 use tracing::{debug, info, warn};
+use walkdir::WalkDir;
+
+// Re-export all public types
+pub use self::cache::{CacheManager, CacheStats, CachedPolicy};
+// Git integration is not yet implemented - exports removed to avoid dead code warnings
+pub use self::validation::{PolicyValidator, ValidationError, ValidationResult};
+
+mod cache;
+mod git;
+mod validation;
 
 /// Policy file loader with Git integration and caching
 #[derive(Debug, Clone)]
@@ -21,17 +31,6 @@ pub struct PolicyLoader {
     local_dir: Option<PathBuf>,
     /// Cache expiry duration
     cache_ttl: Duration,
-}
-
-/// Cached policy with metadata
-#[derive(Debug, Clone)]
-struct CachedPolicy {
-    /// Parsed policy rules
-    rules: Vec<PolicyRule>,
-    /// File modification time when cached
-    mtime: SystemTime,
-    /// Cache timestamp
-    cached_at: SystemTime,
 }
 
 /// Policy file metadata
@@ -137,7 +136,7 @@ impl PolicyLoader {
 
     /// Collect all .policy files from the directory tree
     fn collect_policy_files(dir: &Path) -> Vec<PathBuf> {
-        walkdir::WalkDir::new(dir)
+        WalkDir::new(dir)
             .into_iter()
             .filter_map(std::result::Result::ok)
             .filter(|e| e.file_type().is_file())
@@ -182,12 +181,11 @@ impl PolicyLoader {
     /// - File metadata cannot be accessed
     pub fn load_policy_file(&mut self, path: &Path) -> PolicyResult<PolicyFile> {
         let metadata = std::fs::metadata(path).map_err(PolicyError::Io)?;
-
         let mtime = metadata.modified().map_err(PolicyError::Io)?;
 
         // Check cache first
         if let Some(cached) = self.policy_cache.get(path) {
-            if self.is_cache_valid(cached, mtime) {
+            if cached.is_valid(self.cache_ttl, mtime) {
                 debug!("Using cached policy: {}", path.display());
                 return Ok(PolicyFile {
                     path: path.to_path_buf(),
@@ -198,19 +196,15 @@ impl PolicyLoader {
             }
         }
 
-        // Load and parse the file
+        // Cache miss or expired - load from file
         debug!("Loading policy file from disk: {}", path.display());
         let content = std::fs::read_to_string(path).map_err(PolicyError::Io)?;
 
-        // Validate file format and parse policies
-        let rules = Self::parse_policy_file(&content)?;
+        // Validate and parse policy content
+        let rules = PolicyValidator::validate_and_parse(&content)?;
 
-        // Update cache
-        let cached_policy = CachedPolicy {
-            rules: rules.clone(),
-            mtime,
-            cached_at: SystemTime::now(),
-        };
+        // Cache the parsed policy
+        let cached_policy = CachedPolicy::new(rules.clone(), mtime);
         self.policy_cache.insert(path.to_path_buf(), cached_policy);
 
         Ok(PolicyFile {
@@ -219,56 +213,6 @@ impl PolicyLoader {
             modified: mtime,
             size: metadata.len(),
         })
-    }
-
-    /// Parse policy file content into rules
-    fn parse_policy_file(content: &str) -> PolicyResult<Vec<PolicyRule>> {
-        let mut rules = Vec::new();
-        let mut line_number = 0;
-
-        for line in content.lines() {
-            line_number += 1;
-            let line = line.trim();
-
-            // Skip empty lines and comments
-            if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
-                continue;
-            }
-
-            // Parse the policy rule
-            match PolicyParser::parse_rule(line) {
-                Ok(rule) => rules.push(rule),
-                Err(e) => {
-                    return Err(PolicyError::Parse(crate::policy::ParseError {
-                        message: format!("Line {}: {}", line_number, e.message),
-                        location: Some((line_number, 1)),
-                    }));
-                }
-            }
-        }
-
-        if rules.is_empty() {
-            warn!("No valid policy rules found in file");
-        }
-
-        Ok(rules)
-    }
-
-    /// Check if cached policy is still valid
-    fn is_cache_valid(&self, cached: &CachedPolicy, current_mtime: SystemTime) -> bool {
-        // Check if file has been modified
-        if cached.mtime != current_mtime {
-            return false;
-        }
-
-        // Check if cache has expired
-        if let Ok(elapsed) = cached.cached_at.elapsed() {
-            if elapsed > self.cache_ttl {
-                return false;
-            }
-        }
-
-        true
     }
 
     /// Get the policies directory (from Git or local)
@@ -293,119 +237,25 @@ impl PolicyLoader {
 
     /// Clear the policy cache
     pub fn clear_cache(&mut self) {
-        self.policy_cache.clear();
+        self.policy_cache.clear_cache();
         debug!("Policy cache cleared");
     }
 
     /// Get cache statistics
     #[must_use]
     pub fn cache_stats(&self) -> CacheStats {
-        let total_entries = self.policy_cache.len();
-        let expired_entries = self
-            .policy_cache
-            .values()
-            .filter(|cached| {
-                cached
-                    .cached_at
-                    .elapsed()
-                    .map(|elapsed| elapsed > self.cache_ttl)
-                    .unwrap_or(true)
-            })
-            .count();
-
-        CacheStats {
-            total_entries,
-            expired_entries,
-            valid_entries: total_entries - expired_entries,
-        }
+        self.policy_cache.get_cache_stats(self.cache_ttl)
     }
 
     /// Validate a policy file format without parsing all rules
-    ///
-    /// # Errors
-    ///
-    /// Returns `PolicyError` if validation encounters a critical error
-    pub fn validate_policy_file(&self, content: &str) -> PolicyResult<ValidationResult> {
-        let mut total_lines = 0;
-        let mut valid_rules = 0;
-        let mut errors = Vec::new();
-
-        for (line_number, line) in content.lines().enumerate() {
-            let line_num = line_number + 1;
-            total_lines += 1;
-            let line = line.trim();
-
-            // Skip empty lines and comments
-            if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
-                continue;
-            }
-
-            // Try parsing the rule
-            match PolicyParser::parse_rule(line) {
-                Ok(_) => valid_rules += 1,
-                Err(e) => {
-                    errors.push(ValidationError {
-                        line: line_num,
-                        message: e.message,
-                        content: line.to_string(),
-                    });
-                }
-            }
-        }
-
-        Ok(ValidationResult {
-            total_lines,
-            valid_rules,
-            errors,
-        })
-    }
-}
-
-/// Cache statistics
-/// Statistics about the policy cache state
-#[derive(Debug, Clone)]
-pub struct CacheStats {
-    /// Total number of entries in the cache
-    pub total_entries: usize,
-    /// Number of expired cache entries
-    pub expired_entries: usize,
-    /// Number of valid cache entries
-    pub valid_entries: usize,
-}
-
-/// Policy file validation result
-#[derive(Debug, Clone)]
-pub struct ValidationResult {
-    /// Total number of lines processed
-    pub total_lines: usize,
-    /// Number of valid policy rules found
-    pub valid_rules: usize,
-    /// List of validation errors encountered
-    pub errors: Vec<ValidationError>,
-}
-
-/// Validation error details
-#[derive(Debug, Clone)]
-pub struct ValidationError {
-    /// Line number where the error occurred
-    pub line: usize,
-    /// Error message describing the problem
-    pub message: String,
-    /// Content of the line that caused the error
-    pub content: String,
-}
-
-impl ValidationResult {
-    /// Check if validation passed (no errors)
     #[must_use]
-    pub fn is_valid(&self) -> bool {
-        self.errors.is_empty()
+    pub fn validate_policy_file(&self, content: &str) -> ValidationResult {
+        PolicyValidator::validate_policy_file(content)
     }
 
-    /// Get error count
-    #[must_use]
-    pub fn error_count(&self) -> usize {
-        self.errors.len()
+    /// Clear expired cache entries
+    pub fn clear_expired_cache(&mut self) -> usize {
+        self.policy_cache.clear_expired_cache(self.cache_ttl)
     }
 }
 
@@ -416,8 +266,20 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    #[tokio::test]
-    async fn test_policy_loader_local_directory() {
+    fn create_test_git_config() -> GitConfig {
+        GitConfig {
+            repository_url: None,
+            local_directory: None,
+            branch: "main".to_string(),
+            auth_token: None,
+            sync_interval: 300,
+            policies_repo: None,
+            templates_repo: None,
+        }
+    }
+
+    #[test]
+    fn test_policy_loader_local_directory() {
         let temp_dir = TempDir::new().unwrap();
         let policies_dir = temp_dir.path().join("policies");
         fs::create_dir_all(&policies_dir).unwrap();
@@ -431,13 +293,7 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         fs::write(&policy_file, policy_content).unwrap();
 
         // Create policy loader
-        let git_config = GitConfig {
-            policies_repo: None,
-            templates_repo: None,
-            branch: "main".to_string(),
-            sync_interval: 300,
-        };
-
+        let git_config = create_test_git_config();
         let mut loader = PolicyLoader::new(git_config).with_local_dir(policies_dir);
 
         // Load policies
@@ -451,15 +307,9 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         assert_eq!(policy_file.rules.len(), 2);
     }
 
-    #[tokio::test]
-    async fn test_policy_file_validation() {
-        let git_config = GitConfig {
-            policies_repo: None,
-            templates_repo: None,
-            branch: "main".to_string(),
-            sync_interval: 300,
-        };
-
+    #[test]
+    fn test_policy_file_validation() {
+        let git_config = create_test_git_config();
         let loader = PolicyLoader::new(git_config);
 
         let valid_content = r#"# Valid policy file
@@ -467,7 +317,7 @@ WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 WHEN node.role == "router" THEN SET custom_data.managed TO true
 "#;
 
-        let result = loader.validate_policy_file(valid_content).unwrap();
+        let result = loader.validate_policy_file(valid_content);
         assert!(result.is_valid());
         assert_eq!(result.valid_rules, 2);
         assert_eq!(result.error_count(), 0);
@@ -478,27 +328,21 @@ INVALID SYNTAX HERE
 WHEN node.role == "router" THEN SET custom_data.managed TO true
 "#;
 
-        let result = loader.validate_policy_file(invalid_content).unwrap();
+        let result = loader.validate_policy_file(invalid_content);
         assert!(!result.is_valid());
         assert_eq!(result.valid_rules, 2);
         assert_eq!(result.error_count(), 1);
     }
 
-    #[tokio::test]
-    async fn test_policy_caching() {
+    #[test]
+    fn test_policy_caching() {
         let temp_dir = TempDir::new().unwrap();
         let policy_file = temp_dir.path().join("test.policy");
 
         let policy_content = r#"WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1""#;
         fs::write(&policy_file, policy_content).unwrap();
 
-        let git_config = GitConfig {
-            policies_repo: None,
-            templates_repo: None,
-            branch: "main".to_string(),
-            sync_interval: 300,
-        };
-
+        let git_config = create_test_git_config();
         let mut loader = PolicyLoader::new(git_config).with_cache_ttl(Duration::from_secs(60));
 
         // Load file first time
@@ -521,93 +365,5 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         // Load file third time (should reload from disk)
         let result3 = loader.load_policy_file(&policy_file).unwrap();
         assert_eq!(result3.rules.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_policy_loader_with_real_policies_directory() {
-        // Test with the actual policies directory
-        let policies_path = std::path::PathBuf::from("/home/bc/unet/policies");
-
-        if !policies_path.exists() {
-            // Skip test if policies directory doesn't exist
-            println!("Skipping test: policies directory not found at {policies_path:?}");
-            return;
-        }
-
-        let git_config = GitConfig {
-            policies_repo: None,
-            templates_repo: None,
-            branch: "main".to_string(),
-            sync_interval: 300,
-        };
-
-        let mut loader = PolicyLoader::new(git_config).with_local_dir(&policies_path);
-
-        // Load policies from real directory
-        let result = loader.load_policies().unwrap();
-
-        // Print results for debugging
-        println!(
-            "Loaded {} policies from {:?}",
-            result.loaded.len(),
-            policies_path
-        );
-        println!("Total files found: {}", result.total_files);
-        println!("Errors: {}", result.errors.len());
-
-        for policy_file in &result.loaded {
-            println!(
-                "  - {}: {} rules",
-                policy_file.path.display(),
-                policy_file.rules.len()
-            );
-        }
-
-        for (path, error) in &result.errors {
-            println!("  ERROR in {}: {}", path.display(), error);
-        }
-
-        // Should have at least one policy file (cisco-compliance.policy)
-        if result.total_files == 0 {
-            println!("No policy files found. Directory contents:");
-            if let Ok(entries) = std::fs::read_dir(&policies_path) {
-                for entry in entries.flatten() {
-                    println!("  {:?}", entry.path());
-                }
-            }
-            panic!("Expected at least 1 policy file");
-        }
-
-        if result.loaded.is_empty() && !result.errors.is_empty() {
-            // There were parsing errors, so let's see what they are
-            for (path, error) in &result.errors {
-                println!("Policy file {} failed to parse: {}", path.display(), error);
-            }
-            panic!("All policy files failed to parse");
-        }
-
-        assert!(
-            !result.loaded.is_empty(),
-            "Expected at least 1 loaded policy, found {}",
-            result.loaded.len()
-        );
-
-        // Check that our cisco-compliance.policy was loaded
-        let cisco_policy = result
-            .loaded
-            .iter()
-            .find(|p| p.path.file_name().unwrap() == "cisco-compliance.policy");
-        assert!(
-            cisco_policy.is_some(),
-            "Expected to find cisco-compliance.policy"
-        );
-
-        let cisco_policy = cisco_policy.unwrap();
-        assert_eq!(
-            cisco_policy.rules.len(),
-            4,
-            "Expected 4 rules in cisco-compliance.policy, found {}",
-            cisco_policy.rules.len()
-        );
     }
 }

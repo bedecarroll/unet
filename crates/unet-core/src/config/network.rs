@@ -53,6 +53,26 @@ pub fn parse_socket_addr_with_default_port(
     }
 }
 
+/// Parse an IP address string
+///
+/// This is a simple wrapper around the standard library's parse method
+/// with better error handling.
+///
+/// # Arguments
+/// * `ip_str` - The IP address string to parse
+///
+/// # Returns
+/// * `Ok(IpAddr)` - Successfully parsed IP address
+/// * `Err(Error)` - If the address string is invalid
+///
+/// # Errors
+/// Returns an error if the address string cannot be parsed as a valid IP address
+pub fn parse_ip_addr(ip_str: &str) -> Result<IpAddr> {
+    ip_str
+        .parse()
+        .map_err(|e| Error::config(format!("Invalid IP address '{ip_str}': {e}")))
+}
+
 /// Parse a socket address string
 ///
 /// This is a simple wrapper around the standard library's parse method
@@ -89,6 +109,20 @@ mod tests {
 
         // Invalid address should fail
         assert!(parse_socket_addr_with_default_port("invalid", 161).is_err());
+    }
+
+    #[test]
+    fn test_parse_ip_addr() {
+        // Valid IPv4 address should parse correctly
+        let ip = parse_ip_addr("192.168.1.1").unwrap();
+        assert!(ip.is_ipv4());
+
+        // Valid IPv6 address should parse correctly
+        let ip = parse_ip_addr("::1").unwrap();
+        assert!(ip.is_ipv6());
+
+        // Invalid address should fail
+        assert!(parse_ip_addr("invalid").is_err());
     }
 
     #[test]
