@@ -21,6 +21,42 @@ pub struct EvaluationContext {
     pub derived_data: Option<JsonValue>,
 }
 
+/// Complete context for policy execution including evaluation context and execution dependencies
+pub struct PolicyExecutionContext<'a> {
+    /// Node evaluation context
+    pub context: &'a EvaluationContext,
+    /// Datastore for persisting changes
+    pub datastore: &'a dyn DataStore,
+    /// ID of the node being evaluated
+    pub node_id: &'a Uuid,
+}
+
+impl<'a> PolicyExecutionContext<'a> {
+    /// Create a new policy execution context
+    #[must_use]
+    pub const fn new(
+        context: &'a EvaluationContext,
+        datastore: &'a dyn DataStore,
+        node_id: &'a Uuid,
+    ) -> Self {
+        Self {
+            context,
+            datastore,
+            node_id,
+        }
+    }
+}
+
+impl std::fmt::Debug for PolicyExecutionContext<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PolicyExecutionContext")
+            .field("context", &self.context)
+            .field("datastore", &"<DataStore>")
+            .field("node_id", &self.node_id)
+            .finish()
+    }
+}
+
 /// Result of policy evaluation
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EvaluationResult {
@@ -261,15 +297,13 @@ impl PolicyEvaluator {
     /// Returns an error if condition evaluation or action execution fails.
     pub async fn execute_rule(
         rule: &PolicyRule,
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
+        exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<PolicyExecutionResult, PolicyError> {
-        let evaluation_result = Self::evaluate_rule(rule, context)?;
+        let evaluation_result = Self::evaluate_rule(rule, exec_ctx.context)?;
 
         let action_result = match &evaluation_result {
             EvaluationResult::Satisfied { action } => {
-                Some(Self::execute_action_with_rollback(action, context, datastore, node_id).await?)
+                Some(Self::execute_action_with_rollback(action, exec_ctx).await?)
             }
             _ => None,
         };
@@ -281,53 +315,78 @@ impl PolicyEvaluator {
         })
     }
 
+    /// Execute a single policy rule (legacy interface)
+    ///
+    /// # Errors
+    /// Returns an error if condition evaluation or action execution fails.
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use execute_rule with PolicyExecutionContext instead"
+    )]
+    pub async fn execute_rule_legacy(
+        rule: &PolicyRule,
+        context: &EvaluationContext,
+        datastore: &dyn DataStore,
+        node_id: &Uuid,
+    ) -> Result<PolicyExecutionResult, PolicyError> {
+        let exec_ctx = PolicyExecutionContext::new(context, datastore, node_id);
+        Self::execute_rule(rule, &exec_ctx).await
+    }
+
     /// Execute multiple policy rules against the given context
     ///
     /// # Errors
     /// Returns an error if rule execution fails for any rule.
     pub async fn execute_rules(
         rules: &[PolicyRule],
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
+        exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<Vec<PolicyExecutionResult>, PolicyError> {
         let mut results = Vec::new();
 
         for rule in rules {
-            let result = Self::execute_rule(rule, context, datastore, node_id).await?;
+            let result = Self::execute_rule(rule, exec_ctx).await?;
             results.push(result);
         }
 
         Ok(results)
     }
 
-    /// Execute a specific action with rollback information
-    async fn execute_action_with_rollback(
-        action: &Action,
+    /// Execute multiple policy rules (legacy interface)
+    ///
+    /// # Errors
+    /// Returns an error if rule execution fails for any rule.
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use execute_rules with PolicyExecutionContext instead"
+    )]
+    pub async fn execute_rules_legacy(
+        rules: &[PolicyRule],
         context: &EvaluationContext,
         datastore: &dyn DataStore,
         node_id: &Uuid,
+    ) -> Result<Vec<PolicyExecutionResult>, PolicyError> {
+        let exec_ctx = PolicyExecutionContext::new(context, datastore, node_id);
+        Self::execute_rules(rules, &exec_ctx).await
+    }
+
+    /// Execute a specific action with rollback information
+    async fn execute_action_with_rollback(
+        action: &Action,
+        exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<ActionExecutionResult, PolicyError> {
         match action {
             Action::Assert { field, expected } => {
-                let result = Self::execute_assert_action(field, expected, context)?;
+                let result = Self::execute_assert_action(field, expected, exec_ctx.context)?;
                 Ok(ActionExecutionResult {
                     result,
                     rollback_data: Some(RollbackData::AssertRollback),
                 })
             }
             Action::Set { field, value } => {
-                Self::execute_set_action_with_rollback(field, value, context, datastore, node_id)
-                    .await
+                Self::execute_set_action_with_rollback(field, value, exec_ctx).await
             }
             Action::ApplyTemplate { template_path } => {
-                Self::execute_apply_template_action_with_rollback(
-                    template_path,
-                    context,
-                    datastore,
-                    node_id,
-                )
-                .await
+                Self::execute_apply_template_action_with_rollback(template_path, exec_ctx).await
             }
         }
     }
@@ -361,9 +420,7 @@ impl PolicyEvaluator {
     pub async fn execute_set_action_with_rollback(
         field: &FieldRef,
         value: &Value,
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
+        exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<ActionExecutionResult, PolicyError> {
         // For SET actions, we only support setting values in custom_data
         if field.path.is_empty() || field.path[0] != "custom_data" {
@@ -376,17 +433,19 @@ impl PolicyEvaluator {
         }
 
         // Get the current node
-        let mut node = datastore.get_node_required(node_id).await.map_err(|e| {
-            PolicyError::DataStoreError {
+        let mut node = exec_ctx
+            .datastore
+            .get_node_required(exec_ctx.node_id)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
                 message: e.to_string(),
-            }
-        })?;
+            })?;
 
         // Get the current value for rollback
         let previous_value = Self::get_nested_field(&node.custom_data, &field.path[1..]);
 
         // Parse the new value
-        let new_value = Self::resolve_value(value, context)?;
+        let new_value = Self::resolve_value(value, exec_ctx.context)?;
 
         // Update the custom_data field
         let mut custom_data = node.custom_data.clone();
@@ -394,7 +453,8 @@ impl PolicyEvaluator {
         node.custom_data = custom_data;
 
         // Save the updated node
-        datastore
+        exec_ctx
+            .datastore
             .update_node(&node)
             .await
             .map_err(|e| PolicyError::DataStoreError {
@@ -422,16 +482,16 @@ impl PolicyEvaluator {
     /// - Template assignment fails
     pub async fn execute_apply_template_action_with_rollback(
         template_path: &str,
-        _context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
+        exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<ActionExecutionResult, PolicyError> {
         // Get the current node
-        let mut node = datastore.get_node_required(node_id).await.map_err(|e| {
-            PolicyError::DataStoreError {
+        let mut node = exec_ctx
+            .datastore
+            .get_node_required(exec_ctx.node_id)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
                 message: e.to_string(),
-            }
-        })?;
+            })?;
 
         // Add template assignment to custom_data
         let mut custom_data = node.custom_data.clone();
@@ -461,12 +521,11 @@ impl PolicyEvaluator {
             node.custom_data = custom_data;
 
             // Save the updated node
-            datastore
-                .update_node(&node)
-                .await
-                .map_err(|e| PolicyError::DataStoreError {
+            exec_ctx.datastore.update_node(&node).await.map_err(|e| {
+                PolicyError::DataStoreError {
                     message: e.to_string(),
-                })?;
+                }
+            })?;
         }
 
         Ok(ActionExecutionResult {
@@ -692,26 +751,30 @@ impl PolicyEvaluator {
     /// - Transaction creation or management fails
     pub async fn execute_rules_with_transaction(
         rules: &[PolicyRule],
-        context: &EvaluationContext,
-        datastore: &dyn DataStore,
-        node_id: &Uuid,
+        exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<(Vec<PolicyExecutionResult>, PolicyTransaction), PolicyError> {
         // Create a new transaction
-        let transaction_id = format!("tx_{}_{}", node_id, Instant::now().elapsed().as_millis());
+        let transaction_id = format!(
+            "tx_{}_{}",
+            exec_ctx.node_id,
+            Instant::now().elapsed().as_millis()
+        );
         let mut transaction = PolicyTransaction {
             transaction_id,
-            node_id: *node_id,
+            node_id: *exec_ctx.node_id,
             rollback_stack: Vec::new(),
             original_node_state: None,
             started_at: Instant::now(),
         };
 
         // Capture original node state
-        let original_node = datastore.get_node_required(node_id).await.map_err(|e| {
-            PolicyError::DataStoreError {
+        let original_node = exec_ctx
+            .datastore
+            .get_node_required(exec_ctx.node_id)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
                 message: e.to_string(),
-            }
-        })?;
+            })?;
         transaction.original_node_state =
             Some(serde_json::to_value(&original_node).map_err(|e| {
                 PolicyError::ValidationError {
@@ -722,7 +785,7 @@ impl PolicyEvaluator {
         let mut results = Vec::new();
 
         for rule in rules {
-            let result = Self::execute_rule(rule, context, datastore, node_id).await?;
+            let result = Self::execute_rule(rule, exec_ctx).await?;
 
             // If the action was executed successfully, add rollback data to transaction
             if let Some(action_result) = &result.action_result {
@@ -735,6 +798,27 @@ impl PolicyEvaluator {
         }
 
         Ok((results, transaction))
+    }
+
+    /// Execute multiple policy rules with transaction support (legacy interface)
+    ///
+    /// # Errors
+    /// Returns `PolicyError` if:
+    /// - Any rule evaluation fails
+    /// - Datastore operations fail
+    /// - Transaction creation or management fails
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use execute_rules_with_transaction with PolicyExecutionContext instead"
+    )]
+    pub async fn execute_rules_with_transaction_legacy(
+        rules: &[PolicyRule],
+        context: &EvaluationContext,
+        datastore: &dyn DataStore,
+        node_id: &Uuid,
+    ) -> Result<(Vec<PolicyExecutionResult>, PolicyTransaction), PolicyError> {
+        let exec_ctx = PolicyExecutionContext::new(context, datastore, node_id);
+        Self::execute_rules_with_transaction(rules, &exec_ctx).await
     }
 
     /// Rollback a complete transaction
@@ -1082,13 +1166,8 @@ impl PolicyOrchestrator {
 
         // Execute rules in priority order
         for orchestration_rule in &batch.rules {
-            let result = PolicyEvaluator::execute_rule(
-                &orchestration_rule.rule,
-                &batch.context,
-                datastore,
-                &batch.node_id,
-            )
-            .await?;
+            let exec_ctx = PolicyExecutionContext::new(&batch.context, datastore, &batch.node_id);
+            let result = PolicyEvaluator::execute_rule(&orchestration_rule.rule, &exec_ctx).await?;
 
             // Count result types
             match &result.evaluation_result {

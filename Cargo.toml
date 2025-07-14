@@ -61,7 +61,7 @@ clap = { version = "4.0", features = ["derive", "color", "suggestions"] }
 minijinja = { version = "2", features = ["json"] }
 
 # SNMP client  
-snmp2 = "0.4.8"
+snmp2 = { version = "0.4.8", features = ["tokio"] }
 
 # Policy parsing
 pest = "2.7"

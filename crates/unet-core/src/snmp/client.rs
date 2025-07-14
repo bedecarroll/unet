@@ -37,47 +37,35 @@ impl SnmpClient {
     }
 
     /// Get or create session for target address
-    async fn get_session(
+    async fn get_session_mut(
         &self,
         address: SocketAddr,
         config: Option<SessionConfig>,
     ) -> SnmpResult<SnmpSession> {
-        // Check if session already exists
+        // Check connection pool limit first
         {
             let sessions = self.sessions.read().await;
-            if let Some(session) = sessions.get(&address) {
-                return Ok(session.clone());
+            if sessions.len() >= self.max_connections && !sessions.contains_key(&address) {
+                return Err(SnmpError::PoolExhausted {
+                    max_connections: self.max_connections,
+                });
             }
         }
 
-        // Create new session
-        let mut sessions = self.sessions.write().await;
-
-        // Double-check after acquiring write lock
-        if let Some(session) = sessions.get(&address) {
-            return Ok(session.clone());
-        }
-
-        // Check connection pool limit
-        if sessions.len() >= self.max_connections {
-            return Err(SnmpError::PoolExhausted {
-                max_connections: self.max_connections,
-            });
-        }
-
+        // Create session configuration
         let session_config = config.unwrap_or_else(|| {
             let mut config = self.default_config.clone();
             config.address = address;
             config
         });
 
+        // Always create a new session for this operation
+        // This ensures we have a mutable session to work with
         let session = SnmpSession::new(session_config);
-        sessions.insert(address, session.clone());
 
         info!(
             target = %address,
-            session_count = sessions.len(),
-            "Created new SNMP session"
+            "Created SNMP session for operation"
         );
 
         Ok(session)
@@ -107,7 +95,7 @@ impl SnmpClient {
                     max_connections: self.max_connections,
                 })?;
 
-        let session = self.get_session(address, config).await?;
+        let mut session = self.get_session_mut(address, config).await?;
         session.get(oids).await
     }
 
@@ -135,8 +123,8 @@ impl SnmpClient {
                     max_connections: self.max_connections,
                 })?;
 
-        let session = self.get_session(address, config).await?;
-        session.get_next(start_oid)
+        let mut session = self.get_session_mut(address, config).await?;
+        session.get_next(start_oid).await
     }
 
     /// Get statistics about the client

@@ -8,7 +8,8 @@ use uuid::Uuid;
 use crate::datastore::{DataStore, DataStoreResult};
 use crate::models::Node;
 use crate::policy::{
-    EvaluationContext, PolicyEvaluator, PolicyExecutionResult, PolicyResult, PolicyRule,
+    EvaluationContext, PolicyEvaluator, PolicyExecutionContext, PolicyExecutionResult,
+    PolicyResult, PolicyRule,
 };
 
 /// Policy evaluation trait for integrating with DataStore
@@ -74,7 +75,8 @@ impl PolicyEvaluationEngine for DefaultPolicyEvaluationEngine {
         let mut results = Vec::new();
 
         for policy in policies {
-            match PolicyEvaluator::execute_rule(policy, &context, datastore, &node.id).await {
+            let exec_ctx = PolicyExecutionContext::new(&context, datastore, &node.id);
+            match PolicyEvaluator::execute_rule(policy, &exec_ctx).await {
                 Ok(result) => results.push(result),
                 Err(e) => {
                     // Log error but continue with other policies

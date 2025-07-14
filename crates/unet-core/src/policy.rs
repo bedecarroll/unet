@@ -40,8 +40,8 @@ pub use ast::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value
 pub use evaluator::{
     ActionExecutionResult, ActionResult, AggregatedResult, EvaluationBatch, EvaluationContext,
     EvaluationResult, OrchestrationConfig, OrchestrationRule, PolicyEvaluator,
-    PolicyExecutionResult, PolicyOrchestrator, PolicyPriority, PolicyTransaction, RollbackData,
-    RollbackResult,
+    PolicyExecutionContext, PolicyExecutionResult, PolicyOrchestrator, PolicyPriority,
+    PolicyTransaction, RollbackData, RollbackResult,
 };
 pub use loader::{
     CacheStats, LoadResult, PolicyFile, PolicyLoader, ValidationError, ValidationResult,
