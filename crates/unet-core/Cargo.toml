@@ -12,6 +12,9 @@ keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
 
+[lints]
+workspace = true
+
 [dependencies]
 # Core async runtime
 tokio = { workspace = true }
@@ -40,7 +43,7 @@ sea-orm-migration = { workspace = true }
 # minijinja = { workspace = true }
 
 # SNMP client
-snmp2 = { workspace = true }
+csnmp = { workspace = true }
 
 # Git integration (will be added in milestone 6)
 # git2 = { workspace = true }

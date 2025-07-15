@@ -2,7 +2,7 @@
 // Moved from root test_sqlite_datastore.rs, converted into proper cargo integration test.
 
 use migration::{Migrator, MigratorTrait};
-use unet_core::datastore::{DataStore, sqlite::SqliteStore};
+use unet_core::datastore::{DataStore, QueryOptions, sqlite::SqliteStore};
 use unet_core::models::{DeviceRole, Lifecycle, Node, Vendor};
 
 /// End-to-end integration test for SQLite-based DataStore
@@ -50,7 +50,7 @@ async fn sqlite_datastore_integration() {
 
     // List
     let list = store
-        .list_nodes(&Default::default())
+        .list_nodes(&QueryOptions::default())
         .await
         .expect("Failed to list nodes");
     assert!(list.items.iter().any(|n| n.id == test_node.id));

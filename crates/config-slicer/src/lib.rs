@@ -4,7 +4,6 @@
 //! extracting specific sections (slices), and computing diffs between configurations.
 
 #![warn(missing_docs)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 
 pub mod diff;
 pub mod error;

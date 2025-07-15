@@ -3,7 +3,7 @@
 use super::config::{SessionConfig, SnmpCredentials};
 use super::values::SnmpValue;
 use super::{SnmpError, SnmpResult};
-use snmp2::{AsyncSession, Oid, Value};
+use csnmp::{ObjectIdentifier, ObjectValue, Snmp2cClient};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
@@ -20,60 +20,56 @@ pub struct SnmpSession {
     last_success: RwLock<Option<SystemTime>>,
     /// Connection attempt counter
     connection_attempts: RwLock<u32>,
-    /// Underlying SNMP session
-    session: Option<AsyncSession>,
+    /// Underlying SNMP client
+    client: Option<Snmp2cClient>,
 }
 
 impl SnmpSession {
     /// Create new SNMP session
     #[must_use]
     pub fn new(config: SessionConfig) -> Self {
-        // We'll create the actual session lazily when needed
+        // We'll create the actual client lazily when needed
         // This avoids blocking async code in constructor
         Self {
             config,
             session_id: Uuid::new_v4(),
             last_success: RwLock::new(None),
             connection_attempts: RwLock::new(0),
-            session: None,
+            client: None,
         }
     }
 
-    /// Get or create the underlying SNMP session
-    async fn get_session(&mut self) -> SnmpResult<&mut AsyncSession> {
-        if self.session.is_none() {
-            let address = format!(
-                "{}:{}",
-                self.config.address.ip(),
-                self.config.address.port()
-            );
+    /// Create a new SNMP client
+    async fn create_client(config: &SessionConfig) -> SnmpResult<Snmp2cClient> {
+        match &config.credentials {
+            SnmpCredentials::Community { community } => {
+                let client = Snmp2cClient::new(
+                    config.address,
+                    community.as_bytes().to_vec(),
+                    None, // Use default local address
+                    None, // Use default timeout
+                    0,    // Default request_id
+                )
+                .await
+                .map_err(|e| SnmpError::Protocol {
+                    message: format!("Failed to create SNMP client: {e}"),
+                })?;
 
-            let session = match &self.config.credentials {
-                SnmpCredentials::Community { community } => match self.config.version {
-                    1 => AsyncSession::new_v1(&address, community.as_bytes(), 0).await,
-                    2 => AsyncSession::new_v2c(&address, community.as_bytes(), 0).await,
-                    v => {
-                        return Err(SnmpError::Protocol {
-                            message: format!(
-                                "Community credentials not supported for SNMP version {v}"
-                            ),
-                        });
-                    }
-                },
-                SnmpCredentials::UserBased { .. } => {
-                    return Err(SnmpError::Protocol {
-                        message: "SNMPv3 user-based security not yet implemented".to_string(),
-                    });
-                }
+                Ok(client)
             }
-            .map_err(|e| SnmpError::Protocol {
-                message: format!("Failed to create SNMP session: {e}"),
-            })?;
+            SnmpCredentials::UserBased { .. } => Err(SnmpError::Protocol {
+                message: "SNMPv3 user-based security not supported by csnmp".to_string(),
+            }),
+        }
+    }
 
-            self.session = Some(session);
+    /// Get or create the underlying SNMP client
+    async fn get_client(&mut self) -> SnmpResult<&Snmp2cClient> {
+        if self.client.is_none() {
+            self.client = Some(Self::create_client(&self.config).await?);
         }
 
-        Ok(self.session.as_mut().unwrap())
+        Ok(self.client.as_ref().unwrap())
     }
 
     /// Get session ID
@@ -106,21 +102,14 @@ impl SnmpSession {
             *attempts += 1;
         }
 
-        // Convert string OIDs to Oid objects
+        // Convert string OIDs to ObjectIdentifier objects
         let mut oid_objects = Vec::new();
         for oid_str in oids {
-            // Parse OID string into array of integers
-            let oid_parts: Result<Vec<u64>, _> =
-                oid_str.split('.').map(|part| part.parse::<u64>()).collect();
-
-            let oid_array = oid_parts.map_err(|_| SnmpError::InvalidOid {
-                oid: (*oid_str).to_string(),
-            })?;
-
-            let oid = Oid::from(&oid_array).map_err(|_| SnmpError::InvalidOid {
-                oid: (*oid_str).to_string(),
-            })?;
-
+            let oid = oid_str
+                .parse::<ObjectIdentifier>()
+                .map_err(|_| SnmpError::InvalidOid {
+                    oid: (*oid_str).to_string(),
+                })?;
             oid_objects.push(oid);
         }
 
@@ -128,20 +117,18 @@ impl SnmpSession {
         let session_id = self.session_id;
         let target_address = self.config.address;
 
-        // Get SNMP session
-        let session = self.get_session().await?;
+        // Get SNMP client
+        let client = self.get_client().await?;
 
         // Execute SNMP GET request for each OID
         let mut result = HashMap::new();
 
         for (i, oid) in oid_objects.iter().enumerate() {
-            match session.get(oid).await {
-                Ok(response) => {
-                    for (resp_oid, value) in response.varbinds {
-                        let oid_str = format_oid(&resp_oid);
-                        let snmp_value = convert_snmp2_value_to_snmp_value(&value);
-                        result.insert(oid_str, snmp_value);
-                    }
+            match client.get(*oid).await {
+                Ok(value) => {
+                    let oid_str = oid.to_string();
+                    let snmp_value = convert_object_value_to_snmp_value(&value);
+                    result.insert(oid_str, snmp_value);
                 }
                 Err(e) => {
                     // For individual OID failures, insert error value
@@ -177,7 +164,7 @@ impl SnmpSession {
     /// # Errors
     ///
     /// Returns `SnmpError` if:
-    /// - The SNMP session cannot be established
+    /// - The SNMP client cannot be established
     /// - The target device is unreachable
     /// - The OID is invalid or not supported
     pub async fn get_next(&mut self, start_oid: &str) -> SnmpResult<HashMap<String, SnmpValue>> {
@@ -188,36 +175,31 @@ impl SnmpSession {
             "Performing SNMP GETNEXT operation"
         );
 
-        // Parse start OID string into array of integers
-        let oid_parts: Result<Vec<u64>, _> = start_oid
-            .split('.')
-            .map(|part| part.parse::<u64>())
-            .collect();
+        // Parse start OID
+        let start_oid_obj =
+            start_oid
+                .parse::<ObjectIdentifier>()
+                .map_err(|_| SnmpError::InvalidOid {
+                    oid: start_oid.to_string(),
+                })?;
 
-        let oid_array = oid_parts.map_err(|_| SnmpError::InvalidOid {
-            oid: start_oid.to_string(),
-        })?;
+        // Get SNMP client
+        let client = self.get_client().await?;
 
-        let start_oid_obj = Oid::from(&oid_array).map_err(|_| SnmpError::InvalidOid {
-            oid: start_oid.to_string(),
-        })?;
-
-        // Get SNMP session
-        let session = self.get_session().await?;
-
-        // Execute SNMP GETNEXT request
-        let response = session
-            .getnext(&start_oid_obj)
-            .await
-            .map_err(|e| SnmpError::Protocol {
-                message: format!("SNMP GETNEXT failed: {e}"),
-            })?;
+        // Execute SNMP GETNEXT request using walk_bulk with limit 1
+        let response =
+            client
+                .walk_bulk(start_oid_obj, 1)
+                .await
+                .map_err(|e| SnmpError::Protocol {
+                    message: format!("SNMP GETNEXT failed: {e}"),
+                })?;
 
         // Convert response to our format
         let mut result = HashMap::new();
-        for (oid, value) in response.varbinds {
-            let oid_str = format_oid(&oid);
-            let snmp_value = convert_snmp2_value_to_snmp_value(&value);
+        for (oid, value) in response {
+            let oid_str = oid.to_string();
+            let snmp_value = convert_object_value_to_snmp_value(&value);
             result.insert(oid_str, snmp_value);
         }
 
@@ -258,46 +240,46 @@ impl std::fmt::Debug for SnmpSession {
         f.debug_struct("SnmpSession")
             .field("config", &self.config)
             .field("session_id", &self.session_id)
-            .field("session", &"<AsyncSession>")
+            .field("last_success", &"<RwLock<Option<SystemTime>>>")
+            .field("connection_attempts", &"<RwLock<u32>>")
+            .field("client", &"<Option<Snmp2cClient>>")
             .finish()
     }
 }
 
-/// Convert snmp2 Value to our SnmpValue type
-fn convert_snmp2_value_to_snmp_value(value: &Value) -> SnmpValue {
+/// Convert csnmp `ObjectValue` to our `SnmpValue` type
+fn convert_object_value_to_snmp_value(value: &ObjectValue) -> SnmpValue {
     match value {
-        Value::Integer(i) => SnmpValue::Integer(*i),
-        Value::OctetString(bytes) => {
+        ObjectValue::Integer(i) => SnmpValue::Integer((*i).into()),
+        ObjectValue::String(bytes) => {
             // Try to convert to UTF-8 string, fall back to hex if not valid UTF-8
-            match std::str::from_utf8(bytes) {
-                Ok(s) => SnmpValue::String(s.to_string()),
-                Err(_) => {
+            std::str::from_utf8(bytes).map_or_else(
+                |_| {
                     // Convert bytes to hex string without external hex crate
-                    let hex_string = bytes
-                        .iter()
-                        .map(|b| format!("{:02x}", b))
-                        .collect::<Vec<_>>()
-                        .join("");
+                    let hex_string = bytes.iter().fold(String::new(), |mut acc, b| {
+                        use std::fmt::Write;
+                        let _ = write!(acc, "{b:02x}");
+                        acc
+                    });
                     SnmpValue::String(format!("0x{hex_string}"))
-                }
-            }
+                },
+                |s| SnmpValue::String(s.to_string()),
+            )
         }
-        Value::ObjectIdentifier(oid) => SnmpValue::Oid(format_oid(oid)),
-        Value::IpAddress(ip) => SnmpValue::IpAddress(std::net::IpAddr::V4(
-            std::net::Ipv4Addr::new(ip[0], ip[1], ip[2], ip[3]),
-        )),
-        Value::Counter32(c) => SnmpValue::Counter32(*c),
-        Value::Unsigned32(u) => SnmpValue::Gauge32(*u), // Map Unsigned32 to Gauge32
-        Value::Timeticks(t) => SnmpValue::TimeTicks(*t),
-        Value::Counter64(c) => SnmpValue::Counter64(*c),
-        Value::Null => SnmpValue::Null,
-        // Handle error cases
-        _ => SnmpValue::NoSuchObject,
+        ObjectValue::ObjectId(oid) => SnmpValue::Oid(oid.to_string()),
+        ObjectValue::IpAddress(ip) => SnmpValue::IpAddress(std::net::IpAddr::V4(*ip)),
+        ObjectValue::Counter32(c) => SnmpValue::Counter32(*c),
+        ObjectValue::Unsigned32(u) => SnmpValue::Gauge32(*u), // Map Unsigned32 to Gauge32
+        ObjectValue::TimeTicks(t) => SnmpValue::TimeTicks(*t),
+        ObjectValue::Counter64(c) => SnmpValue::Counter64(*c),
+        ObjectValue::Opaque(bytes) => {
+            // Handle opaque data as hex string
+            let hex_string = bytes.iter().fold(String::new(), |mut acc, b| {
+                use std::fmt::Write;
+                let _ = write!(acc, "{b:02x}");
+                acc
+            });
+            SnmpValue::String(format!("0x{hex_string}"))
+        }
     }
-}
-
-/// Format an OID as a string
-fn format_oid(oid: &Oid) -> String {
-    // snmp2 Oid implements Display, so we can just convert to string
-    oid.to_string()
 }

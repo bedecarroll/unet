@@ -20,13 +20,13 @@ use std::net::{IpAddr, SocketAddr};
 /// Returns an error if the address string cannot be parsed as a valid IP address or socket address
 ///
 /// # Examples
-/// ```ignore
+/// ```
 /// use unet_core::config::network::parse_socket_addr_with_default_port;
 ///
-/// let addr = parse_socket_addr_with_default_port("127.0.0.1:22", 161)?;
+/// let addr = parse_socket_addr_with_default_port("127.0.0.1:22", 161).unwrap();
 /// assert_eq!(addr.port(), 22);
 ///
-/// let addr = parse_socket_addr_with_default_port("127.0.0.1", 161)?;
+/// let addr = parse_socket_addr_with_default_port("127.0.0.1", 161).unwrap();
 /// assert_eq!(addr.port(), 161);
 /// ```
 pub fn parse_socket_addr_with_default_port(

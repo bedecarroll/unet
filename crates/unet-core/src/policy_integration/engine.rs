@@ -88,7 +88,7 @@ impl PolicyEvaluationEngine for DefaultPolicyEvaluationEngine {
                     );
                     // Create a failed result
                     results.push(PolicyExecutionResult::new_error(
-                        policy.id.as_deref().unwrap_or("unknown"),
+                        policy.clone(),
                         e.to_string(),
                     ));
                 }
@@ -129,8 +129,8 @@ impl PolicyEvaluationEngine for DefaultPolicyEvaluationEngine {
                     // Store error result
                     all_results.insert(
                         node.id,
-                        vec![PolicyExecutionResult::new_error(
-                            "evaluation",
+                        vec![PolicyExecutionResult::new_error_with_id(
+                            Some("evaluation".to_string()),
                             e.to_string(),
                         )],
                     );

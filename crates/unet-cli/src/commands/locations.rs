@@ -288,7 +288,7 @@ async fn update_location(
 async fn delete_location(
     args: DeleteLocationArgs,
     datastore: &dyn DataStore,
-    _output_format: crate::OutputFormat,
+    output_format: crate::OutputFormat,
 ) -> Result<()> {
     // Check if location exists first
     let location = datastore.get_location_required(&args.id).await?;
@@ -311,7 +311,13 @@ async fn delete_location(
 
     datastore.delete_location(&args.id).await?;
 
-    println!("Location '{}' deleted successfully.", location.name);
+    let output = serde_json::json!({
+        "message": format!("Location '{}' deleted successfully", location.name),
+        "id": args.id,
+        "name": location.name
+    });
+
+    crate::commands::print_output(&output, output_format)?;
 
     Ok(())
 }

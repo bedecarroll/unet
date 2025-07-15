@@ -88,8 +88,8 @@ pub async fn process_node_evaluation(
         Err(e) => {
             error!("Failed to evaluate policies for node {}: {}", node.id, e);
             // Create error result for this node
-            let error_result = PolicyExecutionResult::new_error(
-                "evaluation",
+            let error_result = PolicyExecutionResult::new_error_with_id(
+                Some("evaluation".to_string()),
                 format!("Failed to evaluate policies: {e}"),
             );
             all_results.insert(node.id, vec![error_result]);

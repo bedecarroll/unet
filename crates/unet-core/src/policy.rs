@@ -102,6 +102,24 @@ pub enum PolicyError {
     #[error("IO error: {0}")]
     /// Input/output error
     Io(#[from] std::io::Error),
+
+    #[error("Node not found: {node_id}")]
+    /// Node not found in datastore
+    NodeNotFound {
+        /// Node ID that was not found
+        node_id: String,
+    },
+
+    #[error("Not implemented: {feature}")]
+    /// Feature not yet implemented
+    NotImplemented {
+        /// Description of the unimplemented feature
+        feature: String,
+    },
+
+    #[error("Evaluation error: {0}")]
+    /// General evaluation error
+    EvaluationError(String),
 }
 
 /// Policy engine result type

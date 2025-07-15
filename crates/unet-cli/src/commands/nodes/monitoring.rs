@@ -3,7 +3,7 @@
 use anyhow::Result;
 use unet_core::datastore::DataStore;
 
-use super::types::{MetricsNodeArgs, MonitorNodeArgs, StatusNodeArgs, StatusType};
+use super::types::{MetricsNodeArgs, StatusNodeArgs, StatusType};
 
 pub async fn status_node(
     args: StatusNodeArgs,
@@ -70,24 +70,6 @@ pub async fn status_node(
             }
         }
     }
-
-    crate::commands::print_output(&output, output_format)?;
-
-    Ok(())
-}
-
-pub fn monitor_node(
-    _args: &MonitorNodeArgs,
-    _datastore: &dyn DataStore,
-    output_format: crate::OutputFormat,
-) -> Result<()> {
-    // For now, return a placeholder message
-    let output = serde_json::json!({
-        "status": "Not implemented",
-        "message": "Real-time monitoring not yet implemented",
-        "implementation_note": "This would continuously poll and display derived state changes",
-        "available_when": "SQLite datastore implementation complete (M2.5.8)"
-    });
 
     crate::commands::print_output(&output, output_format)?;
 

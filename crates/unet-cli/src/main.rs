@@ -2,7 +2,6 @@
 //!
 //! CLI tool for μNet network configuration management.
 
-#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use migration::{Migrator, MigratorTrait as _};

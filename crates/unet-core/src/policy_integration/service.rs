@@ -158,17 +158,3 @@ impl PolicyService {
         &self.orchestrator
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_policy_service_creation() {
-        // This test creates a policy service with local directory
-        let _service = PolicyService::with_local_dir("test_policies");
-
-        // Should succeed - PolicyService is created successfully
-        // (We can't test much without loading actual policies)
-    }
-}

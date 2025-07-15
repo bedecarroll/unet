@@ -20,10 +20,6 @@ pub enum ServerError {
     #[error("DataStore error: {0}")]
     DataStore(#[from] DataStoreError),
 
-    /// Validation error
-    #[error("Validation error: {0}")]
-    Validation(String),
-
     /// Not found error
     #[error("Not found: {0}")]
     NotFound(String),
@@ -56,7 +52,6 @@ impl IntoResponse for ServerError {
                 (StatusCode::REQUEST_TIMEOUT, "TIMEOUT")
             }
             Self::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
-            Self::Validation(_) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR"),
             Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
         };

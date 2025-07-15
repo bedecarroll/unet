@@ -129,8 +129,6 @@ fn create_router() -> Router<AppState> {
         // Health check
         .route("/health", get(handlers::health::health_check))
         .merge(create_node_routes())
-        .merge(create_location_routes())
-        .merge(create_link_routes())
         .merge(create_policy_routes())
 }
 
@@ -154,41 +152,6 @@ fn create_node_routes() -> Router<AppState> {
             "/api/v1/nodes/:id/metrics",
             get(handlers::nodes::get_node_metrics),
         )
-}
-
-/// Create location-related routes
-fn create_location_routes() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/api/v1/locations",
-            get(handlers::locations::list_locations),
-        )
-        .route(
-            "/api/v1/locations",
-            post(handlers::locations::create_location),
-        )
-        .route(
-            "/api/v1/locations/:id",
-            get(handlers::locations::get_location),
-        )
-        .route(
-            "/api/v1/locations/:id",
-            put(handlers::locations::update_location),
-        )
-        .route(
-            "/api/v1/locations/:id",
-            delete(handlers::locations::delete_location),
-        )
-}
-
-/// Create link-related routes
-fn create_link_routes() -> Router<AppState> {
-    Router::new()
-        .route("/api/v1/links", get(handlers::links::list_links))
-        .route("/api/v1/links", post(handlers::links::create_link))
-        .route("/api/v1/links/:id", get(handlers::links::get_link))
-        .route("/api/v1/links/:id", put(handlers::links::update_link))
-        .route("/api/v1/links/:id", delete(handlers::links::delete_link))
 }
 
 /// Create policy-related routes

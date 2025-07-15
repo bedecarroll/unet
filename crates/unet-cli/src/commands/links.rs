@@ -292,7 +292,7 @@ async fn update_link(
 async fn delete_link(
     args: DeleteLinkArgs,
     datastore: &dyn DataStore,
-    _output_format: crate::OutputFormat,
+    output_format: crate::OutputFormat,
 ) -> Result<()> {
     // Check if link exists first
     let link = datastore.get_link_required(&args.id).await?;
@@ -317,7 +317,12 @@ async fn delete_link(
 
     datastore.delete_link(&args.id).await?;
 
-    println!("Link deleted successfully.");
+    let output = serde_json::json!({
+        "message": "Link deleted successfully",
+        "id": args.id
+    });
+
+    crate::commands::print_output(&output, output_format)?;
 
     Ok(())
 }

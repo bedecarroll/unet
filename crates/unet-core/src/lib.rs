@@ -33,7 +33,6 @@
 //! - [`template`] - Template rendering (Milestone 4)
 
 #![warn(missing_docs)]
-#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 
 // Public modules
 pub mod config;

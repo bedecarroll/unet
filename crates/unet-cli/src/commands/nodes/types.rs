@@ -17,8 +17,6 @@ pub enum NodeCommands {
     Delete(DeleteNodeArgs),
     /// Show node derived state status
     Status(StatusNodeArgs),
-    /// Monitor node derived state changes
-    Monitor(MonitorNodeArgs),
     /// Show node performance metrics
     Metrics(MetricsNodeArgs),
     /// Compare derived state between nodes or time periods
@@ -184,24 +182,6 @@ pub enum StatusType {
     System,
     /// Show polling task status
     Polling,
-}
-
-#[derive(Args)]
-pub struct MonitorNodeArgs {
-    /// Node ID
-    pub id: Uuid,
-
-    /// Monitor interval in seconds
-    #[arg(short, long, default_value = "5")]
-    pub interval: u64,
-
-    /// Number of updates to show (0 = infinite)
-    #[arg(short, long, default_value = "0")]
-    pub count: u64,
-
-    /// Monitor interfaces only
-    #[arg(long)]
-    pub interfaces_only: bool,
 }
 
 #[derive(Args)]

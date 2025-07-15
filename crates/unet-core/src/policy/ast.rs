@@ -4,7 +4,7 @@
 //! and their components.
 
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 /// A complete policy rule with condition and action
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -42,6 +42,10 @@ pub enum Condition {
         /// Whether to check for null (true) or non-null (false)
         is_null: bool,
     },
+    /// Always true condition
+    True,
+    /// Always false condition
+    False,
 }
 
 /// Comparison operators for conditions
@@ -111,6 +115,10 @@ pub enum Value {
     Regex(String),
     /// Reference to another field
     FieldRef(FieldRef),
+    /// Array of values
+    Array(Vec<Value>),
+    /// Object with key-value pairs  
+    Object(HashMap<String, Value>),
 }
 
 impl fmt::Display for FieldRef {
@@ -143,6 +151,26 @@ impl fmt::Display for Value {
             Self::Null => write!(f, "null"),
             Self::Regex(r) => write!(f, "/{r}/"),
             Self::FieldRef(field) => write!(f, "{field}"),
+            Self::Array(arr) => {
+                write!(f, "[")?;
+                for (i, val) in arr.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{val}")?;
+                }
+                write!(f, "]")
+            }
+            Self::Object(obj) => {
+                write!(f, "{{")?;
+                for (i, (key, val)) in obj.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "\"{key}\": {val}")?;
+                }
+                write!(f, "}}")
+            }
         }
     }
 }
@@ -167,6 +195,8 @@ impl fmt::Display for Condition {
                     write!(f, "{field} IS NOT NULL")
                 }
             }
+            Self::True => write!(f, "TRUE"),
+            Self::False => write!(f, "FALSE"),
         }
     }
 }

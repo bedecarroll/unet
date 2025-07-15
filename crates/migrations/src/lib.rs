@@ -1,5 +1,3 @@
-#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
-
 pub use sea_orm_migration::prelude::*;
 
 mod m20241221_000001_create_locations_table;

@@ -8,8 +8,7 @@
 
 use super::*;
 use crate::policy::{
-    EvaluationContext, EvaluationResult, OrchestrationRule, PolicyError, PolicyEvaluator,
-    PolicyParser, PolicyPriority,
+    EvaluationContext, EvaluationResult, PolicyError, PolicyEvaluator, PolicyParser,
 };
 use serde_json::json;
 use std::time::{Duration, Instant};

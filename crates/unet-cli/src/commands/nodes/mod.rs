@@ -26,7 +26,6 @@ pub async fn execute(
         NodeCommands::Update(args) => crud::update_node(args, datastore, output_format).await,
         NodeCommands::Delete(args) => crud::delete_node(args, datastore, output_format).await,
         NodeCommands::Status(args) => monitoring::status_node(args, datastore, output_format).await,
-        NodeCommands::Monitor(args) => monitoring::monitor_node(&args, datastore, output_format),
         NodeCommands::Metrics(args) => {
             monitoring::metrics_node(args, datastore, output_format).await
         }

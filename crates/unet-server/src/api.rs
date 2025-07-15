@@ -24,15 +24,6 @@ impl<T> ApiResponse<T> {
             message: None,
         }
     }
-
-    /// Create a successful response with message
-    pub const fn success_with_message(data: T, message: String) -> Self {
-        Self {
-            data,
-            success: true,
-            message: Some(message),
-        }
-    }
 }
 
 /// Error response for API failures
@@ -160,117 +151,6 @@ pub struct UpdateNodeRequest {
     pub management_ip: Option<String>,
     /// Custom data (optional)
     pub custom_data: Option<serde_json::Value>,
-}
-
-/// Request to create a new location
-#[derive(Debug, Deserialize)]
-pub struct CreateLocationRequest {
-    /// Location name
-    pub name: String,
-    /// Location type
-    pub location_type: String,
-    /// Parent location ID (optional)
-    pub parent_id: Option<Uuid>,
-    /// Custom data (optional)
-    pub custom_data: Option<serde_json::Value>,
-}
-
-impl CreateLocationRequest {
-    /// Convert to Location using builder
-    pub fn into_location(self) -> Result<Location> {
-        let mut builder = LocationBuilder::new()
-            .name(self.name)
-            .location_type(self.location_type);
-
-        if let Some(parent_id) = self.parent_id {
-            builder = builder.parent_id(parent_id);
-        }
-
-        if let Some(custom_data) = self.custom_data {
-            builder = builder.custom_data(custom_data);
-        }
-
-        builder.build().map_err(|e| Error::Other {
-            context: "Location creation".to_string(),
-            message: e,
-            source: None,
-        })
-    }
-}
-
-/// Request to update an existing location
-#[derive(Debug, Deserialize)]
-pub struct UpdateLocationRequest {
-    /// Location name (optional)
-    pub name: Option<String>,
-    /// Location type (optional)
-    pub location_type: Option<String>,
-}
-
-/// Request to create a new link
-#[derive(Debug, Deserialize)]
-pub struct CreateLinkRequest {
-    /// Link name
-    pub name: String,
-    /// Source node ID
-    pub node_a_id: Uuid,
-    /// Source interface
-    pub interface_a: String,
-    /// Destination node ID (optional for internet circuits)
-    pub node_z_id: Option<Uuid>,
-    /// Destination interface (optional for internet circuits)
-    pub interface_z: Option<String>,
-    /// Link bandwidth in bits per second (optional)
-    pub bandwidth_bps: Option<u64>,
-    /// Custom data (optional)
-    pub custom_data: Option<serde_json::Value>,
-}
-
-impl CreateLinkRequest {
-    /// Convert to Link using builder
-    pub fn into_link(self) -> Result<Link> {
-        let mut builder = LinkBuilder::new()
-            .name(self.name)
-            .source_node_id(self.node_a_id)
-            .node_a_interface(self.interface_a);
-
-        if let Some(node_z_id) = self.node_z_id {
-            builder = builder.dest_node_id(node_z_id);
-        }
-
-        if let Some(interface_z) = self.interface_z {
-            builder = builder.node_z_interface(interface_z);
-        }
-
-        if let Some(bandwidth_bps) = self.bandwidth_bps {
-            builder = builder.bandwidth(bandwidth_bps);
-        }
-
-        if let Some(custom_data) = self.custom_data {
-            builder = builder.custom_data(custom_data);
-        }
-
-        builder.build().map_err(|e| Error::Other {
-            context: "Link creation".to_string(),
-            message: e,
-            source: None,
-        })
-    }
-}
-
-/// Request to update an existing link
-#[derive(Debug, Deserialize)]
-pub struct UpdateLinkRequest {
-    /// Link name (optional)
-    pub name: Option<String>,
-    /// Source node ID (optional)
-    pub node_a_id: Option<Uuid>,
-    /// Source interface (optional)
-    pub interface_a: Option<String>,
-    /// Destination node ID (optional)
-    pub node_z_id: Option<Uuid>,
-    /// Destination interface (optional)
-    pub interface_z: Option<String>,
 }
 
 /// Paginated response wrapper

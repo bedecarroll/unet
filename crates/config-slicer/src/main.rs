@@ -2,7 +2,6 @@
 //!
 //! Command-line tool for slicing and diffing network device configurations.
 
-#![deny(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 use clap::Parser;
 use tracing::{info, warn};
 
