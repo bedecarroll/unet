@@ -273,7 +273,6 @@ Bookmark **#unet‑dev** Slack channel for Q&A.
 
 ---
 
-### 🎉 Welcome to μNet!
+### 🎉 Welcome to μNet
 
 Ping your mentor once you’ve reached “Day 2 – dev env verified.” Happy hacking & don’t hesitate to ask questions—no matter how small. Our mantra: **“Docs are never done.”** If something was confusing during setup, open an issue or PR to improve this file on your very first week!
-

@@ -1,4 +1,5 @@
 # μNet 0.1.0 Public Release Plan  
+
 _The repository already exists and has passing CI; ignore any tasks related to project
 scaffolding, IDE setup, or “initialise repo”._
 
@@ -12,6 +13,7 @@ scaffolding, IDE setup, or “initialise repo”._
 ## Epic A — Data & Persistence
 
 ### A-1 • Multi-backend datastore
+
 - [ ] **P0** Finalise **SQLite** implementation (SeaORM migrations)  
       _Acceptance:_ `cargo test -p unet-core datastore` passes with SQLite file; all CRUD ops succeed.
 - [ ] **P1** Implement **CSV demo backend** behind `--features demo-csv`  
@@ -20,14 +22,17 @@ scaffolding, IDE setup, or “initialise repo”._
       _Acceptance:_ `DATABASE_URL=postgres://… cargo test` is green; migrations run.
 
 ### A-2 • Lifecycle columns
+
 - [ ] **P0** Add `lifecycle` enum + timestamps to **node/link/location** models  
       _Acceptance:_ new rows default to `plan`; state transitions validated.
 
 ### A-3 • Custom / virtual fields
+
 - [ ] **P0** Add `custom_data` (JSON) column & round-trip via API/CLI  
       _Acceptance:_ Policies can reference arbitrary keys.
 
 ### A-4 • Desired ↔ Derived
+
 - [ ] **P0** SNMP collector writes **derived** rows & delta view  
       _Acceptance:_ mismatches surfaced via `/api/diffs`.
 
@@ -109,4 +114,3 @@ scaffolding, IDE setup, or “initialise repo”._
 2. Everything else can follow as **P1 / P2** issues.
 
 Assign each Story to an owner, create GitHub issues referencing the Epic ID, and tag priorities for easy filtering.
-

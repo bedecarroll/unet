@@ -31,6 +31,7 @@ fixtures/
 All fixture files use JSON format with the following structure:
 
 ### Locations (`locations.json`)
+
 ```json
 [
   {
@@ -46,6 +47,7 @@ All fixture files use JSON format with the following structure:
 ```
 
 ### Nodes (`nodes.json`)
+
 ```json
 [
   {
@@ -66,6 +68,7 @@ All fixture files use JSON format with the following structure:
 ```
 
 ### Links (`links.json`)
+
 ```json
 [
   {
@@ -86,16 +89,19 @@ All fixture files use JSON format with the following structure:
 ## Example Topologies
 
 ### Small Office
+
 - **Description**: 10-50 user office network
 - **Devices**: 1 core switch, 2 access switches, 1 firewall
 - **Use Case**: Small business, branch office
 
 ### Datacenter  
+
 - **Description**: Modern 3-tier datacenter architecture
 - **Devices**: Core switches, distribution switches, ToR switches, servers
 - **Use Case**: Enterprise datacenter, cloud infrastructure
 
 ### Campus
+
 - **Description**: Multi-building campus network
 - **Devices**: Core, distribution, access layers across multiple buildings
 - **Use Case**: University, corporate campus, hospital

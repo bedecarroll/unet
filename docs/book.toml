@@ -15,8 +15,8 @@ create-missing = true
 
 [output.html]
 default-theme = "navy"
-git-repository-url = "https://github.com/example/unet"
+git-repository-url = "https://github.com/bedecarroll/unet"
 git-repository-icon = "fa-github"
 print.enable = true
 search.enable = true
-site-url = "/unet/"
+site-url = "https://unet.bedecarroll.com/"

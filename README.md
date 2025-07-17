@@ -1,147 +1,256 @@
-# μNet (Micro Net) – Simple Network Configuration System
+# μNet (Micro Net)
 
-## What is μNet?
+[![Build Status](https://github.com/bedecarroll/unet/workflows/CI/badge.svg)](https://github.com/bedecarroll/unet/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
 
-μNet is a Rust‑based platform that helps network operators **store desired
-state**, **pull actual state**, **enforce policy** and **generate vendor
-configs**—all from a single set of Git‑version‑controlled files.
+**Network inventory and compliance management that doesn't suck.**
 
-Key features:
-
-- **Rust single‑binary** server & CLI—no Python/JDK runtime surprises.
-- **SQLite database** with full ACID transactions via SeaORM and complete CRUD operations.
-- **Example data fixtures** for quick onboarding and testing with realistic
-network topologies.
-- **Custom DSL** policy engine, familiar **MiniJinja** templates.
-- **Hierarchical config diff** via the stand‑alone `config‑slicer` crate.
-
-*(Full architectural deep‑dive in *[*`docs/01_architecture.md`*](docs/src/01_architecture.md)*.)*
-
----
-
-## Repository Layout
-
-```text
-unet/                       # ← you are here
-├── Cargo.toml              # Cargo workspace manifest
-├── README.md               # <— this file
-├── LICENSE
-├── .gitignore
-├── docs/                   # mdBook sources (Markdown)
-│   └── src/
-│       ├── SUMMARY.md      # mdBook table of contents
-│       ├── 01_architecture.md
-│       ├── 02_data_models.md
-│       ├── ...
-├── crates/                 # All Rust crates (pure Cargo workspace)
-│   ├── unet-core/          # shared library: models, datastore, policy, template
-│   ├── unet-server/        # binary: Axum API + background tasks
-│   ├── unet-cli/           # binary: Clap command‑line interface
-│   └── config-slicer/      # library + CLI for cfg hierarchy slicing
-├── crates/migrations/      # SeaORM migration files (timestamped)
-├── docs/                   # mdBook sources (Markdown) & static assets
-│   ├── src/
-│   │   ├── SUMMARY.md      # mdBook table of contents
-│   │   ├── 01_architecture.md
-│   │   ├── 02_data_models.md
-│   │   ├── ...
-│   └── static/
-│       └── examples/       # Example data for quick onboarding
-│           ├── small-office/   # Small business network (10-50 users)
-│           ├── datacenter/     # Enterprise datacenter topology
-│           └── campus/         # Multi-building campus network
-├── policies/               # Sample *.rules checked into Git (optional)
-├── templates/              # Sample *.jinja templates (optional)
-├── docker/                 # Container build context
-│   ├── Dockerfile.server
-│   ├── Dockerfile.cli
-│   └── docker-compose.yml  # PoC stack (server + Caddy TLS)
-├── scripts/                # Helper scripts (pre‑commit, release)
-└── .github/
-    └── workflows/          # GitHub Actions CI/CD
-```
-
-- Every Rust crate lives under `crates/` → one `cargo check` covers all.
-- Docs are **outside** source tree so we can publish via GitHub Pages or Netlify with mdBook.
-- Sample `policies/` & `templates/` folders let new users try μNet without creating repos.
-
----
-
-## Quick Start (Developer Laptop)
+Stop tracking network devices in spreadsheets and fighting with brittle
+scripts. μNet provides a clean, Git-friendly foundation for managing network
+infrastructure data with policy-driven compliance checking.
 
 ```bash
-# 0. Prerequisites
-#    – Rust 1.77+  – Git  – (optional) Docker 25+  – mdBook 0.4+
+# Manage your network inventory with confidence
+unet nodes add --name core-sw-01 --vendor cisco --model catalyst-9300 --mgmt-ip 192.168.1.10
 
-# 1. Clone & enter workspace
-$ git clone https://github.com/<your‑org>/unet.git && cd unet
+# Define compliance policies in plain English
+echo 'WHEN vendor == "cisco" AND model CONTAINS "catalyst" 
+      THEN ASSERT software_version >= "16.12.04"' > policies/cisco-firmware.rules
 
-# 2. Check the toolchain & build all crates (debug)
-$ rustup default stable
-$ cargo check --workspace --all-targets
-
-# 3. Run unit/integration tests
-$ cargo test --workspace
-
-# 4. Start the demo server (SQLite, example data)
-$ cargo run -p unet-cli -- init --database ./unet.db
-$ cargo run -p unet-cli -- import --from docs/static/examples/small-office/
-$ cargo run -p unet-server -- --database-url sqlite:./unet.db
-
-# 5. Open a new shell – list demo nodes via CLI
-$ cargo run -p unet-cli -- nodes list
-$ cargo run -p unet-cli -- locations list
-
-# 6. View docs (mdBook)
-$ mdbook serve docs --open   # http://localhost:3000
+# Check compliance across your network  
+unet policy eval --path policies/cisco-firmware.rules
 ```
 
 ---
 
-## Building the Documentation
+## Table of Contents
 
-We ship **mdBook** sources so juniors can edit docs next to code.
+- [Why μNet?](#why-μnet)
+- [What Works Today](#what-works-today)
+- [Quick Start](#quick-start)
+- [Roadmap](#roadmap)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+
+---
+
+## Why μNet?
+
+Network engineers are drowning in manual processes and fragile tooling:
+
+### The Problems
+
+- **Spreadsheet Hell**: Network inventory scattered across Excel files,
+SharePoint, and people's heads
+- **Configuration Drift**: No systematic way to check if devices comply with standards
+- **Manual Auditing**: Quarterly "compliance projects" that are outdated before
+they finish
+- **Poor Data Quality**: Missing information, stale data, no single source of truth
+
+### The μNet Approach
+
+- **Structured Data**: Proper database with relationships, not flat files
+- **Policy as Code**: Define compliance rules that run automatically
+- **Git Integration**: Version control your policies like any other code
+- **Progressive Adoption**: Start with inventory, add compliance checking when ready
+
+---
+
+## What Works Today
+
+μNet v0.1 provides a solid foundation for network data management:
+
+### 🗄️ **Network Inventory Management**
+
+Store and manage devices, locations, and links with full CRUD operations.
 
 ```bash
-cargo install mdbook --locked   # once
-mdbook serve docs               # auto‑reload on save
+# Add network infrastructure
+unet locations add --name "Main Building" --address "123 Network St"
+unet nodes add --name core-sw-01 --vendor cisco --model catalyst-9300 \
+    --mgmt-ip 192.168.1.10 --location "Main Building"
+unet links add --name "core-to-access" --node-a core-sw-01 --interface-a "GigE1/0/1" \
+    --node-z access-sw-01 --interface-z "GigE0/24"
+
+# Query your infrastructure
+unet nodes list --vendor cisco --lifecycle active
+unet nodes show <node-id> --include-status
 ```
 
-CI runs `mdbook build docs/` to ensure no broken links.
+### 📋 **Policy-Driven Compliance**
+
+Write rules in a simple DSL to check compliance across your network.
+
+```bash
+# Create a policy file
+cat > policies/firmware-check.rules << 'EOF'
+WHEN vendor == "cisco" AND model CONTAINS "catalyst"
+THEN ASSERT software_version >= "16.12.04"
+
+WHEN vendor == "juniper" AND model CONTAINS "ex"
+THEN ASSERT software_version >= "18.4R1"
+EOF
+
+# Validate and run policies
+unet policy validate --path policies/
+unet policy eval --path policies/firmware-check.rules
+```
+
+### 📊 **Data Import/Export**
+
+Migrate from existing tools and integrate with other systems.
+
+```bash
+# Export current state to JSON
+unet export --to ./network-backup/ --format json
+
+# Import network topology from structured data
+unet import --from ./network-data/
+# Expects: locations.json, nodes.json, links.json
+```
+
+### 🔧 **REST API**
+
+Full HTTP API for integrations and custom tooling.
+
+```bash
+# All CLI operations available via API
+curl http://localhost:8080/api/nodes
+curl -X POST http://localhost:8080/api/locations -H "Content-Type: application/json" \
+  -d '{"name": "DR Site", "location_type": "datacenter"}'
+```
 
 ---
 
-## Continuous Integration / Delivery
+## Quick Start
 
-GitHub Actions workflows live under `.github/workflows/` (see detailed spec in [`docs/07_ci_cd.md`](docs/src/07_ci_cd.md)).
+### Prerequisites
 
-- **PR Gate** → format, clippy, tests, audit.
-- **Nightly** → Docker multi‑arch images (`ghcr.io/<org>/unet-server:nightly`).
-- **Release Tag** (`vX.Y.Z`) → static binaries, Docker, Homebrew/RPM/DEB artifacts.
+- Rust 1.85+ ([install rustup](https://rustup.rs/))
+- Git
+
+### Installation
+
+```bash
+# Clone and build
+git clone https://github.com/bedecarroll/unet.git
+cd unet
+cargo build --release
+```
+
+### Try it out
+
+```bash
+# 1. Start with example data
+cp -r docs/static/examples/small-office/ ./network-data/
+./target/release/unet import --from ./network-data/
+
+# 2. Explore what was imported
+./target/release/unet locations list
+./target/release/unet nodes list --output table
+
+# 3. Create a simple policy
+echo 'WHEN lifecycle == "live" THEN ASSERT mgmt_ip IS NOT NULL' > check-mgmt.rules
+
+# 4. Run compliance check
+./target/release/unet policy eval --path check-mgmt.rules
+```
+
+You'll see a realistic small office network with switches, firewalls, and a server.
+
+---
+
+## Roadmap
+
+μNet is designed for progressive enhancement. Today's solid foundation supports
+upcoming features:
+
+### **Coming Soon** (see [full roadmap](docs/src/roadmap.md))
+
+- **Template Engine** (v0.2): Configuration generation with Jinja2-compatible templates
+- **SNMP Integration** (v0.3): Automated device discovery and monitoring via
+CLI  
+- **Configuration Push** (v0.4): Safe deployment of generated configs with rollback
+
+### **Current Limitations**
+
+- **Read-only**: μNet manages data about your network, not device
+configurations (yet)
+- **No templating**: Configuration generation planned for next major release
+- **Basic policies**: Simple compliance checking, more advanced logic coming
+
+---
+
+## Project Status
+
+μNet v0.1 is **production-ready** for network inventory and compliance checking:
+
+- ✅ **Core Data Model**: Stable schema with migrations
+- ✅ **Policy Engine**: Full DSL with WHEN/THEN logic
+- ✅ **CLI Tools**: Complete CRUD operations for all entities
+- ✅ **REST API**: Full HTTP interface with OpenAPI docs
+- ✅ **Import/Export**: JSON-based data interchange
+- ✅ **SQLite Backend**: ACID transactions, concurrent safe
+
+---
+
+## Documentation
+
+📖 **[Complete Documentation](docs/src/index.md)** - Start here for guides and references
+
+**Quick Links:**
+
+- **[Quick Start Guide](docs/src/quick_start.md)** - Get μNet running in 10 minutes
+- **[CLI Reference](docs/src/cli_reference.md)** - Complete command
+documentation
+- **[Policy Guide](docs/src/policy_guide.md)** - Write compliance rules and automation
+- **[API Reference](docs/src/api_reference.md)** - HTTP API for integrations
+- **[Troubleshooting](docs/src/troubleshooting.md)** - Common issues and solutions
+
+**Planning & Architecture:**
+
+- **[What is μNet?](docs/src/introduction.md)** - Detailed introduction and use cases
+- **[Architecture](docs/src/architecture.md)** - How μNet works under the hood
+- **[Roadmap](docs/src/roadmap.md)** - Current features and future plans
 
 ---
 
 ## Contributing
 
-1. Fork → feature branch `feat/<slug>` → PR.
-2. Run `./scripts/pre-commit.sh` (fmt + clippy + tests).
-3. Update docs **in the same PR** if behaviour or API changes.
-4. Tag with appropriate `area:` label (`area:server`, `area:policy`, etc.).
+We welcome contributions! μNet is built by network engineers, for network engineers.
 
-New?  Start with “Good First Issue” in GitHub or follow the 30‑day plan in [`docs/12_onboarding.md`](docs/src/12_onboarding.md).
+### Getting Started
+
+1. Read the [Architecture Guide](docs/src/architecture.md)
+2. Check out [Good First Issues](https://github.com/bedecarroll/unet/labels/good%20first%20issue)
+3. Join discussions in [GitHub Discussions](https://github.com/bedecarroll/unet/discussions)
+
+### Development Setup
+
+```bash
+git clone https://github.com/bedecarroll/unet.git
+cd unet
+cargo test --workspace  # Make sure everything works
+```
+
+### Areas We Need Help
+
+- **Multi-vendor examples** (Arista, F5, Palo Alto device data)
+- **Policy libraries** for common compliance scenarios
+- **Import utilities** for existing network documentation
+- **Integration examples** (Ansible, Terraform, etc.)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
+
+## Support
+
+- 📖 **Documentation**: [https://bedecarroll.github.io/unet](https://bedecarroll.github.io/unet)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/bedecarroll/unet/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/bedecarroll/unet/issues)
 
 ## License
 
-MIT OR Apache‑2.0 – choose whichever suits your project, or dual‑license as we do.
-
----
-
-### At a Glance (One‑Liner)
-
-```bash
-cargo run -p unet-cli -- --server http://localhost:8080 node diff core‑01 -o live.conf
-```
-
-This renders policy‑assigned templates for *core‑01*, slices the live config, and shows a colorised diff—in **one command**. Welcome to μNet 🚀
+Licensed under the [MIT License](LICENSE).

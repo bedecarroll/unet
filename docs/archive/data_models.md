@@ -42,7 +42,7 @@
 └────────────┘  (view)   └─────────────┘
 ```
 
-*`LinkSide`** is a SQL VIEW giving a flat row per node‑interface side. Useful for JOIN‑heavy queries; optional for v0.*
+*`LinkSide`**is a SQL VIEW giving a flat row per node‑interface side. Useful for JOIN‑heavy queries; optional for v0.*
 
 ---
 
@@ -76,7 +76,7 @@ pub enum LinkRole {
 }
 ```
 
-*`Unknown`** default when CSV import leaves field empty.*
+*`Unknown`**default when CSV import leaves field empty.*
 
 ---
 
