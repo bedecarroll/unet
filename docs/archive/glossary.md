@@ -204,7 +204,7 @@ Tower middleware logging request/response metadata (`method`, `latency`). Added 
 
 ### Unet / μNet
 
-Project codename. Greek letter μ (Mu) emphasises *micro* footprint.
+Project codename. Greek letter μ (Mu) emphasizes *micro* footprint.
 
 ### UUID
 

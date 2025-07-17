@@ -19,7 +19,7 @@
 4. [Core Jobs Explained](#4-core-jobs-explained)
 5. [Reusable Workflow Templates](#5-reusable-workflow-templates)
 6. [Secrets & Permissions](#6-secrets--permissions)
-7. [Caching & Speed Optimisations](#7-caching--speed-optimisations)
+7. [Caching & Speed Optimizations](#7-caching--speed-optimizations)
 8. [Release Process](#8-release-process)
 9. [Matrix Builds & Platforms](#9-matrix-builds--platforms)
 10. [Self‑Hosted Runners](#10-self-hosted-runners)
@@ -234,10 +234,10 @@ Use `` blocks to follow **least privilege**; avoid `contents: write` except in r
 
 ---
 
-## 7  Caching & Speed Optimisations
+## 7  Caching & Speed Optimizations
 
 - **Rust dependency cache** – `actions/cache` keyed on `Cargo.lock`.
-- **Docker layer cache** – Buildx automatically utilises GHCR `--cache-from` (use nightly tag).
+- **Docker layer cache** – Buildx automatically utilizes GHCR `--cache-from` (use nightly tag).
 - **Parallel matrix** – set `max-parallel` to CPU count; default runner concurrency = 2.
 - **Incremental tests** – leverage `cargo test --doc --no-default-features` in a fast pre‑job (TODO).
 

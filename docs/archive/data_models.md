@@ -258,7 +258,7 @@ SeaORM’s migration can embed this SQL.
 
 ## 7  Validation Rules
 
-| Validation                                         | Implementation                                        | Failure Behaviour        |
+| Validation                                         | Implementation                                        | Failure Behavior        |
 | -------------------------------------------------- | ----------------------------------------------------- | ------------------------ |
 | `mgmt_ip` is valid IPv4/v6                         | `ipaddress::ip_net::IpAddr::from_str` in CLI & server | 400 Bad Request          |
 | `software_version` non‑empty for `lifecycle=Live`  | pre‑save check                                        | 422 UnprocessableEntity  |

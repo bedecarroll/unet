@@ -66,7 +66,7 @@ At runtime we create a `minijinja::Environment` and load templates from strings 
 ## 3  Template Directory Layout
 
 Templates live in a **separate Git repository** (path configured in `config.toml`).\
-Operators organise arbitrarily, but we *recommend* vendor‑then‑purpose hierarchy:
+Operators organize arbitrarily, but we *recommend* vendor‑then‑purpose hierarchy:
 
 ```
 templates/
@@ -123,7 +123,7 @@ set interfaces ge-0/0/0 unit 0 family inet address {{ iface_ip }}
 
 ### 5.1 Data Context
 
-The **policy‑evaluated** Node JSON is serialised to a `serde_json::Value` and passed as the sole variable `node` into MiniJinja.
+The **policy‑evaluated** Node JSON is serialized to a `serde_json::Value` and passed as the sole variable `node` into MiniJinja.
 
 ```jinja
 hostname {{ node.node_name }}.{{ node.domain_name or 'local' }}
@@ -178,7 +178,7 @@ Steps executed by `unet template diff` CLI:
 
 ### 6.1 Live Config Acquisition
 
-| Scenario        | CLI flag                   | Behaviour                               |
+| Scenario        | CLI flag                   | Behavior                               |
 | --------------- | -------------------------- | --------------------------------------- |
 | Local text file | `-o live.txt`              | Reads from file path                    |
 | Standard input  | `-o -`                     | Reads from `stdin`                      |

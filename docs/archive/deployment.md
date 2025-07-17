@@ -58,7 +58,7 @@
 | `/opt/unet/bin/` | Static binaries (`unet-server`, `unet-cli`) |  root\:root | No (reinstall)         |
 | `/etc/unet/`     | `config.toml` + TLS certs                   | root\:unet  | Yes                    |
 | `/var/lib/unet/` | SQLite database, Git clones                 | unet\:unet  | **Yes**                |
-| `/var/log/unet/` | Rotated server logs                         | unet\:unet  | Optional (centralised) |
+| `/var/log/unet/` | Rotated server logs                         | unet\:unet  | Optional (centralized) |
 
 Adjust to distro standards if needed (`/usr/local/bin`, `/srv/unet`, etc.).
 
@@ -228,7 +228,7 @@ docker/
 ### 4.2 Volumes & Secrets
 
 - Mount SSH keys at `./config/ssh/` and `chmod 600`.
-- To externalise SQLite, mount a named volume instead of local path.
+- To externalize SQLite, mount a named volume instead of local path.
 
 ### 4.3 Zero‑Downtime Upgrade
 
@@ -301,7 +301,7 @@ Disk: 1 GB per 10 k nodes/year assuming 50 bytes / poll row in history tabl
 2. **TLS** – terminate with Caddy/Nginx or Axum’s `rustls` feature (`cert.pem`, `key.pem`).
 3. **Firewall** – allow 8080/8443 only from jump hosts; outbound 161/UDP for SNMP from server.
 4. **Secrets** – store Git SSH keys and JWT signing keys under `/etc/unet/` (600 permissions).
-5. `` – disable kernel modules if containerised; enable `fs.protected_regular=1`.
+5. `` – disable kernel modules if containerized; enable `fs.protected_regular=1`.
 
 ---
 
