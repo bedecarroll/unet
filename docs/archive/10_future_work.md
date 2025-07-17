@@ -24,7 +24,7 @@
 
 | #  | Principle                         | Rationale                                                  |
 | -- | --------------------------------- | ---------------------------------------------------------- |
-| P1 | **Minimise operator toil**        | Every feature must save at least 10× the time it costs.    |
+| P1 | **Minimize operator toil**        | Every feature must save at least 10× the time it costs.    |
 | P2 | **Invisible scalability**         | Users should not *feel* the switch from SQLite → Postgres. |
 | P3 | **Batteries‑included ≠ monolith** | Add plugins/APIs **before** forking the code base.         |
 | P4 | **Document everything**           | Future contributors are junior; cargo‑cult is dangerous.   |
@@ -117,9 +117,9 @@
 | ------------------------------ | -------------------------------------------------------- | ------------------------------------------------------- |
 | **Streaming Telemetry (gNMI)** | Real‑time interface counters into timeseries             | High ingest cost; vendor support patchy.                |
 | **Intent‑based DSL**           | Operators express topology intents, engine plans changes | Complexity vs ROI; verification algorithms.             |
-| **AI diff summariser**         | LLM summarises diff & policy impact in English           | Token cost, hallucinations; requires guardrails.        |
+| **AI diff summarizer**         | LLM summarizes diff & policy impact in English           | Token cost, hallucinations; requires guardrails.        |
 | **WebAssembly policy plugins** | Sandboxed, multi‑lang policy extension                   | Runtime latency; compile targets.                       |
-| **Data‑plane testing harness** | Generate traffic, verify ACLs automatically              | Lab gear availability; maybe use containerised net‑lab. |
+| **Data‑plane testing harness** | Generate traffic, verify ACLs automatically              | Lab gear availability; maybe use containerized net‑lab. |
 | **Formal verification**        | Use SMT (Z3) to prove template idempotence               | Staff expertise, long compute times.                    |
 
 ---
@@ -163,7 +163,7 @@
 - `unet db export --diagram` → Mermaid ERD.
 - Bash/Zsh prompt integration showing policy violations count.
 - VS Code extension for `.rules` syntax highlighting & linting.
-- `config-slicer --html` coloured syntax output for Docs.
+- `config-slicer --html` colored syntax output for Docs.
 
 ---
 
