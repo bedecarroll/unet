@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Run the μNet server"
+#MISE alias="server"
+
+echo "🚀 Starting μNet server..."
+cargo run --bin unet-server

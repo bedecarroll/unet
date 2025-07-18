@@ -1,11 +1,7 @@
 min_version = '2024.11.1'
 
 [tasks.lint]
-description = "Run linters"
-run = ["typos --diff", "cargo clippy --workspace", "cargo fmt --check"]
-
-[tasks.lint-fix]
-description = "Run linters"
+description = "Fix code issues and run linters"
 run = ["typos -w", "cargo clippy --workspace --allow-dirty --fix", "cargo fmt"]
 
 [tasks.test]
