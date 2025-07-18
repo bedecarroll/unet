@@ -1,6 +1,6 @@
 //! Error logging and reporting functionality for μNet Core
 
-use super::{Error, Result};
+use super::super::{Error, Result};
 use tracing::error;
 
 impl Error {

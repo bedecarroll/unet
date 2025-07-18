@@ -8,6 +8,9 @@ pub mod store;
 mod transaction;
 mod utils;
 
+#[cfg(test)]
+mod tests;
+
 // Re-export main types
 pub use store::CsvStore;
 pub use transaction::CsvTransaction;

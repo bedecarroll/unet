@@ -15,7 +15,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 
-
 /// SQLite-based `DataStore` implementation
 #[derive(Debug)]
 pub struct SqliteStore {

@@ -70,7 +70,7 @@ complex) if estimates are required
 - **ALWAYS** use Grep/Glob for code searches before making changes
 - **NEVER** assume file locations - search first
 - **ALWAYS** use Read tool before Edit/MultiEdit operations
-- **ALWAYS** run `mise run lint-fix` after code changes
+- **ALWAYS** run `mise run lint` after code changes
 - **NEVER** skip the TodoWrite tool for multi-step tasks
 
 ---
@@ -114,8 +114,7 @@ unet/
 
 ### Development Tools (mise.toml)
 
-- **linting:** `mise run lint` - runs typos, clippy, and fmt checks
-- **fixing:** `mise run lint-fix` - auto-fixes linting issues (typos, clippy, formatting)
+- **linting:** `mise run lint` - lints and auto-fixes linting issues (typos, clippy, formatting)
 - **testing:** `mise run test` - runs unit tests with coverage
 
 ### Example Development Workflow
@@ -127,14 +126,8 @@ vim crates/unet-core/src/models/node.rs
 # 2. Run tests to ensure functionality works
 mise run test
 
-# 3. Auto-fix linting issues
-mise run lint-fix
-
-# 4. Check if any manual fixes are needed
+# 3. Check if any manual fixes are needed, will format code
 mise run lint
-
-# 5. Commit clean code
-git add -A && git commit -m "feat: add node validation logic"
 ```
 
 ---
@@ -235,6 +228,69 @@ async fn test_node_creation() {
     cleanup_test_data(&store).await;
 }
 ```
+
+---
+
+## Code Quality Patterns
+
+### Numeric Literals
+
+- **ALWAYS** add underscores to large numeric literals for readability
+- **CORRECT:** `1_000_000_000` instead of `1000000000`
+- **CORRECT:** `100_000` instead of `100000`
+
+### Variable Naming
+
+- **NEVER** use similar variable names in the same scope
+- **CORRECT:** `node_a_relation` and `node_b_relation` instead of `node_a_rel` and `node_b_rel`
+- **ALWAYS** use descriptive names that clearly distinguish purpose
+
+### Function Signatures
+
+- **NEVER** mark functions as `async` unless they use `await`
+- **ALWAYS** make functions `const` when they don't mutate state
+- **CORRECT:** `pub const fn update_stats(&self, _success: bool, _duration: Duration)`
+
+### Resource Management
+
+- **ALWAYS** drop significant resources explicitly when done
+- **CORRECT:** Add `drop(data);` after using mutex guards in tests
+- **NEVER** hold locks longer than necessary
+
+### Test Assertions
+
+- **NEVER** use `assert_eq!` with boolean literals
+- **CORRECT:** `assert!(value)` instead of `assert_eq!(value, true)`
+- **CORRECT:** `assert!(!value)` instead of `assert_eq!(value, false)`
+
+### Float Comparisons
+
+- **NEVER** use direct equality for floating-point comparisons
+- **CORRECT:** `assert!((value - expected).abs() < f64::EPSILON)`
+- **ALWAYS** use appropriate epsilon for the float type (f32::EPSILON vs f64::EPSILON)
+
+### String Formatting
+
+- **ALWAYS** use inline format arguments for readability
+- **CORRECT:** `format!("node-{i}")` instead of `format!("node-{}", i)`
+- **NEVER** borrow format results unnecessarily
+
+### Pattern Matching
+
+- **NEVER** use wildcard matches when only one variant remains
+- **CORRECT:** `SnmpCredentials::UserBased { .. } =>` instead of `_ =>`
+- **ALWAYS** be explicit about what you're matching
+
+### Clone Usage
+
+- **NEVER** clone values that can be moved
+- **NEVER** write tests that clone without testing clone behavior meaningfully
+- **ALWAYS** prefer moving values when the original isn't needed again
+
+### Documentation Comments
+
+- **ALWAYS** use backticks around technical terms and library names
+- **CORRECT:** `//! Tests for \`SeaORM\` entities` instead of `//! Tests for SeaORM entities`
 
 ---
 

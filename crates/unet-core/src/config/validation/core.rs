@@ -1,7 +1,7 @@
 //! Configuration validation and adjustment logic
 
-use super::core::Config;
-use super::defaults;
+use super::super::core::Config;
+use super::super::defaults;
 use crate::error::{Error, Result};
 
 impl Config {

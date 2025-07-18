@@ -1,10 +1,6 @@
 allow-expect-in-tests = true
 allow-unwrap-in-tests = true
-allow-panic-in-tests = true
-allow-dbg-in-tests = true
-allow-print-in-tests = true
 
-# These crates clash due to transitive dependencies
 allowed-duplicate-crates = [
     "async-channel", 
     "regex-automata", 
@@ -31,6 +27,3 @@ allowed-duplicate-crates = [
     "thiserror-impl",
     "toml_datetime"
 ]
-
-# SNMP and network automation specific allowances
-allowed-idents-below-min-chars = ["id", "ip", "io", "tx", "rx"]

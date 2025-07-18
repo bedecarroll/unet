@@ -139,3 +139,156 @@ impl Default for PolicyValidator {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validation_result_new() {
+        let result = ValidationResult::new();
+        assert_eq!(result.total_lines, 0);
+        assert_eq!(result.valid_rules, 0);
+        assert!(result.errors.is_empty());
+        assert!(result.is_valid());
+        assert_eq!(result.error_count(), 0);
+    }
+
+    #[test]
+    fn test_validation_result_default() {
+        let result = ValidationResult::default();
+        assert_eq!(result.total_lines, 0);
+        assert_eq!(result.valid_rules, 0);
+        assert!(result.errors.is_empty());
+        assert!(result.is_valid());
+        assert_eq!(result.error_count(), 0);
+    }
+
+    #[test]
+    fn test_validation_result_add_error() {
+        let mut result = ValidationResult::new();
+        result.total_lines = 5;
+        result.valid_rules = 3;
+
+        assert!(result.is_valid());
+        assert_eq!(result.error_count(), 0);
+
+        result.add_error(2, "Invalid syntax".to_string(), "invalid line".to_string());
+
+        assert!(!result.is_valid());
+        assert_eq!(result.error_count(), 1);
+        assert_eq!(result.errors[0].line, 2);
+        assert_eq!(result.errors[0].message, "Invalid syntax");
+        assert_eq!(result.errors[0].content, "invalid line");
+    }
+
+    #[test]
+    fn test_validation_result_multiple_errors() {
+        let mut result = ValidationResult::new();
+
+        result.add_error(1, "Error 1".to_string(), "line 1".to_string());
+        result.add_error(3, "Error 2".to_string(), "line 3".to_string());
+        result.add_error(5, "Error 3".to_string(), "line 5".to_string());
+
+        assert!(!result.is_valid());
+        assert_eq!(result.error_count(), 3);
+        assert_eq!(result.errors.len(), 3);
+    }
+
+    #[test]
+    fn test_validation_error_creation() {
+        let error = ValidationError {
+            line: 10,
+            message: "Test error message".to_string(),
+            content: "test content".to_string(),
+        };
+
+        assert_eq!(error.line, 10);
+        assert_eq!(error.message, "Test error message");
+        assert_eq!(error.content, "test content");
+    }
+
+    #[test]
+    fn test_policy_validator_new() {
+        let _ = PolicyValidator::new();
+        // PolicyValidator is a unit struct, so just verify it can be created
+        let _ = PolicyValidator;
+    }
+
+    #[test]
+    fn test_policy_validator_default() {
+        let _ = PolicyValidator;
+        let _ = PolicyValidator::new();
+        // Both should be identical (unit structs)
+    }
+
+    #[test]
+    fn test_validation_result_is_valid_with_no_errors() {
+        let mut result = ValidationResult::new();
+        result.total_lines = 10;
+        result.valid_rules = 10;
+
+        assert!(result.is_valid());
+        assert_eq!(result.error_count(), 0);
+    }
+
+    #[test]
+    fn test_validation_result_is_invalid_with_errors() {
+        let mut result = ValidationResult::new();
+        result.total_lines = 10;
+        result.valid_rules = 8;
+
+        result.add_error(2, "Syntax error".to_string(), "bad syntax".to_string());
+        result.add_error(
+            7,
+            "Another error".to_string(),
+            "another bad line".to_string(),
+        );
+
+        assert!(!result.is_valid());
+        assert_eq!(result.error_count(), 2);
+    }
+
+    #[test]
+    fn test_validation_error_fields() {
+        let mut result = ValidationResult::new();
+        result.add_error(
+            15,
+            "Field validation failed".to_string(),
+            "field = invalid_value".to_string(),
+        );
+
+        let error = &result.errors[0];
+        assert_eq!(error.line, 15);
+        assert_eq!(error.message, "Field validation failed");
+        assert_eq!(error.content, "field = invalid_value");
+    }
+
+    #[test]
+    fn test_validation_result_debug() {
+        let mut result = ValidationResult::new();
+        result.total_lines = 5;
+        result.valid_rules = 4;
+        result.add_error(3, "Debug test".to_string(), "debug line".to_string());
+
+        let debug_str = format!("{result:?}");
+        assert!(debug_str.contains("ValidationResult"));
+        assert!(debug_str.contains("total_lines: 5"));
+        assert!(debug_str.contains("valid_rules: 4"));
+    }
+
+    #[test]
+    fn test_validation_error_debug() {
+        let error = ValidationError {
+            line: 42,
+            message: "Debug error".to_string(),
+            content: "debug content".to_string(),
+        };
+
+        let debug_str = format!("{error:?}");
+        assert!(debug_str.contains("ValidationError"));
+        assert!(debug_str.contains("line: 42"));
+        assert!(debug_str.contains("Debug error"));
+        assert!(debug_str.contains("debug content"));
+    }
+}

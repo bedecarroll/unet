@@ -86,3 +86,6 @@ impl Default for SnmpClientConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

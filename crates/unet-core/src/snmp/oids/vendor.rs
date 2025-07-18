@@ -99,10 +99,128 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_vendor_oid_new() {
+        let oid = VendorOid::new(
+            "Test Vendor".to_string(),
+            "1.2.3.4.5".to_string(),
+            "Test description".to_string(),
+        );
+
+        assert_eq!(oid.vendor(), "Test Vendor");
+        assert_eq!(oid.oid(), "1.2.3.4.5");
+        assert_eq!(oid.description(), "Test description");
+        assert_eq!(oid.vendor, "Test Vendor");
+        assert_eq!(oid.oid, "1.2.3.4.5");
+        assert_eq!(oid.description, "Test description");
+    }
+
+    #[test]
+    fn test_vendor_oid_getters() {
+        let oid = VendorOid {
+            vendor: "Custom Corp".to_string(),
+            oid: "1.3.6.1.4.1.12345.1.2.3".to_string(),
+            description: "Custom metric for testing".to_string(),
+        };
+
+        assert_eq!(oid.vendor(), "Custom Corp");
+        assert_eq!(oid.oid(), "1.3.6.1.4.1.12345.1.2.3");
+        assert_eq!(oid.description(), "Custom metric for testing");
+    }
+
+    #[test]
+    fn test_vendor_oid_equality() {
+        let oid1 = VendorOid::new(
+            "Vendor".to_string(),
+            "1.2.3".to_string(),
+            "Description".to_string(),
+        );
+        let oid2 = VendorOid::new(
+            "Vendor".to_string(),
+            "1.2.3".to_string(),
+            "Description".to_string(),
+        );
+        let oid3 = VendorOid::new(
+            "Different".to_string(),
+            "1.2.3".to_string(),
+            "Description".to_string(),
+        );
+
+        assert_eq!(oid1, oid2);
+        assert_ne!(oid1, oid3);
+    }
+
+    #[test]
+    fn test_vendor_oid_serialization() {
+        let oid = VendorOid::new(
+            "SerializeTest".to_string(),
+            "1.9.8.7".to_string(),
+            "Serialization test".to_string(),
+        );
+
+        let serialized = serde_json::to_string(&oid).unwrap();
+        let deserialized: VendorOid = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(oid, deserialized);
+        assert_eq!(oid.vendor(), deserialized.vendor());
+        assert_eq!(oid.oid(), deserialized.oid());
+        assert_eq!(oid.description(), deserialized.description());
+    }
+
+    #[test]
+    fn test_vendor_oid_debug() {
+        let oid = VendorOid::new(
+            "DebugTest".to_string(),
+            "1.2.3.4".to_string(),
+            "Debug format test".to_string(),
+        );
+
+        let debug_str = format!("{oid:?}");
+        assert!(debug_str.contains("VendorOid"));
+        assert!(debug_str.contains("DebugTest"));
+        assert!(debug_str.contains("1.2.3.4"));
+        assert!(debug_str.contains("Debug format test"));
+    }
+
+    #[test]
     fn test_vendor_oid_cisco() {
         let cisco_oids = VendorOid::cisco_common();
         assert!(!cisco_oids.is_empty());
         assert!(cisco_oids.iter().all(|oid| oid.vendor() == "Cisco"));
+
+        // Verify specific OIDs
+        assert_eq!(cisco_oids.len(), 3);
+        assert!(
+            cisco_oids
+                .iter()
+                .any(|oid| oid.oid() == "1.3.6.1.4.1.9.2.1.3.0")
+        );
+        assert!(
+            cisco_oids
+                .iter()
+                .any(|oid| oid.oid() == "1.3.6.1.4.1.9.2.1.8.0")
+        );
+        assert!(
+            cisco_oids
+                .iter()
+                .any(|oid| oid.oid() == "1.3.6.1.4.1.9.9.13.1.3.1.3")
+        );
+
+        // Verify descriptions
+        assert!(
+            cisco_oids
+                .iter()
+                .any(|oid| oid.description().contains("CPU"))
+        );
+        assert!(
+            cisco_oids
+                .iter()
+                .any(|oid| oid.description().contains("memory"))
+        );
+        assert!(
+            cisco_oids
+                .iter()
+                .any(|oid| oid.description().contains("temperature"))
+        );
     }
 
     #[test]
@@ -110,5 +228,66 @@ mod tests {
         let juniper_oids = VendorOid::juniper_common();
         assert!(!juniper_oids.is_empty());
         assert!(juniper_oids.iter().all(|oid| oid.vendor() == "Juniper"));
+
+        // Verify specific OIDs
+        assert_eq!(juniper_oids.len(), 3);
+        assert!(
+            juniper_oids
+                .iter()
+                .any(|oid| oid.oid() == "1.3.6.1.4.1.2636.3.1.13.1.8")
+        );
+        assert!(
+            juniper_oids
+                .iter()
+                .any(|oid| oid.oid() == "1.3.6.1.4.1.2636.3.1.13.1.11")
+        );
+        assert!(
+            juniper_oids
+                .iter()
+                .any(|oid| oid.oid() == "1.3.6.1.4.1.2636.3.1.13.1.7")
+        );
+
+        // Verify descriptions
+        assert!(
+            juniper_oids
+                .iter()
+                .any(|oid| oid.description().contains("CPU"))
+        );
+        assert!(
+            juniper_oids
+                .iter()
+                .any(|oid| oid.description().contains("memory"))
+        );
+        assert!(
+            juniper_oids
+                .iter()
+                .any(|oid| oid.description().contains("temperature"))
+        );
+    }
+
+    #[test]
+    fn test_vendor_oid_hash() {
+        use std::collections::HashSet;
+
+        let oid1 = VendorOid::new("A".to_string(), "1".to_string(), "D1".to_string());
+        let oid2 = VendorOid::new("A".to_string(), "1".to_string(), "D1".to_string());
+        let oid3 = VendorOid::new("B".to_string(), "2".to_string(), "D2".to_string());
+
+        let mut set = HashSet::new();
+        set.insert(oid1.clone());
+        set.insert(oid2); // Should not increase size (duplicate)
+        set.insert(oid3);
+
+        assert_eq!(set.len(), 2);
+        assert!(set.contains(&oid1));
+    }
+
+    #[test]
+    fn test_vendor_oid_empty_strings() {
+        let oid = VendorOid::new(String::new(), String::new(), String::new());
+
+        assert_eq!(oid.vendor(), "");
+        assert_eq!(oid.oid(), "");
+        assert_eq!(oid.description(), "");
     }
 }

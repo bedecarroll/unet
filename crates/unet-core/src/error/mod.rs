@@ -14,6 +14,9 @@ mod constructors;
 mod conversions;
 mod reporting;
 
+#[cfg(test)]
+mod tests;
+
 /// μNet Core error type with comprehensive context
 #[derive(Error, Debug)]
 pub enum Error {

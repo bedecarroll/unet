@@ -284,3 +284,6 @@ pub struct BatchResult {
     /// Errors that occurred during batch operation
     pub errors: Vec<(usize, DataStoreError)>,
 }
+
+#[cfg(test)]
+mod tests;

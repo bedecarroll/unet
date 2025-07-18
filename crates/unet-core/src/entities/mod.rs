@@ -13,3 +13,6 @@ pub use locations::Entity as Locations;
 pub use node_status::Entity as NodeStatus;
 pub use nodes::Entity as Nodes;
 pub use polling_tasks::Entity as PollingTasks;
+
+#[cfg(test)]
+mod tests;
