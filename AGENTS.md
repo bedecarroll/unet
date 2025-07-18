@@ -1,7 +1,8 @@
 # AGENTS.md – LLM Guidelines for μNet Development
 
-> **Audience:** AI/LLM agents assisting with μNet development and maintenance  
-> **Purpose:** Establish guidelines for code generation, system modification, and architectural decisions to maintain system integrity and code quality  
+> **Audience:** AI/LLM agents assisting with μNet development and maintenance
+> **Purpose:** Establish guidelines for code generation, system modification,
+> and architectural decisions to maintain system integrity and code quality
 > **Prerequisites:** Read `docs/src/architecture.md` before making any changes
 
 ---
@@ -25,9 +26,12 @@
 ### 1. Architecture Respect
 
 - **NEVER** violate the established component boundaries defined in `docs/src/architecture.md`
-- **ALWAYS** maintain separation of concerns between `unet-core`, `unet-server`, and `unet-cli`
-- **NEVER** bypass the `DataStore` trait - all data access must go through the abstraction layer
-- **ALWAYS** understand the difference between desired state (user input) and derived state (SNMP polling)
+- **ALWAYS** maintain separation of concerns between `unet-core`,
+`unet-server`, and `unet-cli`
+- **NEVER** bypass the `DataStore` trait - all data access must go through the
+abstraction layer
+- **ALWAYS** understand the difference between desired state (user input) and
+derived state (SNMP polling)
 
 ### 2. Rust Ecosystem Compliance
 
@@ -47,13 +51,58 @@
 - **ALWAYS** keep Rust files under 300 lines (absolute maximum 500 lines)
 - **ALWAYS** split large files into smaller, focused modules
 
+### 4. Documentation Standards
+
+- **NEVER** make qualitative judgements about code quality in documentation
+- **ALWAYS** let code quality speak for itself through metrics and tests
+- **NEVER** use subjective terms like "excellent", "solid", "clean", "high-quality"
+- **ALWAYS** use objective statements with measurable criteria
+- **NEVER** make claims about production-readiness without evidence
+- **ALWAYS** focus on factual status, features, and completion percentages
+- **NEVER** provide time estimates (days, weeks, months) as they depend on
+external factors
+- **ALWAYS** use implementation complexity estimates (simple, moderate,
+complex) if estimates are required
+- **NEVER** promise delivery timelines or completion dates
+
+### 5. Tool Usage Patterns
+
+- **ALWAYS** use Grep/Glob for code searches before making changes
+- **NEVER** assume file locations - search first
+- **ALWAYS** use Read tool before Edit/MultiEdit operations
+- **ALWAYS** run `mise run lint-fix` after code changes
+- **NEVER** skip the TodoWrite tool for multi-step tasks
+
+---
+
+## Before Making Changes
+
+### Required Context Gathering
+
+1. **Read architecture document first**: `docs/src/architecture.md`
+2. **Search for existing patterns**: Use Grep to find similar implementations
+3. **Check test patterns**: Look at existing tests before writing new ones
+4. **Verify dependencies**: Check `Cargo.toml` for available crates
+
+---
+
+## Decision Framework
+
+When implementing features:
+
+1. **Search existing codebase** for similar patterns
+2. **Follow established conventions** over creating new ones  
+3. **Prefer composition** over inheritance
+4. **Default to explicit** over implicit behavior
+5. **Favor readability** over cleverness
+
 ---
 
 ## Project Structure
 
 ### Cargo Workspace Structure
 
-```
+```text
 unet/
 ├── crates/
 │   ├── unet-core/     # SHARED LIBRARY - models, datastore, policy, SNMP
@@ -264,11 +313,11 @@ Before submitting any code changes, ensure:
 
 ## When In Doubt
 
-1. **Read the Architecture Document** - `docs/src/architecture.md`
-2. **Check Existing Patterns** - Look for similar implementations in the codebase
-3. **Run the Full Test Suite** - `mise run test`
-4. **Review Security Implications** - Network automation requires extra care
-5. **Ask for Human Review** - Complex changes need human oversight
+1. **STOP** - Don't guess or assume
+2. **SEARCH** - Use Grep/Glob to find existing patterns
+3. **READ** - Check related code and tests
+4. **ASK** - Request clarification rather than proceeding
+5. **TEST** - Verify assumptions with small experiments
 
 ---
 
@@ -282,8 +331,10 @@ If you encounter:
 - **Breaking changes**: Ensure proper migration path exists
 - **Dependency conflicts**: Resolve through established dependency matrix
 
-Remember: **μNet manages critical network infrastructure. Code quality and security are non-negotiable.**
+Remember: **μNet manages critical network infrastructure. Code quality and
+security are non-negotiable.**
 
 ---
 
-*This document is living and should be updated as the codebase evolves. All changes to AGENTS.md require review by senior maintainers.*
+*This document is living and should be updated as the codebase evolves. All
+changes to AGENTS.md require review by senior maintainers.*

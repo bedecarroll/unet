@@ -187,12 +187,12 @@ Policy Files ──► Parser ──► Evaluator ──► Results
 
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
-| **Language** | Rust | Memory safety, performance, excellent async support |
+| **Language** | Rust | Memory safety, performance, async support |
 | **Database** | SQLite + SeaORM | Zero-ops deployment, type-safe queries |
-| **HTTP Server** | Axum | Modern async framework, excellent performance |
+| **HTTP Server** | Axum | Modern async framework, high performance |
 | **CLI Framework** | Clap v4 | Rich features, derive macros, shell completion |
 | **SNMP Client** | csnmp | Pure Rust, async-first SNMP implementation |
-| **Policy Parser** | Pest | PEG parser with excellent error reporting |
+| **Policy Parser** | Pest | PEG parser with detailed error reporting |
 
 ### Data Formats
 
@@ -350,7 +350,7 @@ interface_status
 ### Scalability Considerations
 
 - **Horizontal Scaling**: Not currently supported (SQLite limitation)
-- **Vertical Scaling**: Excellent single-machine performance
+- **Vertical Scaling**: Optimized single-machine performance
 - **Caching**: Minimal caching, relies on SQLite performance
 - **Connection Pooling**: SNMP connections reused efficiently
 

@@ -1,25 +1,12 @@
 # μNet Roadmap
 
-This document outlines planned features and capabilities for future releases of μNet.
+> **Current Status:** ~60% complete. See `/STATUS.md` for detailed development status and immediate next steps.
+
+This document outlines the planned features and release timeline for μNet.
 
 ## Current Status (v0.1.0)
 
-### ✅ **Implemented and Working**
-
-- **Node/Link/Location Management**: Full CRUD operations via CLI and API
-- **Policy Engine**: Complete DSL with WHEN/THEN syntax, rule evaluation, and compliance checking
-- **Data Import/Export**: JSON/YAML-based network topology import/export
-- **REST API**: HTTP API for nodes, policies, health, and derived state
-- **SQLite Backend**: Full data persistence with SeaORM migrations
-- **SNMP Infrastructure**: Background polling, derived state collection, OID mapping
-- **CLI Tool**: Comprehensive command-line interface with multiple output formats
-
-### 🚧 **Planned for Development**
-
-- **Template Engine**: Configuration generation and diffing (Milestone 4 - not started)
-- **SNMP CLI Controls**: Commands for polling management and device discovery
-- **Advanced Node Operations**: Historical data, node comparison, metrics history
-- **Config-Slicer Tool**: Hierarchical configuration diffing
+μNet has CLI, API, policy engine, and SNMP infrastructure implemented. Current development focuses on completing API endpoints and background task integration. See `/STATUS.md` for detailed completion status.
 
 ## Planned Features
 
@@ -85,12 +72,12 @@ This document outlines planned features and capabilities for future releases of 
 - **Device Fingerprinting**: Automatic vendor/model identification
 - **Network Mapping**: Visual topology generation
 
-## Release Timeline
+## Release Sequence
 
-- **v0.2.0** (Q2 2025): Template Engine + Configuration Generation
-- **v0.3.0** (Q3 2025): Advanced SNMP Monitoring + CLI
-- **v0.4.0** (Q4 2025): Configuration Push + Rollback
-- **v1.0.0** (Q1 2026): Production-ready with Web UI
+- **v0.2.0**: Template Engine + Configuration Generation
+- **v0.3.0**: Advanced SNMP Monitoring + CLI
+- **v0.4.0**: Configuration Push + Rollback
+- **v1.0.0**: Web UI
 
 ## Contributing to the Roadmap
 

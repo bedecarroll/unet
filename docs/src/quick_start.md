@@ -6,16 +6,9 @@
 
 ## Installation
 
-### Download μNet
+### Build from Source
 
-```bash
-# Download the latest release (replace with actual URL when available)
-curl -L https://github.com/bedecarroll/unet/releases/latest/download/unet-cli -o unet
-curl -L https://github.com/bedecarroll/unet/releases/latest/download/unet-server -o unet-server
-chmod +x unet unet-server
-```
-
-### Or Build from Source
+> **Note:** μNet is currently in active development. Pre-built releases are not yet available. You must build from source.
 
 ```bash
 git clone https://github.com/bedecarroll/unet.git
@@ -38,20 +31,20 @@ cp target/release/unet-server ./unet-server
 # Creates unet.db in current directory
 ```
 
-### 2. Import Sample Data
+### 2. Create Sample Data
+
+> **Note:** Pre-built example files are not yet available. You can create sample data manually:
 
 ```bash
-# Import locations first (dependencies)
-./unet import docs/static/examples/small-office/locations.json
+# Create a location
+./unet locations create --name "Datacenter" --type "datacenter" --description "Main datacenter"
 
-# Import nodes
-./unet import docs/static/examples/small-office/nodes.json
+# Create a node
+./unet nodes create --name "core-01" --type "Router" --vendor "Cisco" --model "ISR4321" --location "Datacenter"
 
-# Import links
-./unet import docs/static/examples/small-office/links.json
-
-# Verify import
+# List your data
 ./unet nodes list
+./unet locations list
 ```
 
 ---
@@ -328,7 +321,7 @@ Now that you have μNet running:
 ### Getting Help
 
 - **Troubleshooting**: See [Troubleshooting Guide](troubleshooting.md)
-- **Examples**: Check `docs/static/examples/` directory
+- **CLI Reference**: See complete command documentation
 - **Issues**: Report bugs at <https://github.com/bedecarroll/unet/issues>
 
 Welcome to μNet! 🎉

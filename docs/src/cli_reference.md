@@ -22,10 +22,10 @@ unet nodes list
 # Remote server mode
 unet --server http://localhost:8080 nodes list
 
-# Import sample data
-unet import fixtures/demo/locations.json
-unet import fixtures/demo/nodes.json
-unet import fixtures/demo/links.json
+# Import sample data (create your own JSON files)
+unet import your-locations.json
+unet import your-nodes.json
+unet import your-links.json
 ```
 
 ---
@@ -441,9 +441,9 @@ unet policy show policies/compliance.rules --ast
 Import data from JSON files.
 
 ```bash
-unet import fixtures/demo/nodes.json
-unet import fixtures/demo/ --dry-run
-unet import fixtures/demo/ --continue-on-error
+unet import your-nodes.json
+unet import your-data-directory/ --dry-run
+unet import your-data-directory/ --continue-on-error
 ```
 
 **Arguments:**
