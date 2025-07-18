@@ -1269,7 +1269,7 @@ mdbook 0.4+ (docs)
   - [ ] Profile and optimize parsing performance
   - [ ] Implement streaming for large files
   - [ ] Add memory usage optimization
-  - [ ] Create benchmarking infrastructure
+  - [x] Create benchmarking infrastructure
 
 ---
 
@@ -1421,7 +1421,7 @@ mdbook 0.4+ (docs)
   - [ ] Profile and optimize critical paths
   - [ ] Add connection pooling and caching
   - [ ] Implement async processing optimization
-  - [ ] Create performance benchmarking
+  - [x] Create performance benchmarking
 - [ ] **M7.3.2** Database scaling preparation
   - [ ] Add PostgreSQL support and migration
   - [ ] Implement database connection pooling

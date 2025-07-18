@@ -11,11 +11,9 @@ use crate::policy::{
     EvaluationContext, EvaluationResult, PolicyError, PolicyEvaluator, PolicyParser,
 };
 use serde_json::json;
-use std::time::{Duration, Instant};
 
 // Re-export test modules
 pub mod error_handling;
 pub mod grammar;
-pub mod performance;
 
 // Common test utilities and helpers can be added here in the future

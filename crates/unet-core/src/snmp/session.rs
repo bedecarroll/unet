@@ -88,6 +88,7 @@ impl SnmpSession {
     /// # Errors
     ///
     /// Returns `SnmpError` if the SNMP request fails or times out
+    #[allow(clippy::cognitive_complexity)]
     pub async fn get(&mut self, oids: &[&str]) -> SnmpResult<HashMap<String, SnmpValue>> {
         debug!(
             session_id = %self.session_id,

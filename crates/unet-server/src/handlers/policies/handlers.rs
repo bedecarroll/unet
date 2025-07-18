@@ -22,6 +22,7 @@ use super::{
 };
 
 /// Evaluate policies against nodes
+#[allow(clippy::cognitive_complexity)]
 pub async fn evaluate_policies(
     State(state): State<AppState>,
     Json(request): Json<PolicyEvaluationRequest>,

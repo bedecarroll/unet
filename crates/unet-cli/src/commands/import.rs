@@ -24,6 +24,7 @@ pub struct ImportArgs {
     continue_on_error: bool,
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub async fn execute(
     args: ImportArgs,
     datastore: &dyn DataStore,
