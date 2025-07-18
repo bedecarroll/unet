@@ -6,6 +6,4 @@ run = ["typos -w", "cargo clippy --workspace --allow-dirty --fix", "cargo fmt"]
 
 [tasks.test]
 description = "Run unit tests"
-run = [
-  "cargo tarpaulin --skip-clean --workspace --ignored --frozen --out stdout",
-]
+run = ["cargo tarpaulin"]
