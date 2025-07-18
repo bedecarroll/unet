@@ -23,6 +23,7 @@ pub struct ExportArgs {
     only: Option<Vec<String>>,
 }
 
+#[allow(clippy::cognitive_complexity)]
 pub async fn execute(
     args: ExportArgs,
     datastore: &dyn DataStore,

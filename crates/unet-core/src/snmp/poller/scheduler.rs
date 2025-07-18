@@ -123,6 +123,7 @@ impl PollingScheduler {
     }
 
     /// Handle control messages
+    #[allow(clippy::cognitive_complexity)]
     async fn handle_message(&self, message: PollingMessage) -> bool {
         match message {
             PollingMessage::AddTask(task) => {
@@ -219,6 +220,7 @@ impl PollingScheduler {
     }
 
     /// Poll a single task
+    #[allow(clippy::cognitive_complexity)]
     async fn poll_task(
         mut task: PollingTask,
         snmp_client: Arc<SnmpClient>,

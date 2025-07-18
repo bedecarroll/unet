@@ -4,8 +4,13 @@
 //! string operations, and regex matching.
 
 use crate::policy::PolicyError;
+use dashmap::DashMap;
 use regex::Regex;
 use serde_json::Value as JsonValue;
+use std::sync::LazyLock;
+
+/// Global cache for compiled regular expressions
+static REGEX_CACHE: LazyLock<DashMap<String, Regex>> = LazyLock::new(DashMap::new);
 
 /// Compare two JSON values using a comparison function
 pub fn compare_json_values<F>(
@@ -59,9 +64,15 @@ pub fn evaluate_regex_match_json(
 ) -> Result<bool, PolicyError> {
     match (text, pattern) {
         (JsonValue::String(s), JsonValue::String(regex_str)) => {
-            let regex = Regex::new(regex_str).map_err(|_| PolicyError::InvalidRegex {
-                pattern: regex_str.clone(),
-            })?;
+            let regex = if let Some(existing) = REGEX_CACHE.get(regex_str) {
+                existing.clone()
+            } else {
+                let compiled = Regex::new(regex_str).map_err(|_| PolicyError::InvalidRegex {
+                    pattern: regex_str.clone(),
+                })?;
+                REGEX_CACHE.insert(regex_str.clone(), compiled.clone());
+                compiled
+            };
             Ok(regex.is_match(s))
         }
         _ => Err(PolicyError::ValidationError {

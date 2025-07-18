@@ -52,6 +52,7 @@ csnmp = { workspace = true }
 pest = { workspace = true }
 pest_derive = { workspace = true }
 regex = { workspace = true }
+dashmap = { workspace = true }
 
 # Configuration diffing
 similar = { workspace = true }

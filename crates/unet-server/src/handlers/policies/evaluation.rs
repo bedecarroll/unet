@@ -10,6 +10,7 @@ use uuid::Uuid;
 use super::types::PolicyEvaluationSummary;
 
 /// Get nodes for policy evaluation based on request
+#[allow(clippy::cognitive_complexity)]
 pub async fn get_nodes_for_evaluation(
     datastore: &dyn DataStore,
     node_ids: Option<&Vec<Uuid>>,

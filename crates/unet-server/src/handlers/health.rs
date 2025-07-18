@@ -8,6 +8,7 @@ use crate::handlers::ServerResult;
 use crate::server::AppState;
 
 /// Health check endpoint
+#[allow(clippy::cognitive_complexity)]
 pub async fn health_check(
     State(app_state): State<AppState>,
 ) -> ServerResult<(StatusCode, Json<serde_json::Value>)> {

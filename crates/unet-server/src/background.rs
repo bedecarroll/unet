@@ -56,6 +56,7 @@ struct PolicyEvaluationTask {
 
 impl PolicyEvaluationTask {
     /// Run the policy evaluation task
+    #[allow(clippy::cognitive_complexity)]
     async fn run(&self) {
         info!(
             "Starting policy evaluation background task with interval: {}s",
@@ -79,6 +80,7 @@ impl PolicyEvaluationTask {
     }
 
     /// Evaluate policies for all nodes
+    #[allow(clippy::cognitive_complexity)]
     async fn evaluate_all_policies(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let start_time = std::time::Instant::now();
 
