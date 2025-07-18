@@ -1,0 +1,9 @@
+[workspace_coverage]
+ignored = true
+skip-clean = true
+workspace = true
+frozen = true
+branches = true
+out = ["Html", "Stdout"]
+output-dir = "target/tarpaulin"
+fail-under = 30
