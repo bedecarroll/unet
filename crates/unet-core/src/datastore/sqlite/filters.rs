@@ -211,6 +211,17 @@ pub fn apply_link_filters(
                     });
                 }
             },
+            "is_internet_circuit" => match &filter.value {
+                FilterValue::Boolean(b) => {
+                    let value = i32::from(*b);
+                    query = query.filter(links::Column::IsInternetCircuit.eq(value));
+                }
+                _ => {
+                    return Err(DataStoreError::ValidationError {
+                        message: "Is internet circuit filter must be a boolean".to_string(),
+                    });
+                }
+            },
             _ => {
                 return Err(DataStoreError::ValidationError {
                     message: format!("Unsupported filter field: {}", filter.field),

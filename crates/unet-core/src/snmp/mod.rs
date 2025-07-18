@@ -183,4 +183,116 @@ mod tests {
         let id2 = session2.id();
         assert_ne!(id1, id2); // Each session should have unique ID
     }
+
+    #[test]
+    fn test_snmp_error_display() {
+        let network_error = SnmpError::Network(std::io::Error::new(
+            std::io::ErrorKind::ConnectionRefused,
+            "Connection refused",
+        ));
+        assert!(network_error.to_string().contains("Network error"));
+        assert!(network_error.to_string().contains("Connection refused"));
+
+        let protocol_error = SnmpError::Protocol {
+            message: "Invalid PDU".to_string(),
+        };
+        assert!(protocol_error.to_string().contains("SNMP protocol error"));
+        assert!(protocol_error.to_string().contains("Invalid PDU"));
+
+        let timeout_error = SnmpError::Timeout {
+            duration: Duration::from_secs(5),
+        };
+        assert!(timeout_error.to_string().contains("SNMP timeout"));
+        assert!(timeout_error.to_string().contains("5s"));
+
+        let auth_error = SnmpError::Authentication;
+        assert!(auth_error.to_string().contains("authentication failed"));
+
+        let invalid_oid_error = SnmpError::InvalidOid {
+            oid: "1.3.6.1.invalid".to_string(),
+        };
+        assert!(invalid_oid_error.to_string().contains("Invalid OID"));
+        assert!(invalid_oid_error.to_string().contains("1.3.6.1.invalid"));
+
+        let parse_error = SnmpError::ParseError {
+            reason: "Malformed ASN.1".to_string(),
+        };
+        assert!(parse_error.to_string().contains("parse SNMP response"));
+        assert!(parse_error.to_string().contains("Malformed ASN.1"));
+
+        let pool_error = SnmpError::PoolExhausted {
+            max_connections: 10,
+        };
+        assert!(pool_error.to_string().contains("pool exhausted"));
+        assert!(pool_error.to_string().contains("10"));
+    }
+
+    #[test]
+    fn test_snmp_error_from_io_error() {
+        let io_error = std::io::Error::new(std::io::ErrorKind::TimedOut, "Timeout");
+        let snmp_error = SnmpError::from(io_error);
+
+        match snmp_error {
+            SnmpError::Network(e) => {
+                assert_eq!(e.kind(), std::io::ErrorKind::TimedOut);
+                assert_eq!(e.to_string(), "Timeout");
+            }
+            _ => panic!("Expected Network error"),
+        }
+    }
+
+    #[test]
+    fn test_snmp_error_debug() {
+        let error = SnmpError::Protocol {
+            message: "Test error".to_string(),
+        };
+        let debug_str = format!("{error:?}");
+        assert!(debug_str.contains("Protocol"));
+        assert!(debug_str.contains("Test error"));
+    }
+
+    #[test]
+    fn test_snmp_result_type() {
+        let success: SnmpResult<i32> = Ok(42);
+        assert!(success.is_ok());
+        assert_eq!(42, 42);
+
+        let failure: SnmpResult<i32> = Err(SnmpError::Authentication);
+        assert!(failure.is_err());
+
+        match SnmpError::Authentication {
+            SnmpError::Authentication => {} // Expected
+            _ => panic!("Expected Authentication error"),
+        }
+    }
+
+    #[test]
+    fn test_snmp_error_all_variants() {
+        let errors = vec![
+            SnmpError::Network(std::io::Error::new(std::io::ErrorKind::Other, "test")),
+            SnmpError::Protocol {
+                message: "test".to_string(),
+            },
+            SnmpError::Timeout {
+                duration: Duration::from_secs(1),
+            },
+            SnmpError::Authentication,
+            SnmpError::InvalidOid {
+                oid: "test".to_string(),
+            },
+            SnmpError::ParseError {
+                reason: "test".to_string(),
+            },
+            SnmpError::PoolExhausted { max_connections: 1 },
+        ];
+
+        for error in errors {
+            // Test that each error variant has a string representation
+            assert!(!error.to_string().is_empty());
+
+            // Test that each error can be formatted with debug
+            let debug_str = format!("{error:?}");
+            assert!(!debug_str.is_empty());
+        }
+    }
 }

@@ -1,7 +1,7 @@
 //! Transaction helper functions for common patterns
 
-use super::DataStore;
-use super::types::{DataStoreError, DataStoreResult, Transaction};
+use super::super::DataStore;
+use super::super::types::{DataStoreError, DataStoreResult, Transaction};
 use std::future::Future;
 
 /// Execute a function within a transaction with automatic commit/rollback

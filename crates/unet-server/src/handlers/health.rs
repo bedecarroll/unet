@@ -80,11 +80,11 @@ mod tests {
             policies_repo: None,
             templates_repo: None,
         };
-        
+
         // Use a temp directory for testing
         let temp_dir = std::env::temp_dir().join("unet_test_data");
         let _ = std::fs::create_dir_all(&temp_dir);
-        
+
         AppState {
             datastore: Arc::new(CsvStore::new(&temp_dir).await.unwrap()),
             policy_service: PolicyService::new(git_config),
@@ -95,13 +95,13 @@ mod tests {
     async fn test_health_check_healthy() {
         let app_state = create_healthy_app_state().await;
         let state = State(app_state);
-        
+
         let result = health_check(state).await;
         assert!(result.is_ok());
-        
+
         let (status_code, response) = result.unwrap();
         assert_eq!(status_code, StatusCode::OK);
-        
+
         let body = response.0;
         assert_eq!(body["status"], "healthy");
         assert_eq!(body["service"], "μNet");
@@ -131,7 +131,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
-        
+
         assert_eq!(response["status"], "healthy");
         assert_eq!(response["service"], "μNet");
         assert!(response["version"].is_string());
@@ -146,7 +146,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("degraded", false, &datastore);
-        
+
         assert_eq!(response["status"], "degraded");
         assert_eq!(response["service"], "μNet");
         assert!(response["version"].is_string());
@@ -161,7 +161,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
-        
+
         // Check that all required fields are present
         assert!(response["status"].is_string());
         assert!(response["service"].is_string());
@@ -179,7 +179,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
-        
+
         // Version should be a non-empty string
         let version = response["version"].as_str().unwrap();
         assert!(!version.is_empty());
@@ -191,7 +191,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
-        
+
         // Timestamp should be a valid RFC3339 string
         let timestamp = response["timestamp"].as_str().unwrap();
         assert!(chrono::DateTime::parse_from_rfc3339(timestamp).is_ok());
@@ -203,7 +203,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
-        
+
         // Service name should be μNet
         assert_eq!(response["service"], "μNet");
     }
@@ -214,10 +214,10 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
-        
+
         let components = &response["components"];
         assert!(components.is_object());
-        
+
         let datastore_component = &components["datastore"];
         assert!(datastore_component.is_object());
         assert!(datastore_component["status"].is_string());
@@ -230,18 +230,23 @@ mod tests {
         let temp_dir = std::env::temp_dir().join("unet_test_data_9");
         let _ = std::fs::create_dir_all(&temp_dir);
         let datastore = CsvStore::new(&temp_dir).await.unwrap();
-        
+
         let healthy_response = build_health_response("healthy", true, &datastore);
         let unhealthy_response = build_health_response("degraded", false, &datastore);
-        
+
         // Both should have the same structure
         assert_eq!(healthy_response["service"], unhealthy_response["service"]);
         assert_eq!(healthy_response["version"], unhealthy_response["version"]);
-        assert!(healthy_response["components"]["datastore"]["type"] == unhealthy_response["components"]["datastore"]["type"]);
-        
+        assert!(
+            healthy_response["components"]["datastore"]["type"]
+                == unhealthy_response["components"]["datastore"]["type"]
+        );
+
         // But different statuses
         assert_ne!(healthy_response["status"], unhealthy_response["status"]);
-        assert_ne!(healthy_response["components"]["datastore"]["status"], unhealthy_response["components"]["datastore"]["status"]);
+        assert_ne!(
+            healthy_response["components"]["datastore"]["status"],
+            unhealthy_response["components"]["datastore"]["status"]
+        );
     }
 }
-

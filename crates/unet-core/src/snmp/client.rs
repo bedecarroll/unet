@@ -142,7 +142,7 @@ impl SnmpClient {
     }
 
     /// Get client statistics (for testing compatibility)
-    pub async fn get_stats(&self) -> SnmpClientStats {
+    pub fn get_stats(&self) -> SnmpClientStats {
         SnmpClientStats {
             active_sessions: 0,
             max_connections: self.max_connections,
@@ -155,7 +155,7 @@ impl SnmpClient {
     }
 
     /// Update statistics (for testing compatibility)
-    pub async fn update_stats(&self, _success: bool, _duration: Duration) {
+    pub const fn update_stats(&self, _success: bool, _duration: Duration) {
         // Implementation would update internal stats
     }
 
@@ -231,3 +231,115 @@ impl Default for SnmpClientStats {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_snmp_client_stats_default() {
+        let stats = SnmpClientStats::default();
+        assert_eq!(stats.active_sessions, 0);
+        assert_eq!(stats.max_connections, 0);
+        assert_eq!(stats.available_permits, 0);
+        assert_eq!(stats.active_connections, 0);
+        assert_eq!(stats.total_requests, 0);
+        assert_eq!(stats.failed_requests, 0);
+        assert_eq!(stats.avg_response_time, Duration::ZERO);
+    }
+
+    #[test]
+    fn test_snmp_client_stats_creation() {
+        let stats = SnmpClientStats {
+            active_sessions: 5,
+            max_connections: 100,
+            available_permits: 95,
+            active_connections: 5,
+            total_requests: 1_234,
+            failed_requests: 10,
+            avg_response_time: Duration::from_millis(250),
+        };
+
+        assert_eq!(stats.active_sessions, 5);
+        assert_eq!(stats.max_connections, 100);
+        assert_eq!(stats.available_permits, 95);
+        assert_eq!(stats.active_connections, 5);
+        assert_eq!(stats.total_requests, 1_234);
+        assert_eq!(stats.failed_requests, 10);
+        assert_eq!(stats.avg_response_time, Duration::from_millis(250));
+    }
+
+    #[test]
+    fn test_snmp_client_stats_serialization() {
+        let stats = SnmpClientStats {
+            active_sessions: 2,
+            max_connections: 25,
+            available_permits: 23,
+            active_connections: 2,
+            total_requests: 500,
+            failed_requests: 5,
+            avg_response_time: Duration::from_millis(100),
+        };
+
+        let serialized = serde_json::to_string(&stats).unwrap();
+        let deserialized: SnmpClientStats = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(stats.active_sessions, deserialized.active_sessions);
+        assert_eq!(stats.max_connections, deserialized.max_connections);
+        assert_eq!(stats.available_permits, deserialized.available_permits);
+        assert_eq!(stats.active_connections, deserialized.active_connections);
+        assert_eq!(stats.total_requests, deserialized.total_requests);
+        assert_eq!(stats.failed_requests, deserialized.failed_requests);
+        assert_eq!(stats.avg_response_time, deserialized.avg_response_time);
+    }
+
+    #[test]
+    fn test_snmp_client_creation() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config.clone());
+
+        assert_eq!(client.max_connections, config.max_connections);
+        assert_eq!(
+            client.default_config.version,
+            config.default_session.version
+        );
+        assert_eq!(
+            client.default_config.timeout,
+            config.default_session.timeout
+        );
+        assert_eq!(
+            client.default_config.retries,
+            config.default_session.retries
+        );
+    }
+
+    #[test]
+    fn test_snmp_client_get_stats() {
+        let config = SnmpClientConfig {
+            max_connections: 10,
+            ..Default::default()
+        };
+        let client = SnmpClient::new(config);
+        let stats = client.get_stats();
+
+        assert_eq!(stats.max_connections, 10);
+        assert_eq!(stats.active_sessions, 0);
+        assert_eq!(stats.active_connections, 0);
+        assert_eq!(stats.total_requests, 0);
+        assert_eq!(stats.failed_requests, 0);
+        assert_eq!(stats.avg_response_time, Duration::ZERO);
+    }
+
+    #[test]
+    fn test_snmp_client_update_stats() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config);
+
+        client.update_stats(true, Duration::from_millis(100));
+        client.update_stats(false, Duration::from_millis(200));
+
+        // Since update_stats is currently a no-op, we just verify it doesn't panic
+        let stats = client.get_stats();
+        assert_eq!(stats.total_requests, 0);
+    }
+}

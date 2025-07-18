@@ -24,6 +24,7 @@ pub(crate) struct CsvData {
 }
 
 /// CSV-based `DataStore` implementation
+#[derive(Debug)]
 pub struct CsvStore {
     /// Base directory path for CSV files
     pub(crate) base_path: PathBuf,
@@ -158,6 +159,13 @@ impl CsvStore {
 
             (nodes_content, links_content, locations_content)
         };
+
+        // Ensure the directory exists before writing files
+        fs::create_dir_all(&self.base_path)
+            .await
+            .map_err(|e| DataStoreError::ConnectionError {
+                message: format!("Failed to create directory: {e}"),
+            })?;
 
         // Now write files without holding the lock
         fs::write(self.base_path.join("nodes.json"), nodes_content)
