@@ -10,40 +10,49 @@ use uuid::Uuid;
 use super::types::PolicyEvaluationSummary;
 
 /// Get nodes for policy evaluation based on request
-#[allow(clippy::cognitive_complexity)]
 pub async fn get_nodes_for_evaluation(
     datastore: &dyn DataStore,
     node_ids: Option<&Vec<Uuid>>,
 ) -> Result<Vec<Node>, ServerError> {
-    if let Some(node_ids) = node_ids {
-        let mut nodes = Vec::new();
-        for node_id in node_ids {
-            match datastore.get_node(node_id).await {
-                Ok(Some(node)) => nodes.push(node),
-                Ok(None) => {
-                    warn!("Node {} not found for policy evaluation", node_id);
-                }
-                Err(e) => {
-                    error!("Failed to get node {}: {}", node_id, e);
-                    return Err(ServerError::Internal(format!(
-                        "Failed to get node {node_id}: {e}"
-                    )));
-                }
-            }
-        }
-        Ok(nodes)
-    } else {
-        // Evaluate all nodes
-        match datastore.get_nodes_for_policy_evaluation().await {
-            Ok(nodes) => Ok(nodes),
-            Err(e) => {
-                error!("Failed to get nodes for policy evaluation: {}", e);
-                Err(ServerError::Internal(format!(
-                    "Failed to get nodes for policy evaluation: {e}"
-                )))
-            }
+    match node_ids {
+        Some(node_ids) => get_specific_nodes(datastore, node_ids).await,
+        None => get_all_nodes_for_evaluation(datastore).await,
+    }
+}
+
+async fn get_specific_nodes(
+    datastore: &dyn DataStore,
+    node_ids: &[Uuid],
+) -> Result<Vec<Node>, ServerError> {
+    let mut nodes = Vec::new();
+    for node_id in node_ids {
+        if let Some(node) = fetch_node_by_id(datastore, node_id).await? {
+            nodes.push(node);
+        } else {
+            warn!("Node {} not found for policy evaluation", node_id);
         }
     }
+    Ok(nodes)
+}
+
+async fn fetch_node_by_id(
+    datastore: &dyn DataStore,
+    node_id: &Uuid,
+) -> Result<Option<Node>, ServerError> {
+    datastore.get_node(node_id).await.map_err(|e| {
+        error!("Failed to get node {}: {}", node_id, e);
+        ServerError::Internal(format!("Failed to get node {node_id}: {e}"))
+    })
+}
+
+async fn get_all_nodes_for_evaluation(datastore: &dyn DataStore) -> Result<Vec<Node>, ServerError> {
+    datastore
+        .get_nodes_for_policy_evaluation()
+        .await
+        .map_err(|e| {
+            error!("Failed to get nodes for policy evaluation: {}", e);
+            ServerError::Internal(format!("Failed to get nodes for policy evaluation: {e}"))
+        })
 }
 
 /// Process evaluation results for a single node

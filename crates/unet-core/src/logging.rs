@@ -65,7 +65,6 @@ fn init_tracing_console_only(config: &LoggingConfig, env_filter: EnvFilter) {
     );
 }
 
-#[allow(clippy::doc_comment_double_space_linebreaks)]
 /// Initialize tracing with both console and file output
 /// Note: For now, we validate the file path but only use console output
 /// TODO: Implement proper file logging with `tracing_appender` in future
