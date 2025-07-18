@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#MISE description="Run database migrations"
+#MISE sources=["crates/migrations/src/**/*.rs"]
+
+# Usage: mise run migrate [up|down|fresh|reset|status]
+COMMAND=${1:-"up"}
+DATABASE_URL="${DATABASE_URL:-sqlite:./unet.db?mode=rwc}"
+
+echo "🗄️ Running migration command: $COMMAND"
+DATABASE_URL="$DATABASE_URL" cargo run --package migration -- "$COMMAND"

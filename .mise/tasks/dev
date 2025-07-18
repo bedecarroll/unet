@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Start development mode with auto-reload"
+#MISE alias="d"
+
+echo "🔥 Starting development mode..."
+cargo watch -x "run --bin unet-server"
