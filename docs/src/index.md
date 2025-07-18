@@ -51,7 +51,7 @@ Choose your path based on how you'll use μNet:
 
 ## 📋 Examples & Resources
 
-- **[Example Configurations](https://github.com/bedecarroll/unet/tree/main/docs/static/examples)** - Sample network topologies and policies
+- **[API Reference](api_reference.md)** - Complete HTTP API documentation
 - **[GitHub Repository](https://github.com/bedecarroll/unet)** - Source code and issue tracking
 - **[Release Notes](roadmap.md#current-status-v010)** - Latest features and changes
 

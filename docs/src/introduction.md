@@ -82,12 +82,18 @@ THEN ASSERT custom_data.snmp_version == "v3"
 - **Rich CLI**: Command-line interface with multiple output formats
 - **Data Import/Export**: Bulk operations for network data
 
-### 🚧 **Coming Soon**
+### 🚧 **In Development**
 
-- **Configuration Templates**: Generate device configs from templates
-- **Historical Analytics**: Time-series data and trend analysis  
-- **Configuration Push**: Deploy generated configs to devices
-- **Advanced Alerting**: Notifications for policy violations
+- **Background SNMP Integration**: Automatic device polling and database updates
+- **API Completeness**: Full implementation of location/link endpoints
+- **Derived State Tracking**: Historical device status and metrics
+
+### 🔮 **Future Planned Features**
+
+- **Configuration Templates**: Generate device configs from templates (NOT STARTED)
+- **Historical Analytics**: Time-series data and trend analysis (NOT STARTED)
+- **Configuration Push**: Deploy generated configs to devices (NOT STARTED)
+- **Advanced Alerting**: Notifications for policy violations (NOT STARTED)
 
 ---
 

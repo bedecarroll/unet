@@ -572,7 +572,7 @@ unet --database-url sqlite://test.db nodes show test
 
 - **GitHub Issues**: <https://github.com/bedecarroll/unet/issues>
 - **Documentation**: <https://unet.bedecarroll.com>
-- **Examples**: Check `docs/static/examples/` directory
+- **CLI Reference**: See complete command documentation
 
 ### Self-Help Resources
 
