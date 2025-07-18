@@ -6,7 +6,11 @@ use axum::{
 };
 use std::collections::HashMap;
 use tracing::{error, info, warn};
-use unet_core::policy::PolicyRule;
+use unet_core::datastore::DataStore;
+use unet_core::models::Node;
+use unet_core::policy::{PolicyExecutionResult, PolicyRule};
+use unet_core::policy_integration::PolicyService;
+use uuid::Uuid;
 
 use crate::{
     error::{ServerError, ServerResult},
@@ -22,7 +26,6 @@ use super::{
 };
 
 /// Evaluate policies against nodes
-#[allow(clippy::cognitive_complexity)]
 pub async fn evaluate_policies(
     State(state): State<AppState>,
     Json(request): Json<PolicyEvaluationRequest>,
@@ -33,61 +36,79 @@ pub async fn evaluate_policies(
     );
 
     let start_time = std::time::Instant::now();
-
-    // Get policy service from app state
     let mut policy_service = state.policy_service.clone();
 
-    // Determine which nodes to evaluate
     let nodes = get_nodes_for_evaluation(&*state.datastore, request.node_ids.as_ref()).await?;
-
     if nodes.is_empty() {
-        return Ok(Json(PolicyEvaluationResponse {
-            results: HashMap::new(),
-            nodes_evaluated: 0,
-            policies_evaluated: 0,
-            evaluation_time_ms: u64::try_from(start_time.elapsed().as_millis()).unwrap_or(0),
-            summary: PolicyEvaluationSummary {
-                total_rules: 0,
-                satisfied_rules: 0,
-                unsatisfied_rules: 0,
-                error_rules: 0,
-                compliance_failures: 0,
-            },
-        }));
+        return Ok(Json(create_empty_response(start_time)));
     }
 
-    // Load policies (either from request or from configured source)
-    let policies = if let Some(policies) = request.policies {
-        policies
-    } else {
-        match policy_service.load_policies() {
-            Ok(policies) => policies,
-            Err(e) => {
-                error!("Failed to load policies: {}", e);
-                return Err(ServerError::Internal(format!(
-                    "Failed to load policies: {e}"
-                )));
-            }
-        }
-    };
-
+    let policies = load_policies_for_request(&mut policy_service, &request)?;
     if policies.is_empty() {
         warn!("No policies found for evaluation");
-        return Ok(Json(PolicyEvaluationResponse {
-            results: HashMap::new(),
-            nodes_evaluated: 0,
-            policies_evaluated: 0,
-            evaluation_time_ms: u64::try_from(start_time.elapsed().as_millis()).unwrap_or(0),
-            summary: PolicyEvaluationSummary {
-                total_rules: 0,
-                satisfied_rules: 0,
-                unsatisfied_rules: 0,
-                error_rules: 0,
-                compliance_failures: 0,
-            },
-        }));
+        return Ok(Json(create_empty_response(start_time)));
     }
 
+    let (all_results, summary) = evaluate_nodes_against_policies(
+        &mut policy_service,
+        &*state.datastore,
+        &nodes,
+        request.store_results.unwrap_or(true),
+    )
+    .await;
+
+    let evaluation_time = start_time.elapsed();
+    log_evaluation_completion(&nodes, &policies, evaluation_time);
+
+    Ok(Json(PolicyEvaluationResponse {
+        results: all_results,
+        nodes_evaluated: nodes.len(),
+        policies_evaluated: policies.len(),
+        evaluation_time_ms: u64::try_from(evaluation_time.as_millis()).unwrap_or(0),
+        summary,
+    }))
+}
+
+fn create_empty_response(start_time: std::time::Instant) -> PolicyEvaluationResponse {
+    PolicyEvaluationResponse {
+        results: HashMap::new(),
+        nodes_evaluated: 0,
+        policies_evaluated: 0,
+        evaluation_time_ms: u64::try_from(start_time.elapsed().as_millis()).unwrap_or(0),
+        summary: PolicyEvaluationSummary {
+            total_rules: 0,
+            satisfied_rules: 0,
+            unsatisfied_rules: 0,
+            error_rules: 0,
+            compliance_failures: 0,
+        },
+    }
+}
+
+fn load_policies_for_request(
+    policy_service: &mut PolicyService,
+    request: &PolicyEvaluationRequest,
+) -> Result<Vec<PolicyRule>, ServerError> {
+    request.policies.as_ref().map_or_else(
+        || {
+            policy_service.load_policies().map_err(|e| {
+                error!("Failed to load policies: {}", e);
+                ServerError::Internal(format!("Failed to load policies: {e}"))
+            })
+        },
+        |policies| Ok(policies.clone()),
+    )
+}
+
+async fn evaluate_nodes_against_policies(
+    policy_service: &mut PolicyService,
+    datastore: &dyn DataStore,
+    nodes: &[Node],
+    store_results: bool,
+) -> (
+    HashMap<Uuid, Vec<PolicyExecutionResult>>,
+    PolicyEvaluationSummary,
+) {
     let mut all_results = HashMap::new();
     let mut summary = PolicyEvaluationSummary {
         total_rules: 0,
@@ -97,35 +118,32 @@ pub async fn evaluate_policies(
         compliance_failures: 0,
     };
 
-    // Evaluate policies for each node
-    for node in &nodes {
+    for node in nodes {
         process_node_evaluation(
-            &mut policy_service,
-            &*state.datastore,
+            policy_service,
+            datastore,
             node,
-            request.store_results.unwrap_or(true),
+            store_results,
             &mut summary,
             &mut all_results,
         )
         .await;
     }
 
-    let evaluation_time = start_time.elapsed();
+    (all_results, summary)
+}
 
+fn log_evaluation_completion(
+    nodes: &[Node],
+    policies: &[PolicyRule],
+    evaluation_time: std::time::Duration,
+) {
     info!(
         "Policy evaluation completed: {} nodes, {} policies, {:?}",
         nodes.len(),
         policies.len(),
         evaluation_time
     );
-
-    Ok(Json(PolicyEvaluationResponse {
-        results: all_results,
-        nodes_evaluated: nodes.len(),
-        policies_evaluated: policies.len(),
-        evaluation_time_ms: u64::try_from(evaluation_time.as_millis()).unwrap_or(0),
-        summary,
-    }))
 }
 
 /// Get policy evaluation results

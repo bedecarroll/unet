@@ -56,7 +56,6 @@ struct PolicyEvaluationTask {
 
 impl PolicyEvaluationTask {
     /// Run the policy evaluation task
-    #[allow(clippy::cognitive_complexity)]
     async fn run(&self) {
         info!(
             "Starting policy evaluation background task with interval: {}s",
@@ -70,68 +69,72 @@ impl PolicyEvaluationTask {
 
         loop {
             interval.tick().await;
-
             debug!("Running periodic policy evaluation");
+            self.run_policy_evaluation_cycle().await;
+        }
+    }
 
-            if let Err(e) = self.evaluate_all_policies().await {
-                error!("Policy evaluation failed: {}", e);
-            }
+    async fn run_policy_evaluation_cycle(&self) {
+        if let Err(e) = self.evaluate_all_policies().await {
+            error!("Policy evaluation failed: {}", e);
         }
     }
 
     /// Evaluate policies for all nodes
-    #[allow(clippy::cognitive_complexity)]
     async fn evaluate_all_policies(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let start_time = std::time::Instant::now();
 
-        // Get all nodes that need policy evaluation
-        let nodes = self
-            .datastore
-            .get_nodes_for_policy_evaluation()
-            .await
-            .map_err(|e| format!("Failed to get nodes: {e}"))?;
-
+        let nodes = self.get_nodes_for_evaluation().await?;
         if nodes.is_empty() {
             debug!("No nodes found for policy evaluation");
             return Ok(());
         }
 
-        info!("Evaluating policies for {} nodes", nodes.len());
-
-        // Clone policy service for mutable operations
-        let mut policy_service = self.policy_service.clone();
-
-        // Load policies
-        let policies = policy_service
-            .load_policies()
-            .map_err(|e| format!("Failed to load policies: {e}"))?;
-
+        let policies = self.load_policies_for_evaluation()?;
         if policies.is_empty() {
             debug!("No policies loaded for evaluation");
             return Ok(());
         }
 
+        let stats = self.evaluate_nodes(&nodes).await;
+        Self::log_evaluation_results(&nodes, &stats, start_time.elapsed());
+
+        Ok(())
+    }
+
+    async fn get_nodes_for_evaluation(
+        &self,
+    ) -> Result<Vec<unet_core::models::Node>, Box<dyn std::error::Error + Send + Sync>> {
+        self.datastore
+            .get_nodes_for_policy_evaluation()
+            .await
+            .map_err(|e| format!("Failed to get nodes: {e}").into())
+    }
+
+    fn load_policies_for_evaluation(
+        &self,
+    ) -> Result<Vec<unet_core::policy::PolicyRule>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut policy_service = self.policy_service.clone();
+        let policies = policy_service
+            .load_policies()
+            .map_err(|e| format!("Failed to load policies: {e}"))?;
+
         info!("Loaded {} policies for evaluation", policies.len());
+        Ok(policies)
+    }
 
-        let mut total_results = 0;
-        let mut successful_evaluations = 0;
-        let mut failed_evaluations = 0;
+    async fn evaluate_nodes(&self, nodes: &[unet_core::models::Node]) -> EvaluationStats {
+        info!("Evaluating policies for {} nodes", nodes.len());
 
-        // Evaluate policies for each node
-        for node in &nodes {
+        let mut stats = EvaluationStats::new();
+        let mut policy_service = self.policy_service.clone();
+
+        for node in nodes {
             match policy_service.evaluate_node(&*self.datastore, node).await {
                 Ok(results) => {
-                    total_results += results.len();
-                    successful_evaluations += 1;
-
-                    // Store results in the database
-                    if let Err(e) = policy_service
-                        .store_results(&*self.datastore, &node.id, &results)
-                        .await
-                    {
-                        warn!("Failed to store policy results for node {}: {}", node.id, e);
-                    }
-
+                    stats.record_success(results.len());
+                    self.store_evaluation_results(&policy_service, node, &results)
+                        .await;
                     debug!(
                         "Evaluated {} policies for node {} ({})",
                         results.len(),
@@ -140,7 +143,7 @@ impl PolicyEvaluationTask {
                     );
                 }
                 Err(e) => {
-                    failed_evaluations += 1;
+                    stats.record_failure();
                     error!(
                         "Failed to evaluate policies for node {} ({}): {}",
                         node.id, node.name, e
@@ -149,17 +152,60 @@ impl PolicyEvaluationTask {
             }
         }
 
-        let duration = start_time.elapsed();
+        stats
+    }
 
+    async fn store_evaluation_results(
+        &self,
+        policy_service: &unet_core::policy_integration::PolicyService,
+        node: &unet_core::models::Node,
+        results: &[unet_core::policy::PolicyExecutionResult],
+    ) {
+        if let Err(e) = policy_service
+            .store_results(&*self.datastore, &node.id, results)
+            .await
+        {
+            warn!("Failed to store policy results for node {}: {}", node.id, e);
+        }
+    }
+
+    fn log_evaluation_results(
+        nodes: &[unet_core::models::Node],
+        stats: &EvaluationStats,
+        duration: std::time::Duration,
+    ) {
         info!(
             "Policy evaluation completed: {} nodes processed, {} successful, {} failed, {} total results, took {:?}",
             nodes.len(),
-            successful_evaluations,
-            failed_evaluations,
-            total_results,
+            stats.successful_evaluations,
+            stats.failed_evaluations,
+            stats.total_results,
             duration
         );
+    }
+}
 
-        Ok(())
+struct EvaluationStats {
+    total_results: usize,
+    successful_evaluations: usize,
+    failed_evaluations: usize,
+}
+
+impl EvaluationStats {
+    const fn new() -> Self {
+        Self {
+            total_results: 0,
+            successful_evaluations: 0,
+            failed_evaluations: 0,
+        }
+    }
+
+    const fn record_success(&mut self, result_count: usize) {
+        self.total_results += result_count;
+        self.successful_evaluations += 1;
+    }
+
+    const fn record_failure(&mut self) {
+        self.failed_evaluations += 1;
     }
 }

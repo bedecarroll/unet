@@ -5,7 +5,7 @@ use crate::snmp::{SnmpClient, SnmpClientConfig};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{RwLock, mpsc, oneshot};
 use tokio::time::{Instant, interval};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -123,55 +123,74 @@ impl PollingScheduler {
     }
 
     /// Handle control messages
-    #[allow(clippy::cognitive_complexity)]
     async fn handle_message(&self, message: PollingMessage) -> bool {
         match message {
             PollingMessage::AddTask(task) => {
-                info!(task_id = %task.id, target = %task.target, "Adding polling task");
-                let mut tasks = self.tasks.write().await;
-                tasks.insert(task.id, task);
+                self.handle_add_task(task).await;
             }
-
             PollingMessage::RemoveTask(task_id) => {
-                info!(task_id = %task_id, "Removing polling task");
-                let mut tasks = self.tasks.write().await;
-                tasks.remove(&task_id);
+                self.handle_remove_task(task_id).await;
             }
-
             PollingMessage::UpdateTask(task) => {
-                info!(task_id = %task.id, "Updating polling task");
-                let mut tasks = self.tasks.write().await;
-                tasks.insert(task.id, task);
+                self.handle_update_task(task).await;
             }
-
             PollingMessage::EnableTask(task_id, enabled) => {
-                info!(task_id = %task_id, enabled = enabled, "Updating task enabled state");
-                let mut tasks = self.tasks.write().await;
-                if let Some(task) = tasks.get_mut(&task_id) {
-                    task.enabled = enabled;
-                }
+                self.handle_enable_task(task_id, enabled).await;
             }
-
             PollingMessage::GetTaskStatus(task_id, response_tx) => {
-                let task = self.tasks.read().await.get(&task_id).cloned();
-                // Intentionally ignore send result - receiver may have dropped
-                let _ = response_tx.send(task);
+                self.handle_get_task_status(task_id, response_tx).await;
             }
-
             PollingMessage::ListTasks(response_tx) => {
-                let task_list: Vec<PollingTask> =
-                    self.tasks.read().await.values().cloned().collect();
-                // Intentionally ignore send result - receiver may have dropped
-                let _ = response_tx.send(task_list);
+                self.handle_list_tasks(response_tx).await;
             }
-
             PollingMessage::Shutdown => {
                 info!("Shutdown requested");
                 return true;
             }
         }
-
         false
+    }
+
+    async fn handle_add_task(&self, task: PollingTask) {
+        info!(task_id = %task.id, target = %task.target, "Adding polling task");
+        let mut tasks = self.tasks.write().await;
+        tasks.insert(task.id, task);
+    }
+
+    async fn handle_remove_task(&self, task_id: Uuid) {
+        info!(task_id = %task_id, "Removing polling task");
+        let mut tasks = self.tasks.write().await;
+        tasks.remove(&task_id);
+    }
+
+    async fn handle_update_task(&self, task: PollingTask) {
+        info!(task_id = %task.id, "Updating polling task");
+        let mut tasks = self.tasks.write().await;
+        tasks.insert(task.id, task);
+    }
+
+    async fn handle_enable_task(&self, task_id: Uuid, enabled: bool) {
+        info!(task_id = %task_id, enabled = enabled, "Updating task enabled state");
+        let mut tasks = self.tasks.write().await;
+        if let Some(task) = tasks.get_mut(&task_id) {
+            task.enabled = enabled;
+        }
+    }
+
+    async fn handle_get_task_status(
+        &self,
+        task_id: Uuid,
+        response_tx: oneshot::Sender<Option<PollingTask>>,
+    ) {
+        let task = self.tasks.read().await.get(&task_id).cloned();
+        // Intentionally ignore send result - receiver may have dropped
+        let _ = response_tx.send(task);
+    }
+
+    async fn handle_list_tasks(&self, response_tx: oneshot::Sender<Vec<PollingTask>>) {
+        let task_list: Vec<PollingTask> = self.tasks.read().await.values().cloned().collect();
+        // Intentionally ignore send result - receiver may have dropped
+        let _ = response_tx.send(task_list);
     }
 
     /// Check tasks and poll those that are due
@@ -220,7 +239,6 @@ impl PollingScheduler {
     }
 
     /// Poll a single task
-    #[allow(clippy::cognitive_complexity)]
     async fn poll_task(
         mut task: PollingTask,
         snmp_client: Arc<SnmpClient>,
@@ -237,8 +255,25 @@ impl PollingScheduler {
             "Starting SNMP poll"
         );
 
-        // Perform the SNMP poll with timeout
-        let poll_result = tokio::time::timeout(
+        let poll_result = Self::execute_snmp_poll(&task, &snmp_client, timeout).await;
+        let duration = start_time.elapsed();
+        let (success, values, error) = Self::process_poll_result(poll_result, &mut task, timeout);
+        let result =
+            Self::create_polling_result(&task, poll_start, success, values, error, duration);
+
+        Self::send_result(result, &result_tx);
+        Self::log_poll_completion(&task, success, duration);
+    }
+
+    async fn execute_snmp_poll(
+        task: &PollingTask,
+        snmp_client: &SnmpClient,
+        timeout: Duration,
+    ) -> Result<
+        Result<HashMap<String, crate::snmp::SnmpValue>, crate::snmp::SnmpError>,
+        tokio::time::error::Elapsed,
+    > {
+        tokio::time::timeout(
             timeout,
             snmp_client.get(
                 task.target,
@@ -250,14 +285,24 @@ impl PollingScheduler {
                 Some(task.session_config.clone()),
             ),
         )
-        .await;
+        .await
+    }
 
-        let duration = start_time.elapsed();
-
-        // Process poll result
-        let (success, values, error) = match poll_result {
+    fn process_poll_result(
+        poll_result: Result<
+            Result<HashMap<String, crate::snmp::SnmpValue>, crate::snmp::SnmpError>,
+            tokio::time::error::Elapsed,
+        >,
+        task: &mut PollingTask,
+        timeout: Duration,
+    ) -> (
+        bool,
+        HashMap<String, crate::snmp::SnmpValue>,
+        Option<String>,
+    ) {
+        match poll_result {
             Ok(Ok(values)) => {
-                task.last_success = Some(poll_start);
+                task.last_success = Some(SystemTime::now());
                 task.consecutive_failures = 0;
                 task.last_error = None;
                 (true, values, None)
@@ -273,10 +318,18 @@ impl PollingScheduler {
                 task.last_error = Some(error_msg.clone());
                 (false, HashMap::new(), Some(error_msg))
             }
-        };
+        }
+    }
 
-        // Send result
-        let result = PollingResult {
+    const fn create_polling_result(
+        task: &PollingTask,
+        poll_start: SystemTime,
+        success: bool,
+        values: HashMap<String, crate::snmp::SnmpValue>,
+        error: Option<String>,
+        duration: Duration,
+    ) -> PollingResult {
+        PollingResult {
             task_id: task.id,
             node_id: task.node_id,
             target: task.target,
@@ -285,12 +338,16 @@ impl PollingScheduler {
             values,
             error,
             duration,
-        };
+        }
+    }
 
+    fn send_result(result: PollingResult, result_tx: &mpsc::UnboundedSender<PollingResult>) {
         if let Err(e) = result_tx.send(result) {
             error!(error = %e, "Failed to send polling result");
         }
+    }
 
+    fn log_poll_completion(task: &PollingTask, success: bool, duration: Duration) {
         if success {
             debug!(
                 task_id = %task.id,

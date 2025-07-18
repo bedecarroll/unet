@@ -53,7 +53,7 @@ derived state (SNMP polling)
 
 ### 4. Documentation Standards
 
-- **NEVER** make qualitative judgements about code quality in documentation
+- **NEVER** make qualitative judgments about code quality in documentation
 - **ALWAYS** let code quality speak for itself through metrics and tests
 - **NEVER** use subjective terms like "excellent", "solid", "clean", "high-quality"
 - **ALWAYS** use objective statements with measurable criteria

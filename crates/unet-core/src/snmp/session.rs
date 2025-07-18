@@ -88,7 +88,6 @@ impl SnmpSession {
     /// # Errors
     ///
     /// Returns `SnmpError` if the SNMP request fails or times out
-    #[allow(clippy::cognitive_complexity)]
     pub async fn get(&mut self, oids: &[&str]) -> SnmpResult<HashMap<String, SnmpValue>> {
         debug!(
             session_id = %self.session_id,
@@ -104,15 +103,7 @@ impl SnmpSession {
         }
 
         // Convert string OIDs to ObjectIdentifier objects
-        let mut oid_objects = Vec::new();
-        for oid_str in oids {
-            let oid = oid_str
-                .parse::<ObjectIdentifier>()
-                .map_err(|_| SnmpError::InvalidOid {
-                    oid: (*oid_str).to_string(),
-                })?;
-            oid_objects.push(oid);
-        }
+        let oid_objects = Self::parse_oids(oids)?;
 
         // Cache values before mutable borrow
         let session_id = self.session_id;
@@ -158,6 +149,18 @@ impl SnmpSession {
         );
 
         Ok(result)
+    }
+
+    fn parse_oids(oids: &[&str]) -> SnmpResult<Vec<ObjectIdentifier>> {
+        oids.iter()
+            .map(|oid_str| {
+                oid_str
+                    .parse::<ObjectIdentifier>()
+                    .map_err(|_| SnmpError::InvalidOid {
+                        oid: (*oid_str).to_string(),
+                    })
+            })
+            .collect()
     }
 
     /// Perform SNMP GETNEXT operation (table walking)

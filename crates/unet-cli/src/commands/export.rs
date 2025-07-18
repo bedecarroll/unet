@@ -23,7 +23,6 @@ pub struct ExportArgs {
     only: Option<Vec<String>>,
 }
 
-#[allow(clippy::cognitive_complexity)]
 pub async fn execute(
     args: ExportArgs,
     datastore: &dyn DataStore,
@@ -31,82 +30,112 @@ pub async fn execute(
 ) -> Result<()> {
     info!("Starting export to: {}", args.to.display());
 
-    // Create destination directory if it doesn't exist
-    if !args.to.exists() {
-        tokio::fs::create_dir_all(&args.to).await?;
-        info!("Created destination directory: {}", args.to.display());
+    prepare_export_directory(&args.to).await?;
+
+    let export_types = determine_export_types(args.only.as_ref());
+    let mut export_stats = ExportStats::new();
+
+    // Export each type
+    export_data_type(
+        "locations",
+        &export_types,
+        &args,
+        datastore,
+        &mut export_stats,
+    )
+    .await;
+    export_data_type("nodes", &export_types, &args, datastore, &mut export_stats).await;
+    export_data_type("links", &export_types, &args, datastore, &mut export_stats).await;
+
+    finalize_export(&export_stats, args, output_format)
+}
+
+struct ExportStats {
+    exported_count: usize,
+    errors: Vec<String>,
+}
+
+impl ExportStats {
+    const fn new() -> Self {
+        Self {
+            exported_count: 0,
+            errors: Vec::new(),
+        }
     }
 
-    let mut exported_count = 0;
-    let mut errors = Vec::new();
+    fn record_success(&mut self, count: usize, data_type: &str) {
+        self.exported_count += count;
+        info!("Exported {} {}", count, data_type);
+    }
 
-    let export_all = args.only.is_none();
-    let export_types = args.only.clone().unwrap_or_else(|| {
+    fn record_error(&mut self, error_msg: &str) {
+        self.errors.push(error_msg.to_string());
+        warn!("{}", error_msg);
+    }
+}
+
+async fn prepare_export_directory(to: &std::path::Path) -> Result<()> {
+    if !to.exists() {
+        tokio::fs::create_dir_all(to).await?;
+        info!("Created destination directory: {}", to.display());
+    }
+    Ok(())
+}
+
+fn determine_export_types(only: Option<&Vec<String>>) -> Vec<String> {
+    only.cloned().unwrap_or_else(|| {
         vec![
             "locations".to_owned(),
             "nodes".to_owned(),
             "links".to_owned(),
         ]
-    });
+    })
+}
 
-    // Export locations
-    if export_all || export_types.contains(&"locations".to_owned()) {
-        match export_locations(&args, datastore).await {
-            Ok(count) => {
-                exported_count += count;
-                info!("Exported {} locations", count);
-            }
-            Err(e) => {
-                let error_msg = format!("Failed to export locations: {e}");
-                errors.push(error_msg.clone());
-                warn!("{}", error_msg);
-            }
-        }
+async fn export_data_type(
+    data_type: &str,
+    export_types: &[String],
+    args: &ExportArgs,
+    datastore: &dyn DataStore,
+    stats: &mut ExportStats,
+) {
+    if !export_types.contains(&data_type.to_owned()) {
+        return;
     }
 
-    // Export nodes
-    if export_all || export_types.contains(&"nodes".to_owned()) {
-        match export_nodes(&args, datastore).await {
-            Ok(count) => {
-                exported_count += count;
-                info!("Exported {} nodes", count);
-            }
-            Err(e) => {
-                let error_msg = format!("Failed to export nodes: {e}");
-                errors.push(error_msg.clone());
-                warn!("{}", error_msg);
-            }
+    let result = match data_type {
+        "locations" => export_locations(args, datastore).await,
+        "nodes" => export_nodes(args, datastore).await,
+        "links" => export_links(args, datastore).await,
+        _ => return,
+    };
+
+    match result {
+        Ok(count) => stats.record_success(count, data_type),
+        Err(e) => {
+            let error_msg = format!("Failed to export {data_type}: {e}");
+            stats.record_error(&error_msg);
         }
     }
+}
 
-    // Export links
-    if export_all || export_types.contains(&"links".to_owned()) {
-        match export_links(&args, datastore).await {
-            Ok(count) => {
-                exported_count += count;
-                info!("Exported {} links", count);
-            }
-            Err(e) => {
-                let error_msg = format!("Failed to export links: {e}");
-                errors.push(error_msg.clone());
-                warn!("{}", error_msg);
-            }
-        }
-    }
-
-    // Print summary
-    let error_count = errors.len();
+fn finalize_export(
+    stats: &ExportStats,
+    args: ExportArgs,
+    output_format: crate::OutputFormat,
+) -> Result<()> {
+    let error_count = stats.errors.len();
     let summary = ExportSummary {
-        exported_count,
+        exported_count: stats.exported_count,
         error_count,
-        errors: errors.clone(),
+        errors: stats.errors.clone(),
         destination: args.to.clone(),
-        format: args.format.clone(),
+        format: args.format,
     };
 
     crate::commands::print_output(&summary, output_format)?;
 
-    if !errors.is_empty() {
+    if !stats.errors.is_empty() {
         return Err(anyhow::anyhow!(
             "Export completed with {} errors",
             error_count
@@ -115,7 +144,7 @@ pub async fn execute(
 
     info!(
         "Export completed successfully: {} items exported",
-        exported_count
+        stats.exported_count
     );
     Ok(())
 }

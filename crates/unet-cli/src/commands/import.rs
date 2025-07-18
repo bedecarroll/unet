@@ -24,7 +24,6 @@ pub struct ImportArgs {
     continue_on_error: bool,
 }
 
-#[allow(clippy::cognitive_complexity)]
 pub async fn execute(
     args: ImportArgs,
     datastore: &dyn DataStore,
@@ -36,90 +35,156 @@ pub async fn execute(
         info!("Running in dry-run mode - no data will be imported");
     }
 
-    let mut success_count = 0;
-    let mut error_count = 0;
-    let mut errors = Vec::new();
+    let mut import_stats = ImportStats::new();
 
-    // Import locations first (dependencies)
-    if let Some(locations) = load_locations(&args.from).await? {
-        info!("Importing {} locations...", locations.len());
-        for location in locations {
-            match import_location(&location, datastore, args.dry_run).await {
-                Ok(()) => success_count += 1,
-                Err(e) => {
-                    error_count += 1;
-                    let error_msg = format!("Failed to import location '{}': {}", location.name, e);
-                    errors.push(error_msg.clone());
-                    warn!("{}", error_msg);
+    // Import in dependency order: locations, nodes, links
+    import_locations(&args, datastore, &mut import_stats).await?;
+    import_nodes(&args, datastore, &mut import_stats).await?;
+    import_links(&args, datastore, &mut import_stats).await?;
 
-                    if !args.continue_on_error {
-                        return Err(anyhow::anyhow!("Import failed: {}", error_msg));
-                    }
-                }
-            }
+    finalize_import(&import_stats, &args, output_format)
+}
+
+struct ImportStats {
+    success_count: usize,
+    error_count: usize,
+    errors: Vec<String>,
+}
+
+impl ImportStats {
+    const fn new() -> Self {
+        Self {
+            success_count: 0,
+            error_count: 0,
+            errors: Vec::new(),
         }
     }
 
-    // Import nodes second
-    if let Some(nodes) = load_nodes(&args.from).await? {
-        info!("Importing {} nodes...", nodes.len());
-        for node in nodes {
-            match import_node(&node, datastore, args.dry_run).await {
-                Ok(()) => success_count += 1,
-                Err(e) => {
-                    error_count += 1;
-                    let error_msg = format!("Failed to import node '{}': {}", node.name, e);
-                    errors.push(error_msg.clone());
-                    warn!("{}", error_msg);
+    const fn record_success(&mut self) {
+        self.success_count += 1;
+    }
 
-                    if !args.continue_on_error {
-                        return Err(anyhow::anyhow!("Import failed: {}", error_msg));
-                    }
-                }
+    fn record_error(&mut self, error_msg: String) {
+        self.error_count += 1;
+        self.errors.push(error_msg);
+    }
+}
+
+async fn import_locations(
+    args: &ImportArgs,
+    datastore: &dyn DataStore,
+    stats: &mut ImportStats,
+) -> Result<()> {
+    let Some(locations) = load_locations(&args.from).await? else {
+        return Ok(());
+    };
+
+    info!("Importing {} locations...", locations.len());
+    for location in locations {
+        process_import_item(
+            || import_location(&location, datastore, args.dry_run),
+            &format!("location '{}'", location.name),
+            args.continue_on_error,
+            stats,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+async fn import_nodes(
+    args: &ImportArgs,
+    datastore: &dyn DataStore,
+    stats: &mut ImportStats,
+) -> Result<()> {
+    let Some(nodes) = load_nodes(&args.from).await? else {
+        return Ok(());
+    };
+
+    info!("Importing {} nodes...", nodes.len());
+    for node in nodes {
+        process_import_item(
+            || import_node(&node, datastore, args.dry_run),
+            &format!("node '{}'", node.name),
+            args.continue_on_error,
+            stats,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+async fn import_links(
+    args: &ImportArgs,
+    datastore: &dyn DataStore,
+    stats: &mut ImportStats,
+) -> Result<()> {
+    let Some(links) = load_links(&args.from).await? else {
+        return Ok(());
+    };
+
+    info!("Importing {} links...", links.len());
+    for link in links {
+        process_import_item(
+            || import_link(&link, datastore, args.dry_run),
+            &format!("link '{}'", link.name),
+            args.continue_on_error,
+            stats,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
+async fn process_import_item<F, Fut>(
+    import_fn: F,
+    item_description: &str,
+    continue_on_error: bool,
+    stats: &mut ImportStats,
+) -> Result<()>
+where
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = Result<()>>,
+{
+    match import_fn().await {
+        Ok(()) => stats.record_success(),
+        Err(e) => {
+            let error_msg = format!("Failed to import {item_description}: {e}");
+            stats.record_error(error_msg.clone());
+            warn!("{}", error_msg);
+
+            if !continue_on_error {
+                return Err(anyhow::anyhow!("Import failed: {}", error_msg));
             }
         }
     }
+    Ok(())
+}
 
-    // Import links last (depends on nodes)
-    if let Some(links) = load_links(&args.from).await? {
-        info!("Importing {} links...", links.len());
-        for link in links {
-            match import_link(&link, datastore, args.dry_run).await {
-                Ok(()) => success_count += 1,
-                Err(e) => {
-                    error_count += 1;
-                    let error_msg = format!("Failed to import link '{}': {}", link.name, e);
-                    errors.push(error_msg.clone());
-                    warn!("{}", error_msg);
-
-                    if !args.continue_on_error {
-                        return Err(anyhow::anyhow!("Import failed: {}", error_msg));
-                    }
-                }
-            }
-        }
-    }
-
-    // Print summary
+fn finalize_import(
+    stats: &ImportStats,
+    args: &ImportArgs,
+    output_format: crate::OutputFormat,
+) -> Result<()> {
     let summary = ImportSummary {
-        success_count,
-        error_count,
-        errors,
+        success_count: stats.success_count,
+        error_count: stats.error_count,
+        errors: stats.errors.clone(),
         dry_run: args.dry_run,
     };
 
     crate::commands::print_output(&summary, output_format)?;
 
-    if error_count > 0 && !args.continue_on_error {
+    if stats.error_count > 0 && !args.continue_on_error {
         return Err(anyhow::anyhow!(
             "Import completed with {} errors",
-            error_count
+            stats.error_count
         ));
     }
 
     info!(
         "Import completed: {} successful, {} errors",
-        success_count, error_count
+        stats.success_count, stats.error_count
     );
     Ok(())
 }
