@@ -137,4 +137,118 @@ mod tests {
         let deserialized: SnmpValue = serde_json::from_str(&serialized).unwrap();
         assert_eq!(value, deserialized);
     }
+
+    #[test]
+    fn test_all_snmp_value_variants_serialization() {
+        let values = vec![
+            SnmpValue::Integer(42),
+            SnmpValue::String("test".to_string()),
+            SnmpValue::Oid("1.3.6.1.2.1.1.1.0".to_string()),
+            SnmpValue::IpAddress("192.168.1.1".parse().unwrap()),
+            SnmpValue::Counter32(100),
+            SnmpValue::Counter64(1000),
+            SnmpValue::Gauge32(50),
+            SnmpValue::TimeTicks(12345),
+            SnmpValue::Opaque(vec![1, 2, 3]),
+            SnmpValue::Null,
+            SnmpValue::NoSuchObject,
+            SnmpValue::NoSuchInstance,
+            SnmpValue::EndOfMibView,
+        ];
+
+        for value in values {
+            let serialized = serde_json::to_string(&value).unwrap();
+            let deserialized: SnmpValue = serde_json::from_str(&serialized).unwrap();
+            assert_eq!(value, deserialized);
+        }
+    }
+
+    #[test]
+    fn test_snmp_value_clone() {
+        let original = SnmpValue::String("test".to_string());
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+
+        let original = SnmpValue::Opaque(vec![1, 2, 3]);
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+    }
+
+    #[test]
+    fn test_snmp_value_debug_format() {
+        let value = SnmpValue::Integer(42);
+        let debug_str = format!("{value:?}");
+        assert!(debug_str.contains("Integer"));
+        assert!(debug_str.contains("42"));
+
+        let value = SnmpValue::NoSuchObject;
+        let debug_str = format!("{value:?}");
+        assert!(debug_str.contains("NoSuchObject"));
+    }
+
+    #[test]
+    fn test_snmp_value_large_numbers() {
+        // Test edge cases with large numbers
+        let max_u32 = SnmpValue::Counter32(u32::MAX);
+        assert_eq!(max_u32.to_string(), u32::MAX.to_string());
+        assert!(!max_u32.is_error());
+
+        let max_u64 = SnmpValue::Counter64(u64::MAX);
+        assert_eq!(max_u64.to_string(), u64::MAX.to_string());
+        assert!(!max_u64.is_error());
+
+        let min_i64 = SnmpValue::Integer(i64::MIN);
+        assert_eq!(min_i64.to_string(), i64::MIN.to_string());
+        assert!(!min_i64.is_error());
+    }
+
+    #[test]
+    fn test_snmp_value_empty_strings() {
+        let empty_string = SnmpValue::String(String::new());
+        assert_eq!(empty_string.to_string(), "");
+        assert!(!empty_string.is_error());
+
+        let empty_oid = SnmpValue::Oid(String::new());
+        assert_eq!(empty_oid.to_string(), "");
+        assert!(!empty_oid.is_error());
+    }
+
+    #[test]
+    fn test_snmp_value_opaque_edge_cases() {
+        // Empty opaque data
+        let empty_opaque = SnmpValue::Opaque(Vec::new());
+        assert_eq!(empty_opaque.to_string(), "Opaque(0 bytes)");
+        assert!(!empty_opaque.is_error());
+
+        // Large opaque data
+        let large_opaque = SnmpValue::Opaque(vec![0; 1000]);
+        assert_eq!(large_opaque.to_string(), "Opaque(1000 bytes)");
+        assert!(!large_opaque.is_error());
+    }
+
+    #[test]
+    fn test_snmp_value_ipv6_address() {
+        let ipv6: IpAddr = "2001:db8::1".parse().unwrap();
+        let value = SnmpValue::IpAddress(ipv6);
+        assert_eq!(value.to_string(), "2001:db8::1");
+        assert!(!value.is_error());
+    }
+
+    #[test]
+    fn test_snmp_value_comparison_different_types() {
+        // Test that different numeric types with same value are not equal
+        let counter32 = SnmpValue::Counter32(42);
+        let counter64 = SnmpValue::Counter64(42);
+        let gauge32 = SnmpValue::Gauge32(42);
+        let integer = SnmpValue::Integer(42);
+        let timeticks = SnmpValue::TimeTicks(42);
+
+        assert_ne!(counter32, counter64);
+        assert_ne!(counter32, gauge32);
+        assert_ne!(counter32, integer);
+        assert_ne!(counter32, timeticks);
+        assert_ne!(counter64, gauge32);
+        assert_ne!(counter64, integer);
+        assert_ne!(gauge32, integer);
+    }
 }

@@ -263,3 +263,385 @@ pub async fn get_policy_status(
         "evaluation_frequency": "on-demand" // TODO: Configure scheduled evaluations
     })))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::server::AppState;
+    use axum::{Json, extract::State};
+    use std::sync::Arc;
+    use unet_core::{
+        datastore::csv::CsvStore,
+        models::*,
+        policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value},
+        policy_integration::PolicyService,
+    };
+
+    async fn setup_test_datastore() -> CsvStore {
+        let temp_dir = tempfile::tempdir().unwrap();
+        CsvStore::new(temp_dir.path().to_path_buf()).await.unwrap()
+    }
+
+    async fn create_test_node(datastore: &CsvStore) -> Node {
+        let mut node = Node::new(
+            "test-node".to_string(),
+            "example.com".to_string(),
+            Vendor::Cisco,
+            DeviceRole::Router,
+        );
+        node.model = "ASR1000".to_string();
+        node.lifecycle = Lifecycle::Live;
+        datastore.create_node(&node).await.unwrap()
+    }
+
+    fn create_test_policy_rule() -> PolicyRule {
+        PolicyRule {
+            id: Some("test-rule".to_string()),
+            condition: Condition::Comparison {
+                field: FieldRef {
+                    path: vec!["vendor".to_string()],
+                },
+                operator: ComparisonOperator::Equal,
+                value: Value::String("cisco".to_string()),
+            },
+            action: Action::Assert {
+                field: FieldRef {
+                    path: vec!["version".to_string()],
+                },
+                expected: Value::String("15.1".to_string()),
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_policies_no_nodes() {
+        let datastore = setup_test_datastore().await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![]), // Empty list
+            policies: None,
+            store_results: Some(false),
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.nodes_evaluated, 0);
+        assert!(response.results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_policies_with_nodes() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![node.id]),
+            policies: None,
+            store_results: Some(false),
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.nodes_evaluated, 1);
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_policies_with_custom_policies() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let policies = vec![create_test_policy_rule()];
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![node.id]),
+            policies: Some(policies),
+            store_results: Some(true),
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.nodes_evaluated, 1);
+        assert_eq!(response.policies_evaluated, 1);
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_policies_all_nodes() {
+        let datastore = setup_test_datastore().await;
+        let _node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let request = PolicyEvaluationRequest {
+            node_ids: None, // Evaluate all nodes
+            policies: None,
+            store_results: Some(false),
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.nodes_evaluated, 1);
+    }
+
+    #[tokio::test]
+    async fn test_create_empty_response() {
+        let start_time = std::time::Instant::now();
+        let response = create_empty_response(start_time);
+
+        assert_eq!(response.nodes_evaluated, 0);
+        assert_eq!(response.policies_evaluated, 0);
+        assert!(response.results.is_empty());
+        assert_eq!(response.summary.total_rules, 0);
+    }
+
+    #[tokio::test]
+    async fn test_load_policies_for_request_with_policies() {
+        let mut policy_service = PolicyService::with_local_dir("/tmp");
+        let policies = vec![create_test_policy_rule()];
+        let request = PolicyEvaluationRequest {
+            node_ids: None,
+            policies: Some(policies),
+            store_results: None,
+        };
+
+        let result = load_policies_for_request(&mut policy_service, &request);
+        assert!(result.is_ok());
+        let loaded_policies = result.unwrap();
+        assert_eq!(loaded_policies.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_load_policies_for_request_without_policies() {
+        let mut policy_service = PolicyService::with_local_dir("/tmp");
+        let request = PolicyEvaluationRequest {
+            node_ids: None,
+            policies: None,
+            store_results: None,
+        };
+
+        let result = load_policies_for_request(&mut policy_service, &request);
+        assert!(result.is_ok());
+        let _loaded_policies = result.unwrap();
+        // PolicyService might return default/example policies even when no custom policies exist
+        // Just verify we got a result without panicking
+        // No need to assert len() >= 0 since it's always true for usize
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_nodes_against_policies() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let mut policy_service = PolicyService::with_local_dir("/tmp");
+        let nodes = vec![node];
+
+        let (results, _summary) =
+            evaluate_nodes_against_policies(&mut policy_service, &datastore, &nodes, false).await;
+
+        assert!(results.contains_key(&nodes[0].id));
+        // Removed useless comparison - total_rules is always >= 0
+    }
+
+    #[tokio::test]
+    async fn test_log_evaluation_completion() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let nodes = vec![node];
+        let policies = vec![create_test_policy_rule()];
+        let duration = std::time::Duration::from_millis(100);
+
+        // This should not panic
+        log_evaluation_completion(&nodes, &policies, duration);
+    }
+
+    #[tokio::test]
+    async fn test_get_policy_results_with_node_id() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let query = PolicyResultsQuery {
+            node_id: Some(node.id),
+            offset: None,
+            limit: None,
+        };
+
+        let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        // CSV datastore should return empty results
+        assert_eq!(response.total_count, 0);
+        assert_eq!(response.returned_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_policy_results_without_node_id() {
+        let datastore = setup_test_datastore().await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let query = PolicyResultsQuery {
+            node_id: None,
+            offset: None,
+            limit: None,
+        };
+
+        let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.total_count, 0);
+        assert_eq!(response.returned_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_policy_results_with_pagination() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let query = PolicyResultsQuery {
+            node_id: Some(node.id),
+            offset: Some(0),
+            limit: Some(10),
+        };
+
+        let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.total_count, 0);
+        assert_eq!(response.returned_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_validate_policies_valid() {
+        let datastore = setup_test_datastore().await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let policies = vec![create_test_policy_rule()];
+
+        let result = validate_policies(State(app_state), Json(policies)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response["total_policies"], 1);
+        assert_eq!(response["valid_policies"], 1);
+        assert_eq!(response["invalid_policies"], 0);
+    }
+
+    #[tokio::test]
+    async fn test_validate_policies_empty() {
+        let datastore = setup_test_datastore().await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let policies = vec![];
+
+        let result = validate_policies(State(app_state), Json(policies)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response["total_policies"], 0);
+        assert_eq!(response["valid_policies"], 0);
+        assert_eq!(response["invalid_policies"], 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_policy_status() {
+        let datastore = setup_test_datastore().await;
+        let _node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let result = get_policy_status(State(app_state)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response["policy_engine_enabled"], true);
+        assert_eq!(response["nodes_available"], 1);
+        // Policy service might have default policies loaded
+        // Removed useless comparison - u64 is always >= 0
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_policies_no_policies_warning() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![node.id]),
+            policies: Some(vec![]), // Empty policies list
+            store_results: Some(false),
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.nodes_evaluated, 0);
+        assert_eq!(response.policies_evaluated, 0);
+    }
+
+    #[tokio::test]
+    async fn test_policy_evaluation_timing() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir("/tmp"),
+        };
+
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![node.id]),
+            policies: None,
+            store_results: Some(false),
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let _response = result.unwrap().0;
+        // Should have recorded evaluation time
+        // Removed useless comparison - evaluation_time_ms is always >= 0
+    }
+}

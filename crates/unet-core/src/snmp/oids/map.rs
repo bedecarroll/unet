@@ -174,4 +174,21 @@ mod tests {
         assert!(custom_names.is_empty());
         assert_eq!(all_names.len(), standard_names.len() + vendor_names.len());
     }
+
+    #[test]
+    fn test_add_standard_and_vendor_methods() {
+        let mut map = OidMap::new();
+
+        // Test add_standard method (lines 60-61)
+        map.add_standard("TestStandard".to_string(), StandardOid::SysDescr);
+        assert_eq!(
+            map.get_standard("TestStandard"),
+            Some(&StandardOid::SysDescr)
+        );
+
+        // Test add_vendor method (lines 65-66)
+        let vendor_oid = VendorOid::cisco_common()[0].clone();
+        map.add_vendor("TestVendor".to_string(), vendor_oid.clone());
+        assert_eq!(map.get_vendor("TestVendor"), Some(&vendor_oid));
+    }
 }

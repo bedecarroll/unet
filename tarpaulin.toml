@@ -6,4 +6,4 @@ frozen = true
 branches = true
 out = ["Xml", "Stdout"]
 output-dir = "target/tarpaulin"
-fail-under = 40
+fail-under = 50

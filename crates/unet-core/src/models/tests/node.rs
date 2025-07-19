@@ -283,3 +283,152 @@ fn test_node_serde() {
     assert_eq!(node.model, deserialized.model);
     assert_eq!(node.role, deserialized.role);
 }
+
+#[test]
+fn test_node_builder_with_custom_id() {
+    use uuid::uuid;
+    let custom_id = uuid!("550e8400-e29b-41d4-a716-446655440000");
+
+    let node = NodeBuilder::new()
+        .id(custom_id)
+        .name("router1")
+        .domain("example.com")
+        .vendor(Vendor::Cisco)
+        .model("ISR4331")
+        .role(DeviceRole::Router)
+        .build()
+        .unwrap();
+
+    assert_eq!(node.id, custom_id);
+}
+
+#[test]
+fn test_node_builder_empty_domain() {
+    let node = NodeBuilder::new()
+        .name("router1")
+        .domain("")
+        .vendor(Vendor::Cisco)
+        .model("ISR4331")
+        .role(DeviceRole::Router)
+        .build()
+        .unwrap();
+
+    assert_eq!(node.domain, "");
+    assert_eq!(node.fqdn, "router1");
+}
+
+#[test]
+fn test_node_builder_all_optional_fields() {
+    use uuid::Uuid;
+    let location_id = Uuid::new_v4();
+    let custom_data = serde_json::json!({"env": "production"});
+
+    let node = NodeBuilder::new()
+        .name("router1")
+        .domain("example.com")
+        .vendor(Vendor::Juniper)
+        .model("MX480")
+        .role(DeviceRole::Router)
+        .lifecycle(Lifecycle::Decommissioned)
+        .management_ip(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)))
+        .location_id(location_id)
+        .platform("Junos")
+        .version("21.2R3")
+        .serial_number("ABC123456")
+        .asset_tag("AT-001")
+        .purchase_date("2023-01-15")
+        .warranty_expires("2026-01-15")
+        .custom_data(custom_data.clone())
+        .build()
+        .unwrap();
+
+    assert_eq!(node.vendor, Vendor::Juniper);
+    assert_eq!(node.model, "MX480");
+    assert_eq!(node.role, DeviceRole::Router);
+    assert_eq!(node.lifecycle, Lifecycle::Decommissioned);
+    assert_eq!(
+        node.management_ip,
+        Some(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)))
+    );
+    assert_eq!(node.location_id, Some(location_id));
+    assert_eq!(node.platform, Some("Junos".to_string()));
+    assert_eq!(node.version, Some("21.2R3".to_string()));
+    assert_eq!(node.serial_number, Some("ABC123456".to_string()));
+    assert_eq!(node.asset_tag, Some("AT-001".to_string()));
+    assert_eq!(node.purchase_date, Some("2023-01-15".to_string()));
+    assert_eq!(node.warranty_expires, Some("2026-01-15".to_string()));
+    assert_eq!(node.custom_data, custom_data);
+}
+
+#[test]
+fn test_node_builder_default_lifecycle() {
+    let node = NodeBuilder::new()
+        .name("router1")
+        .domain("example.com")
+        .vendor(Vendor::Cisco)
+        .model("ISR4331")
+        .role(DeviceRole::Router)
+        .build()
+        .unwrap();
+
+    assert_eq!(node.lifecycle, Lifecycle::Planned);
+}
+
+#[test]
+fn test_node_builder_all_missing_required() {
+    let result = NodeBuilder::new().build();
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Name is required"));
+}
+
+#[test]
+fn test_node_builder_missing_name() {
+    let result = NodeBuilder::new()
+        .domain("example.com")
+        .vendor(Vendor::Cisco)
+        .model("ISR4331")
+        .role(DeviceRole::Router)
+        .build();
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Name is required"));
+}
+
+#[test]
+fn test_node_builder_missing_vendor() {
+    let result = NodeBuilder::new()
+        .name("router1")
+        .domain("example.com")
+        .model("ISR4331")
+        .role(DeviceRole::Router)
+        .build();
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Vendor is required"));
+}
+
+#[test]
+fn test_node_builder_missing_model() {
+    let result = NodeBuilder::new()
+        .name("router1")
+        .domain("example.com")
+        .vendor(Vendor::Cisco)
+        .role(DeviceRole::Router)
+        .build();
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Model is required"));
+}
+
+#[test]
+fn test_node_builder_missing_role() {
+    let result = NodeBuilder::new()
+        .name("router1")
+        .domain("example.com")
+        .vendor(Vendor::Cisco)
+        .model("ISR4331")
+        .build();
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Role is required"));
+}

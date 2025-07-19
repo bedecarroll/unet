@@ -42,7 +42,7 @@ impl TestDb {
             .execute(connection.get_database_backend().build(&stmt))
             .await?;
 
-        let store = SqliteStore::new(&db_url).await?;
+        let store = SqliteStore::from_connection(connection);
 
         Ok(Self {
             store,

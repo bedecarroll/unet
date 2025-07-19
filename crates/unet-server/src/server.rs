@@ -137,19 +137,19 @@ fn create_node_routes() -> Router<AppState> {
     Router::new()
         .route("/api/v1/nodes", get(handlers::nodes::list_nodes))
         .route("/api/v1/nodes", post(handlers::nodes::create_node))
-        .route("/api/v1/nodes/:id", get(handlers::nodes::get_node))
-        .route("/api/v1/nodes/:id", put(handlers::nodes::update_node))
-        .route("/api/v1/nodes/:id", delete(handlers::nodes::delete_node))
+        .route("/api/v1/nodes/{id}", get(handlers::nodes::get_node))
+        .route("/api/v1/nodes/{id}", put(handlers::nodes::update_node))
+        .route("/api/v1/nodes/{id}", delete(handlers::nodes::delete_node))
         .route(
-            "/api/v1/nodes/:id/status",
+            "/api/v1/nodes/{id}/status",
             get(handlers::nodes::get_node_status),
         )
         .route(
-            "/api/v1/nodes/:id/interfaces",
+            "/api/v1/nodes/{id}/interfaces",
             get(handlers::nodes::get_node_interfaces),
         )
         .route(
-            "/api/v1/nodes/:id/metrics",
+            "/api/v1/nodes/{id}/metrics",
             get(handlers::nodes::get_node_metrics),
         )
 }
@@ -212,7 +212,7 @@ mod tests {
 
         let app_state = AppState {
             datastore: datastore.clone(),
-            policy_service: policy_service.clone(),
+            policy_service,
         };
 
         // Verify the app state is properly constructed
@@ -236,7 +236,7 @@ mod tests {
             }
             Err(e) => {
                 // Some initialization might fail in test environment
-                println!("Initialization error in test: {}", e);
+                println!("Initialization error in test: {e}");
             }
         }
     }
@@ -248,18 +248,15 @@ mod tests {
         // Test that we can parse the host into an IP address
         let parsed_ip = config.server.host.parse::<std::net::IpAddr>();
 
-        match parsed_ip {
-            Ok(ip) => {
-                let addr = SocketAddr::from((ip, config.server.port));
-                assert_eq!(addr.port(), 9090);
-            }
-            Err(_) => {
-                // If parsing fails, should fall back to localhost
-                let fallback_ip = std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1));
-                let addr = SocketAddr::from((fallback_ip, config.server.port));
-                assert_eq!(addr.port(), 9090);
-                assert_eq!(addr.ip(), fallback_ip);
-            }
+        if let Ok(ip) = parsed_ip {
+            let addr = SocketAddr::from((ip, config.server.port));
+            assert_eq!(addr.port(), 9090);
+        } else {
+            // If parsing fails, should fall back to localhost
+            let fallback_ip = std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1));
+            let addr = SocketAddr::from((fallback_ip, config.server.port));
+            assert_eq!(addr.port(), 9090);
+            assert_eq!(addr.ip(), fallback_ip);
         }
     }
 
@@ -300,11 +297,11 @@ mod tests {
     #[test]
     fn test_policy_service_creation() {
         let config = create_test_config();
-        let policy_service = PolicyService::new(config.git.clone());
+        let policy_service = PolicyService::new(config.git);
 
         // Verify policy service is created (we can't test much more without the actual implementation details)
         // The fact that it doesn't panic is a good sign
-        let _cloned = policy_service.clone();
+        drop(policy_service);
     }
 
     #[test]
@@ -323,5 +320,121 @@ mod tests {
 
         let csv_url = "csv:///tmp/test";
         assert!(csv_url.starts_with("csv://"));
+    }
+
+    #[tokio::test]
+    async fn test_create_router() {
+        let router = create_router();
+        // We can't easily test the routes without a complex setup,
+        // but we can verify the router is created without panicking
+        let app_state = create_mock_app_state().await;
+        let _router_with_state: axum::Router = router.with_state(app_state);
+    }
+
+    async fn create_mock_app_state() -> AppState {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let datastore = unet_core::datastore::csv::CsvStore::new(temp_dir.path())
+            .await
+            .unwrap();
+
+        let git_config = unet_core::config::types::GitConfig {
+            repository_url: None,
+            local_directory: None,
+            branch: "main".to_string(),
+            auth_token: None,
+            sync_interval: 300,
+            policies_repo: None,
+            templates_repo: None,
+        };
+
+        AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::new(git_config),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_node_routes() {
+        let node_router = create_node_routes();
+        // Verify the router is created without panicking
+        let app_state = create_mock_app_state().await;
+        let _router_with_state: axum::Router = node_router.with_state(app_state);
+    }
+
+    #[tokio::test]
+    async fn test_create_policy_routes() {
+        let policy_router = create_policy_routes();
+        // Verify the router is created without panicking
+        let app_state = create_mock_app_state().await;
+        let _router_with_state: axum::Router = policy_router.with_state(app_state);
+    }
+
+    #[tokio::test]
+    async fn test_create_app_functionality() {
+        let config = create_test_config();
+        let database_url = "sqlite::memory:".to_string();
+
+        // Test that create_app doesn't panic during setup
+        let result = create_app(config, database_url).await;
+        match result {
+            Ok(_app) => {
+                // App creation succeeded
+            }
+            Err(e) => {
+                // Some initialization might fail in test environment
+                println!("App creation error in test: {e}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_trace_layer_configuration() {
+        // Test that the trace layer configuration doesn't panic
+        let request_id = uuid::Uuid::new_v4();
+        let _span = tracing::info_span!(
+            "request",
+            method = "GET",
+            uri = "/health",
+            request_id = %request_id,
+        );
+    }
+
+    #[test]
+    fn test_cors_layer_creation() {
+        // Test that CORS layer creation doesn't panic
+        let _cors_layer = CorsLayer::permissive();
+    }
+
+    #[tokio::test]
+    async fn test_background_tasks_initialization() {
+        let config = create_test_config();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let datastore = Arc::new(
+            unet_core::datastore::csv::CsvStore::new(temp_dir.path())
+                .await
+                .unwrap(),
+        );
+        let policy_service = PolicyService::new(config.git.clone());
+
+        // Test that background tasks can be created without panicking
+        let background_tasks = BackgroundTasks::new(config, datastore, policy_service);
+        // We can't easily test start() in a unit test as it spawns background tasks
+        // but we can verify the struct is created
+        drop(background_tasks);
+    }
+
+    #[test]
+    fn test_service_builder_configuration() {
+        // Test that ServiceBuilder configuration doesn't panic
+        let _service_builder = ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(CorsLayer::permissive());
+    }
+
+    #[test]
+    fn test_response_latency_handling() {
+        let latency = std::time::Duration::from_millis(100);
+        let latency_ms = latency.as_millis();
+        assert_eq!(latency_ms, 100);
     }
 }

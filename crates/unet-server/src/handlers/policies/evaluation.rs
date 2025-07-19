@@ -107,3 +107,182 @@ pub async fn process_node_evaluation(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::policies::types::PolicyEvaluationSummary;
+    use std::collections::HashMap;
+    use unet_core::{datastore::csv::CsvStore, models::*, policy_integration::PolicyService};
+
+    async fn setup_test_datastore() -> CsvStore {
+        let temp_dir = tempfile::tempdir().unwrap();
+        CsvStore::new(temp_dir.path().to_path_buf()).await.unwrap()
+    }
+
+    async fn create_test_node(datastore: &CsvStore) -> Node {
+        let mut node = Node::new(
+            "test-node".to_string(),
+            "example.com".to_string(),
+            Vendor::Cisco,
+            DeviceRole::Router,
+        );
+        node.model = "ASR1000".to_string();
+        node.lifecycle = Lifecycle::Live;
+        datastore.create_node(&node).await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_get_nodes_for_evaluation_all_nodes() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+
+        let result = get_nodes_for_evaluation(&datastore, None).await;
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].id, node.id);
+    }
+
+    #[tokio::test]
+    async fn test_get_nodes_for_evaluation_specific_nodes() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let node_ids = vec![node.id];
+
+        let result = get_nodes_for_evaluation(&datastore, Some(&node_ids)).await;
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].id, node.id);
+    }
+
+    #[tokio::test]
+    async fn test_get_specific_nodes_with_nonexistent() {
+        let datastore = setup_test_datastore().await;
+        let existing_node = create_test_node(&datastore).await;
+        let nonexistent_id = Uuid::new_v4();
+        let node_ids = vec![existing_node.id, nonexistent_id];
+
+        let result = get_specific_nodes(&datastore, &node_ids).await;
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        // Should only return the existing node, warning about the missing one
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].id, existing_node.id);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_node_by_id_success() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+
+        let result = fetch_node_by_id(&datastore, &node.id).await;
+        assert!(result.is_ok());
+        let fetched_node = result.unwrap();
+        assert!(fetched_node.is_some());
+        assert_eq!(fetched_node.unwrap().id, node.id);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_node_by_id_not_found() {
+        let datastore = setup_test_datastore().await;
+        let nonexistent_id = Uuid::new_v4();
+
+        let result = fetch_node_by_id(&datastore, &nonexistent_id).await;
+        assert!(result.is_ok());
+        let fetched_node = result.unwrap();
+        assert!(fetched_node.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_all_nodes_for_evaluation() {
+        let datastore = setup_test_datastore().await;
+        let _node = create_test_node(&datastore).await;
+
+        let result = get_all_nodes_for_evaluation(&datastore).await;
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        assert_eq!(nodes.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_process_node_evaluation_success() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let mut policy_service = PolicyService::with_local_dir("/tmp");
+        let mut summary = PolicyEvaluationSummary {
+            total_rules: 0,
+            satisfied_rules: 0,
+            unsatisfied_rules: 0,
+            error_rules: 0,
+            compliance_failures: 0,
+        };
+        let mut all_results = HashMap::new();
+
+        process_node_evaluation(
+            &mut policy_service,
+            &datastore,
+            &node,
+            false,
+            &mut summary,
+            &mut all_results,
+        )
+        .await;
+
+        // Should have results for the node
+        assert!(all_results.contains_key(&node.id));
+        // Summary should have some rules
+        assert!(summary.total_rules > 0);
+    }
+
+    #[tokio::test]
+    async fn test_process_node_evaluation_with_store_results() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let mut policy_service = PolicyService::with_local_dir("/tmp");
+        let mut summary = PolicyEvaluationSummary {
+            total_rules: 0,
+            satisfied_rules: 0,
+            unsatisfied_rules: 0,
+            error_rules: 0,
+            compliance_failures: 0,
+        };
+        let mut all_results = HashMap::new();
+
+        process_node_evaluation(
+            &mut policy_service,
+            &datastore,
+            &node,
+            true, // Store results
+            &mut summary,
+            &mut all_results,
+        )
+        .await;
+
+        // Should have results for the node
+        assert!(all_results.contains_key(&node.id));
+    }
+
+    #[tokio::test]
+    async fn test_get_nodes_for_evaluation_empty_list() {
+        let datastore = setup_test_datastore().await;
+        let empty_list = vec![];
+
+        let result = get_nodes_for_evaluation(&datastore, Some(&empty_list)).await;
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        assert!(nodes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_specific_nodes_empty_result() {
+        let datastore = setup_test_datastore().await;
+        let nonexistent_ids = vec![Uuid::new_v4(), Uuid::new_v4()];
+
+        let result = get_specific_nodes(&datastore, &nonexistent_ids).await;
+        assert!(result.is_ok());
+        let nodes = result.unwrap();
+        assert!(nodes.is_empty());
+    }
+}

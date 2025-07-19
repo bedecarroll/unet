@@ -46,6 +46,15 @@ impl SqliteStore {
         Ok(Self { db })
     }
 
+    /// Create a new `SqliteStore` from an existing database connection
+    ///
+    /// This is primarily used for testing where we want to reuse a connection
+    /// that already has the schema set up.
+    #[must_use]
+    pub const fn from_connection(db: DatabaseConnection) -> Self {
+        Self { db }
+    }
+
     /// Get the database connection for testing
     #[must_use]
     pub const fn connection(&self) -> &DatabaseConnection {

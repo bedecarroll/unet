@@ -8,4 +8,6 @@ pub use derived::{get_node_interfaces, get_node_metrics, get_node_status};
 
 mod crud;
 mod derived;
+#[cfg(test)]
+mod tests;
 mod types;
