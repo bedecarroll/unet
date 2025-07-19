@@ -10,4 +10,6 @@ run = [
 
 [tasks.test]
 description = "Run unit tests"
-run = ["cargo tarpaulin"]
+run = [
+  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --frozen --no-clean nextest",
+]

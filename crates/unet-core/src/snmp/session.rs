@@ -89,30 +89,46 @@ impl SnmpSession {
     ///
     /// Returns `SnmpError` if the SNMP request fails or times out
     pub async fn get(&mut self, oids: &[&str]) -> SnmpResult<HashMap<String, SnmpValue>> {
-        debug!(
-            session_id = %self.session_id,
-            target = %self.config.address,
-            oid_count = oids.len(),
-            "Performing SNMP GET operation"
-        );
+        self.log_operation_start(oids.len());
+        self.increment_connection_attempts().await;
 
-        // Increment connection attempts
-        {
-            let mut attempts = self.connection_attempts.write().await;
-            *attempts += 1;
-        }
-
-        // Convert string OIDs to ObjectIdentifier objects
         let oid_objects = Self::parse_oids(oids)?;
-
-        // Cache values before mutable borrow
         let session_id = self.session_id;
         let target_address = self.config.address;
 
-        // Get SNMP client
         let client = self.get_client().await?;
+        let result =
+            Self::execute_get_requests_static(client, &oid_objects, oids, session_id).await;
 
-        // Execute SNMP GET request for each OID
+        self.update_success_timestamp(&result).await;
+        Self::log_operation_completion(session_id, target_address, &result);
+
+        Ok(result)
+    }
+
+    /// Log the start of an SNMP operation
+    fn log_operation_start(&self, oid_count: usize) {
+        debug!(
+            session_id = %self.session_id,
+            target = %self.config.address,
+            oid_count = oid_count,
+            "Performing SNMP GET operation"
+        );
+    }
+
+    /// Increment the connection attempts counter
+    async fn increment_connection_attempts(&self) {
+        let mut attempts = self.connection_attempts.write().await;
+        *attempts += 1;
+    }
+
+    /// Execute GET requests for all OIDs
+    async fn execute_get_requests_static(
+        client: &Snmp2cClient,
+        oid_objects: &[ObjectIdentifier],
+        oids: &[&str],
+        session_id: Uuid,
+    ) -> HashMap<String, SnmpValue> {
         let mut result = HashMap::new();
 
         for (i, oid) in oid_objects.iter().enumerate() {
@@ -123,7 +139,6 @@ impl SnmpSession {
                     result.insert(oid_str, snmp_value);
                 }
                 Err(e) => {
-                    // For individual OID failures, insert error value
                     result.insert(oids[i].to_string(), SnmpValue::NoSuchObject);
                     debug!(
                         session_id = %session_id,
@@ -135,20 +150,29 @@ impl SnmpSession {
             }
         }
 
-        // Update last success timestamp if we got any results
+        result
+    }
+
+    /// Update the last success timestamp if we got results
+    async fn update_success_timestamp(&self, result: &HashMap<String, SnmpValue>) {
         if !result.is_empty() {
             let mut last_success = self.last_success.write().await;
             *last_success = Some(SystemTime::now());
         }
+    }
 
+    /// Log the completion of an SNMP operation
+    fn log_operation_completion(
+        session_id: Uuid,
+        target_address: std::net::SocketAddr,
+        result: &HashMap<String, SnmpValue>,
+    ) {
         info!(
             session_id = %session_id,
             target = %target_address,
             result_count = result.len(),
             "SNMP GET operation completed"
         );
-
-        Ok(result)
     }
 
     fn parse_oids(oids: &[&str]) -> SnmpResult<Vec<ObjectIdentifier>> {
@@ -285,5 +309,236 @@ fn convert_object_value_to_snmp_value(value: &ObjectValue) -> SnmpValue {
             });
             SnmpValue::String(format!("0x{hex_string}"))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::snmp::SnmpCredentials;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::time::Duration;
+
+    fn create_test_config() -> SessionConfig {
+        SessionConfig {
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
+            version: 2,
+            credentials: SnmpCredentials::Community {
+                community: "public".to_string(),
+            },
+            timeout: Duration::from_secs(5),
+            retries: 3,
+            max_vars_per_request: 10,
+        }
+    }
+
+    fn create_test_config_with_user_based() -> SessionConfig {
+        SessionConfig {
+            address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
+            version: 3,
+            credentials: SnmpCredentials::UserBased {
+                username: "testuser".to_string(),
+                auth: Some(("SHA".to_string(), "authpass".to_string())),
+                privacy: Some(("AES".to_string(), "privpass".to_string())),
+            },
+            timeout: Duration::from_secs(5),
+            retries: 3,
+            max_vars_per_request: 10,
+        }
+    }
+
+    #[test]
+    fn test_session_creation() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config.clone());
+
+        assert_eq!(session.config(), &config);
+        assert!(session.client.is_none());
+    }
+
+    #[test]
+    fn test_session_accessors() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config.clone());
+
+        // Test id() method
+        let session_id = session.id();
+        assert_ne!(session_id, Uuid::nil());
+
+        // Test config() method
+        assert_eq!(session.config(), &config);
+    }
+
+    #[tokio::test]
+    async fn test_create_client_with_community() {
+        let config = create_test_config();
+
+        // This will likely fail since we don't have a real SNMP server,
+        // but we want to test the code path (lines 43-58)
+        let result = SnmpSession::create_client(&config).await;
+
+        // We expect either success or a specific error
+        match result {
+            Ok(_) | Err(SnmpError::Network(_)) => {
+                // Success case or network errors are expected when no SNMP server is running
+            }
+            Err(SnmpError::Protocol { message }) => {
+                assert!(message.contains("Failed to create SNMP client"));
+            }
+            Err(e) => panic!("Unexpected error type: {e:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_client_with_user_based() {
+        let config = create_test_config_with_user_based();
+
+        // Test unsupported SNMPv3 user-based security (lines 60-62)
+        let result = SnmpSession::create_client(&config).await;
+
+        match result {
+            Err(SnmpError::Protocol { message }) => {
+                assert!(message.contains("SNMPv3 user-based security not supported"));
+            }
+            _ => panic!("Expected Protocol error for SNMPv3"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_connection_attempts() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config);
+
+        // Initial connection attempts should be 0
+        assert_eq!(session.connection_attempts().await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_is_healthy() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config);
+
+        // New session should not be healthy (no successful operations)
+        assert!(!session.is_healthy(Duration::from_secs(10)).await);
+    }
+
+    #[test]
+    fn test_parse_oids_valid() {
+        let oids = &["1.3.6.1.2.1.1.1.0", "1.3.6.1.2.1.1.5.0"];
+
+        // Test valid OIDs (lines 154-164)
+        let result = SnmpSession::parse_oids(oids);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_parse_oids_invalid() {
+        let oids = &["invalid.oid", "1.3.6.1.2.1.1.1.0"];
+
+        // Test invalid OIDs (lines 159-161)
+        let result = SnmpSession::parse_oids(oids);
+        match result {
+            Err(SnmpError::InvalidOid { oid }) => {
+                assert_eq!(oid, "invalid.oid");
+            }
+            _ => panic!("Expected InvalidOid error"),
+        }
+    }
+
+    #[test]
+    fn test_convert_object_value_to_snmp_value() {
+        use csnmp::ObjectValue;
+
+        // Test Integer conversion (line 257)
+        let int_value = ObjectValue::Integer(42);
+        let snmp_value = convert_object_value_to_snmp_value(&int_value);
+        assert_eq!(snmp_value, SnmpValue::Integer(42));
+
+        // Test String conversion with valid UTF-8 (lines 258, 270)
+        let string_bytes = b"test".to_vec();
+        let string_value = ObjectValue::String(string_bytes);
+        let snmp_value = convert_object_value_to_snmp_value(&string_value);
+        assert_eq!(snmp_value, SnmpValue::String("test".to_string()));
+
+        // Test String conversion with invalid UTF-8 (lines 260-268)
+        let invalid_utf8 = vec![0xFF, 0xFE];
+        let invalid_string_value = ObjectValue::String(invalid_utf8);
+        let snmp_value = convert_object_value_to_snmp_value(&invalid_string_value);
+        if let SnmpValue::String(s) = snmp_value {
+            assert!(s.starts_with("0x"));
+            assert!(s.contains("ff"));
+            assert!(s.contains("fe"));
+        } else {
+            panic!("Expected String value with hex encoding");
+        }
+
+        // Test ObjectId conversion (line 273)
+        let oid = "1.3.6.1.2.1.1.1.0".parse().unwrap();
+        let oid_value = ObjectValue::ObjectId(oid);
+        let snmp_value = convert_object_value_to_snmp_value(&oid_value);
+        assert_eq!(snmp_value, SnmpValue::Oid("1.3.6.1.2.1.1.1.0".to_string()));
+
+        // Test IpAddress conversion (line 274)
+        let ip = Ipv4Addr::new(192, 168, 1, 1);
+        let ip_value = ObjectValue::IpAddress(ip);
+        let snmp_value = convert_object_value_to_snmp_value(&ip_value);
+        assert_eq!(snmp_value, SnmpValue::IpAddress(IpAddr::V4(ip)));
+
+        // Test Counter32 conversion (line 275)
+        let counter_value = ObjectValue::Counter32(12345);
+        let snmp_value = convert_object_value_to_snmp_value(&counter_value);
+        assert_eq!(snmp_value, SnmpValue::Counter32(12345));
+
+        // Test Unsigned32 -> Gauge32 conversion (line 276)
+        let unsigned_value = ObjectValue::Unsigned32(54321);
+        let snmp_value = convert_object_value_to_snmp_value(&unsigned_value);
+        assert_eq!(snmp_value, SnmpValue::Gauge32(54321));
+
+        // Test TimeTicks conversion (line 277)
+        let timeticks_value = ObjectValue::TimeTicks(98765);
+        let snmp_value = convert_object_value_to_snmp_value(&timeticks_value);
+        assert_eq!(snmp_value, SnmpValue::TimeTicks(98765));
+
+        // Test Counter64 conversion (line 278)
+        let counter64_value = ObjectValue::Counter64(1_234_567_890_123);
+        let snmp_value = convert_object_value_to_snmp_value(&counter64_value);
+        assert_eq!(snmp_value, SnmpValue::Counter64(1_234_567_890_123));
+
+        // Test Opaque conversion (lines 279-287)
+        let opaque_data = vec![0xAB, 0xCD, 0xEF];
+        let opaque_value = ObjectValue::Opaque(opaque_data);
+        let snmp_value = convert_object_value_to_snmp_value(&opaque_value);
+        if let SnmpValue::String(s) = snmp_value {
+            assert!(s.starts_with("0x"));
+            assert!(s.contains("ab"));
+            assert!(s.contains("cd"));
+            assert!(s.contains("ef"));
+        } else {
+            panic!("Expected String value with hex encoding for opaque data");
+        }
+    }
+
+    #[test]
+    fn test_session_clone() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config.clone());
+
+        // Test clone implementation (lines 236-239)
+        let cloned_session = session.clone();
+        assert_eq!(cloned_session.config(), &config);
+        assert_ne!(cloned_session.id(), session.id()); // Different session IDs
+    }
+
+    #[test]
+    fn test_session_debug() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config);
+
+        // Test Debug implementation (lines 242-251)
+        let debug_str = format!("{session:?}");
+        assert!(debug_str.contains("SnmpSession"));
+        assert!(debug_str.contains("config"));
+        assert!(debug_str.contains("session_id"));
     }
 }

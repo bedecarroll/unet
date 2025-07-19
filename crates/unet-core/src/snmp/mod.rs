@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn test_snmp_error_all_variants() {
         let errors = vec![
-            SnmpError::Network(std::io::Error::new(std::io::ErrorKind::Other, "test")),
+            SnmpError::Network(std::io::Error::other("test")),
             SnmpError::Protocol {
                 message: "test".to_string(),
             },

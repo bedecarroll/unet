@@ -81,7 +81,7 @@ pub struct Filter {
 }
 
 /// Filter operations supported by the datastore
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FilterOperation {
     /// Exact match
     Equals,
@@ -112,7 +112,7 @@ pub enum FilterOperation {
 }
 
 /// Filter value types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FilterValue {
     /// String value
     String(String),
@@ -144,7 +144,7 @@ pub struct Sort {
 }
 
 /// Sort direction
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SortDirection {
     /// Ascending order
     Ascending,

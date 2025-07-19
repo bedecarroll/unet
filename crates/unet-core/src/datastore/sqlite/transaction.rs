@@ -123,7 +123,7 @@ mod tests {
         }
 
         // If this compiles, the field is accessible
-        let _field_accessor = access_txn_field;
         // The fact that this compiles confirms the txn field is publicly accessible
+        let _ = access_txn_field;
     }
 }

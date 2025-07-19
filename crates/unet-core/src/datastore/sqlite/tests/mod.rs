@@ -1,4 +1,5 @@
 //! Tests for `SQLite` datastore implementations
 
+pub mod links;
 mod links_tests;
-mod setup;
+pub mod setup;

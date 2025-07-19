@@ -224,6 +224,34 @@ mod tests {
     }
 
     #[test]
+    fn test_polling_task_next_poll_time() {
+        let target = SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            defaults::network::SNMP_DEFAULT_PORT,
+        );
+        let node_id = Uuid::new_v4();
+        let oids = vec!["1.3.6.1.2.1.1.1.0".to_string()];
+        let interval = Duration::from_secs(60);
+        let session_config = SessionConfig::default();
+
+        let mut task = PollingTask::new(target, node_id, oids, interval, session_config);
+
+        // Test normal case (lines 117-118)
+        let next_time = task.next_poll_time();
+        assert!(next_time > Instant::now());
+
+        // Test exponential backoff with failures (lines 121-122, 124, 126)
+        task.consecutive_failures = 2;
+        let next_time_with_backoff = task.next_poll_time();
+        assert!(next_time_with_backoff > next_time);
+
+        // Test with many failures to trigger max backoff (line 129)
+        task.consecutive_failures = 10; // Should be clamped to 5
+        let next_time_max_backoff = task.next_poll_time();
+        assert!(next_time_max_backoff > next_time_with_backoff);
+    }
+
+    #[test]
     fn test_polling_config_default() {
         let config = PollingConfig::default();
 

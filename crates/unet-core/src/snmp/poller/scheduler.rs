@@ -367,3 +367,269 @@ impl PollingScheduler {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::snmp::{SnmpClientConfig, SnmpValue};
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::time::{Duration, SystemTime};
+    use tokio::time::timeout;
+
+    fn create_test_config() -> PollingConfig {
+        PollingConfig {
+            default_interval: Duration::from_millis(100),
+            max_concurrent_polls: 2,
+            poll_timeout: Duration::from_millis(50),
+            max_retries: 2,
+            retry_backoff_multiplier: 2.0,
+            health_check_interval: Duration::from_millis(100),
+        }
+    }
+
+    fn create_test_task() -> PollingTask {
+        PollingTask::new(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
+            Uuid::new_v4(),
+            vec!["1.3.6.1.2.1.1.1.0".to_string()],
+            Duration::from_millis(100),
+            crate::snmp::SessionConfig::default(),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_basic_operations() {
+        let config = create_test_config();
+        let snmp_config = SnmpClientConfig::default();
+        let (scheduler, handle) = PollingScheduler::new(config, snmp_config);
+
+        // Test initial task count
+        assert_eq!(scheduler.task_count().await, 0);
+
+        // Test add task (lines 154-158)
+        let task = create_test_task();
+        let task_id = task.id;
+        assert!(handle.add_task(task).is_ok());
+
+        // Give scheduler time to process message
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Test remove task (lines 160-164)
+        assert!(handle.remove_task(task_id).is_ok());
+
+        // Test shutdown (lines 146-148)
+        assert!(handle.shutdown().is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_task_management() {
+        let config = create_test_config();
+        let snmp_config = SnmpClientConfig::default();
+        let (mut scheduler, handle) = PollingScheduler::new(config, snmp_config);
+
+        let task = create_test_task();
+        let task_id = task.id;
+
+        // Run scheduler in background
+        let scheduler_handle = tokio::spawn(async move {
+            scheduler.run().await;
+        });
+
+        // Test add task
+        assert!(handle.add_task(task.clone()).is_ok());
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Test update task (lines 166-170)
+        let mut updated_task = task.clone();
+        updated_task.priority = 200;
+        assert!(handle.update_task(updated_task).is_ok());
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Test enable/disable task (lines 172-178)
+        assert!(handle.enable_task(task_id, false).is_ok());
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Test get task status (lines 180-188)
+        let status_result =
+            timeout(Duration::from_millis(50), handle.get_task_status(task_id)).await;
+        assert!(status_result.is_ok());
+
+        // Test list tasks (lines 190-194)
+        let list_result = timeout(Duration::from_millis(50), handle.list_tasks()).await;
+        assert!(list_result.is_ok());
+
+        // Test shutdown - this will stop the scheduler
+        assert!(handle.shutdown().is_ok());
+
+        // Wait for scheduler to shut down
+        let _ = timeout(Duration::from_millis(100), scheduler_handle).await;
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_error_handling() {
+        let config = create_test_config();
+        let snmp_config = SnmpClientConfig::default();
+        let (mut scheduler, handle) = PollingScheduler::new(config, snmp_config);
+
+        // Run scheduler in background
+        let scheduler_handle = tokio::spawn(async move {
+            scheduler.run().await;
+        });
+
+        // Test operations on non-existent task
+        let fake_task_id = Uuid::new_v4();
+
+        // Test enable task that doesn't exist (line 175-177 won't execute)
+        assert!(handle.enable_task(fake_task_id, true).is_ok());
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        // Test get status for non-existent task
+        let status_result = timeout(
+            Duration::from_millis(50),
+            handle.get_task_status(fake_task_id),
+        )
+        .await;
+        assert!(status_result.is_ok());
+        if let Ok(Ok(status)) = status_result {
+            assert!(status.is_none());
+        }
+
+        assert!(handle.shutdown().is_ok());
+
+        // Wait for scheduler to shut down
+        let _ = timeout(Duration::from_millis(100), scheduler_handle).await;
+    }
+
+    #[tokio::test]
+    async fn test_poll_result_processing() {
+        use crate::snmp::{SnmpError, SnmpValue};
+        use std::collections::HashMap;
+
+        let mut task = create_test_task();
+        let timeout_duration = Duration::from_millis(50);
+
+        // Test successful poll result (lines 304-309)
+        let mut values = HashMap::new();
+        values.insert(
+            "1.3.6.1.2.1.1.1.0".to_string(),
+            SnmpValue::String("test".to_string()),
+        );
+        let success_result = Ok(Ok(values.clone()));
+        let (success, returned_values, error) =
+            PollingScheduler::process_poll_result(success_result, &mut task, timeout_duration);
+        assert!(success);
+        assert_eq!(returned_values, values);
+        assert!(error.is_none());
+        assert_eq!(task.consecutive_failures, 0);
+        assert!(task.last_success.is_some());
+
+        // Test SNMP error result (lines 310-314)
+        task.consecutive_failures = 0;
+        let snmp_error = SnmpError::Protocol {
+            message: "test error".to_string(),
+        };
+        let error_result = Ok(Err(snmp_error));
+        let (success, returned_values, error) =
+            PollingScheduler::process_poll_result(error_result, &mut task, timeout_duration);
+        assert!(!success);
+        assert!(returned_values.is_empty());
+        assert!(error.is_some());
+        assert_eq!(task.consecutive_failures, 1);
+
+        // Test timeout error result (lines 315-321)
+        task.consecutive_failures = 0;
+        // Create a timeout error by actually timing out a future
+        let timeout_result = tokio::time::timeout(
+            Duration::from_millis(1),
+            tokio::time::sleep(Duration::from_millis(10)),
+        )
+        .await;
+        let timeout_error = timeout_result.map(|()| Ok(HashMap::new()));
+        let (success, returned_values, error) =
+            PollingScheduler::process_poll_result(timeout_error, &mut task, timeout_duration);
+        assert!(!success);
+        assert!(returned_values.is_empty());
+        assert!(error.is_some());
+        assert!(error.unwrap().contains("timeout"));
+        assert_eq!(task.consecutive_failures, 1);
+    }
+
+    #[tokio::test]
+    async fn test_send_result_error_handling() {
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        // Drop receiver to test error case (lines 344-347)
+        drop(rx);
+
+        let result = PollingResult {
+            task_id: Uuid::new_v4(),
+            node_id: Uuid::new_v4(),
+            target: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
+            timestamp: SystemTime::now(),
+            success: true,
+            values: HashMap::new(),
+            error: None,
+            duration: Duration::from_millis(10),
+        };
+
+        // This should not panic, just log an error
+        PollingScheduler::send_result(result, &tx);
+    }
+
+    #[test]
+    fn test_create_polling_result() {
+        let task = create_test_task();
+        let poll_start = SystemTime::now();
+        let duration = Duration::from_millis(100);
+        let mut values = HashMap::new();
+        values.insert("test".to_string(), SnmpValue::Integer(42));
+
+        // Test successful result creation (lines 324-342)
+        let result = PollingScheduler::create_polling_result(
+            &task,
+            poll_start,
+            true,
+            values.clone(),
+            None,
+            duration,
+        );
+
+        assert_eq!(result.task_id, task.id);
+        assert_eq!(result.node_id, task.node_id);
+        assert_eq!(result.target, task.target);
+        assert_eq!(result.timestamp, poll_start);
+        assert!(result.success);
+        assert_eq!(result.values, values);
+        assert!(result.error.is_none());
+        assert_eq!(result.duration, duration);
+
+        // Test error result creation
+        let error_result = PollingScheduler::create_polling_result(
+            &task,
+            poll_start,
+            false,
+            HashMap::new(),
+            Some("test error".to_string()),
+            duration,
+        );
+
+        assert!(!error_result.success);
+        assert!(error_result.values.is_empty());
+        assert_eq!(error_result.error, Some("test error".to_string()));
+    }
+
+    #[test]
+    fn test_log_poll_completion() {
+        let task = create_test_task();
+        let duration = Duration::from_millis(100);
+
+        // Test successful completion logging (lines 350-358)
+        PollingScheduler::log_poll_completion(&task, true, duration);
+
+        // Test failed completion logging (lines 359-367)
+        let mut failed_task = task;
+        failed_task.consecutive_failures = 3;
+        failed_task.last_error = Some("test error".to_string());
+        PollingScheduler::log_poll_completion(&failed_task, false, duration);
+    }
+}

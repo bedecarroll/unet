@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 /// SNMP credentials for authentication
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SnmpCredentials {
     /// SNMPv1/v2c community string
     Community {
@@ -33,7 +33,7 @@ impl Default for SnmpCredentials {
 }
 
 /// Configuration for SNMP session
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SessionConfig {
     /// Target address and port
     pub address: SocketAddr,

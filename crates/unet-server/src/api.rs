@@ -173,3 +173,90 @@ pub struct PaginatedResponse<T> {
 }
 
 impl<T> PaginatedResponse<T> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_create_node_request_location_id() {
+        let location_id = Uuid::new_v4();
+        let request = CreateNodeRequest {
+            name: "test-node".to_string(),
+            domain: Some("example.com".to_string()),
+            vendor: Vendor::Cisco,
+            model: "ASR1000".to_string(),
+            role: DeviceRole::Router,
+            lifecycle: Lifecycle::Live,
+            location_id: Some(location_id),
+            management_ip: None,
+            custom_data: None,
+        };
+
+        let result = request.into_node();
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.location_id, Some(location_id));
+    }
+
+    #[test]
+    fn test_create_node_request_invalid_ip() {
+        let request = CreateNodeRequest {
+            name: "test-node".to_string(),
+            domain: Some("example.com".to_string()),
+            vendor: Vendor::Cisco,
+            model: "ASR1000".to_string(),
+            role: DeviceRole::Router,
+            lifecycle: Lifecycle::Live,
+            location_id: None,
+            management_ip: Some("invalid-ip".to_string()),
+            custom_data: None,
+        };
+
+        let result = request.into_node();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_create_node_request_valid_ip() {
+        let request = CreateNodeRequest {
+            name: "test-node".to_string(),
+            domain: Some("example.com".to_string()),
+            vendor: Vendor::Cisco,
+            model: "ASR1000".to_string(),
+            role: DeviceRole::Router,
+            lifecycle: Lifecycle::Live,
+            location_id: None,
+            management_ip: Some("192.168.1.1".to_string()),
+            custom_data: None,
+        };
+
+        let result = request.into_node();
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.management_ip, Some("192.168.1.1".parse().unwrap()));
+    }
+
+    #[test]
+    fn test_create_node_request_custom_data() {
+        let custom_data = json!({"key": "value", "number": 42});
+        let request = CreateNodeRequest {
+            name: "test-node".to_string(),
+            domain: Some("example.com".to_string()),
+            vendor: Vendor::Cisco,
+            model: "ASR1000".to_string(),
+            role: DeviceRole::Router,
+            lifecycle: Lifecycle::Live,
+            location_id: None,
+            management_ip: None,
+            custom_data: Some(custom_data.clone()),
+        };
+
+        let result = request.into_node();
+        assert!(result.is_ok());
+        let node = result.unwrap();
+        assert_eq!(node.custom_data, custom_data);
+    }
+}
