@@ -1,7 +1,7 @@
 //! `DataStore` abstraction layer for μNet Core
 //!
 //! This module provides the `DataStore` trait and related types for abstracting
-//! data storage operations across different backends (`CSV`, `SQLite`, `PostgreSQL`, etc.).
+//! data storage operations across different backends (`SQLite`, `PostgreSQL`, etc.).
 
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -10,7 +10,6 @@ use uuid::Uuid;
 use crate::models::{Link, Location, Node};
 use crate::policy::PolicyExecutionResult;
 
-pub mod csv;
 pub mod helpers;
 pub mod sqlite;
 #[cfg(test)]

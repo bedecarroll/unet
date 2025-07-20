@@ -224,15 +224,14 @@ impl EvaluationStats {
 mod tests {
     use super::*;
     use unet_core::{
-        datastore::{DataStore, csv::CsvStore},
+        datastore::{DataStore, sqlite::SqliteStore},
         models::*,
         policy::PolicyExecutionResult,
         policy_integration::PolicyService,
     };
 
-    async fn setup_test_datastore() -> CsvStore {
-        let temp_dir = tempfile::tempdir().unwrap();
-        CsvStore::new(temp_dir.path().to_path_buf()).await.unwrap()
+    async fn setup_test_datastore() -> SqliteStore {
+        SqliteStore::new("sqlite::memory:").await.unwrap()
     }
 
     fn create_test_node() -> Node {

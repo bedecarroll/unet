@@ -43,10 +43,10 @@
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                    Data Storage                                │   │
 │  │ ─────────────────────────────────────────────────────────────── │   │
-│  │ SQLite Database              CSV Files (Development)           │   │
-│  │ • SeaORM Entities           • File-based Storage              │   │
-│  │ • Migrations                • In-memory Caching               │   │
-│  │ • ACID Transactions         • Simple Testing                  │   │
+│  │ SQLite Database                                          │   │
+│  │ • SeaORM Entities                                       │   │
+│  │ • Migrations                                            │   │
+│  │ • ACID Transactions                                     │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
 
@@ -85,7 +85,6 @@ trait DataStore {
 **Implementations:**
 
 - **SQLiteStore**: Production backend using SeaORM
-- **CsvStore**: Development/testing backend with file storage
 
 #### Policy Engine
 
