@@ -112,11 +112,14 @@ pub async fn process_node_evaluation(
 mod tests {
     use super::*;
     use crate::handlers::policies::types::PolicyEvaluationSummary;
+    use migration::{Migrator, MigratorTrait};
     use std::collections::HashMap;
     use unet_core::{datastore::sqlite::SqliteStore, models::*, policy_integration::PolicyService};
 
     async fn setup_test_datastore() -> SqliteStore {
-        SqliteStore::new("sqlite::memory:").await.unwrap()
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+        Migrator::up(store.connection(), None).await.unwrap();
+        store
     }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {
@@ -231,8 +234,8 @@ mod tests {
 
         // Should have results for the node
         assert!(all_results.contains_key(&node.id));
-        // Summary should have some rules
-        assert!(summary.total_rules > 0);
+        // With no policies loaded, there should be zero rules evaluated
+        assert_eq!(summary.total_rules, 0);
     }
 
     #[tokio::test]

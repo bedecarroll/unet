@@ -108,7 +108,7 @@ mod tests {
         assert!(body["version"].is_string());
         assert!(body["timestamp"].is_string());
         assert_eq!(body["components"]["datastore"]["status"], "healthy");
-        assert_eq!(body["components"]["datastore"]["type"], "CSV");
+        assert_eq!(body["components"]["datastore"]["type"], "SQLite");
     }
 
     #[test]
@@ -137,7 +137,7 @@ mod tests {
         assert!(response["version"].is_string());
         assert!(response["timestamp"].is_string());
         assert_eq!(response["components"]["datastore"]["status"], "healthy");
-        assert_eq!(response["components"]["datastore"]["type"], "CSV");
+        assert_eq!(response["components"]["datastore"]["type"], "SQLite");
     }
 
     #[tokio::test]
@@ -152,7 +152,7 @@ mod tests {
         assert!(response["version"].is_string());
         assert!(response["timestamp"].is_string());
         assert_eq!(response["components"]["datastore"]["status"], "unhealthy");
-        assert_eq!(response["components"]["datastore"]["type"], "CSV");
+        assert_eq!(response["components"]["datastore"]["type"], "SQLite");
     }
 
     #[tokio::test]
