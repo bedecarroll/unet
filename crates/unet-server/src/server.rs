@@ -194,8 +194,8 @@ mod tests {
     #[tokio::test]
     async fn test_app_state_creation() {
         let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(
-            // We'll use a mock or CSV store for testing since SQLite requires async
-            unet_core::datastore::csv::CsvStore::new("/tmp/test_csv_store")
+            // Use an in-memory SQLite store for testing
+            unet_core::datastore::sqlite::SqliteStore::new("sqlite::memory:")
                 .await
                 .unwrap(),
         );
@@ -220,19 +220,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_initialize_app_state_csv() {
+    async fn test_initialize_app_state_sqlite() {
         let config = create_test_config();
-        let database_url = "csv:///tmp/test_csv_for_state".to_string();
+        let database_url = "sqlite::memory:".to_string();
 
         let result = initialize_app_state(config, database_url).await;
 
-        // CSV datastore should work in tests
+        // SQLite datastore should work in tests
         match result {
             Ok(app_state) => {
                 // Verify app state structure
-                assert!(
-                    app_state.datastore.name() == "csv" || app_state.datastore.name() == "sqlite"
-                );
+                assert_eq!(app_state.datastore.name(), "SQLite");
             }
             Err(e) => {
                 // Some initialization might fail in test environment
@@ -317,9 +315,6 @@ mod tests {
     fn test_database_url_formats() {
         let sqlite_url = "sqlite://test.db";
         assert!(sqlite_url.starts_with("sqlite://"));
-
-        let csv_url = "csv:///tmp/test";
-        assert!(csv_url.starts_with("csv://"));
     }
 
     #[tokio::test]
@@ -332,8 +327,7 @@ mod tests {
     }
 
     async fn create_mock_app_state() -> AppState {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let datastore = unet_core::datastore::csv::CsvStore::new(temp_dir.path())
+        let datastore = unet_core::datastore::sqlite::SqliteStore::new("sqlite::memory:")
             .await
             .unwrap();
 
@@ -408,9 +402,8 @@ mod tests {
     #[tokio::test]
     async fn test_background_tasks_initialization() {
         let config = create_test_config();
-        let temp_dir = tempfile::tempdir().unwrap();
         let datastore = Arc::new(
-            unet_core::datastore::csv::CsvStore::new(temp_dir.path())
+            unet_core::datastore::sqlite::SqliteStore::new("sqlite::memory:")
                 .await
                 .unwrap(),
         );

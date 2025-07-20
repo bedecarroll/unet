@@ -67,7 +67,7 @@ mod tests {
     use crate::server::AppState;
     use axum::{extract::State, http::StatusCode};
     use std::sync::Arc;
-    use unet_core::datastore::csv::CsvStore;
+    use unet_core::datastore::sqlite::SqliteStore;
     use unet_core::policy_integration::PolicyService;
 
     async fn create_healthy_app_state() -> AppState {
@@ -86,7 +86,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
 
         AppState {
-            datastore: Arc::new(CsvStore::new(&temp_dir).await.unwrap()),
+            datastore: Arc::new(SqliteStore::new("sqlite::memory:").await.unwrap()),
             policy_service: PolicyService::new(git_config),
         }
     }
@@ -129,7 +129,7 @@ mod tests {
     async fn test_build_health_response_healthy() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_2");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
 
         assert_eq!(response["status"], "healthy");
@@ -144,7 +144,7 @@ mod tests {
     async fn test_build_health_response_unhealthy() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_3");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("degraded", false, &datastore);
 
         assert_eq!(response["status"], "degraded");
@@ -159,7 +159,7 @@ mod tests {
     async fn test_health_response_structure() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_4");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
 
         // Check that all required fields are present
@@ -177,7 +177,7 @@ mod tests {
     async fn test_health_response_version() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_5");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
 
         // Version should be a non-empty string
@@ -189,7 +189,7 @@ mod tests {
     async fn test_health_response_timestamp_format() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_6");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
 
         // Timestamp should be a valid RFC3339 string
@@ -201,7 +201,7 @@ mod tests {
     async fn test_health_response_service_name() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_7");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
 
         // Service name should be μNet
@@ -212,7 +212,7 @@ mod tests {
     async fn test_health_response_components_structure() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_8");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
         let response = build_health_response("healthy", true, &datastore);
 
         let components = &response["components"];
@@ -229,7 +229,7 @@ mod tests {
         // Test that both healthy and unhealthy states are consistent
         let temp_dir = std::env::temp_dir().join("unet_test_data_9");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         let healthy_response = build_health_response("healthy", true, &datastore);
         let unhealthy_response = build_health_response("degraded", false, &datastore);
@@ -252,9 +252,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_check_datastore_health_success() {
-        let temp_dir = std::env::temp_dir().join("unet_test_data_health");
-        let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         let result = check_datastore_health(&datastore).await;
         assert!(result);
@@ -262,16 +260,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_check_datastore_health_failure_simulation() {
-        // Instead of creating a failing datastore, we'll test the error path
-        // by using a CSV datastore with an invalid path to trigger an error
-        let temp_dir = std::env::temp_dir().join("invalid_path_that_should_not_exist_12345");
-
-        // This should trigger an error path in some cases
-        let datastore = CsvStore::new(&temp_dir).await.unwrap();
+        // Instead of creating a failing datastore, we'll test the error path using
+        // an in-memory SQLite store which should always succeed
+        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
 
         // Test the successful case since we can't easily mock failures
         let result = check_datastore_health(&datastore).await;
-        // This should succeed with CSV datastore
+        // This should succeed with SQLite datastore
         assert!(result);
     }
 }

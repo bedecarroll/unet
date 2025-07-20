@@ -10,16 +10,15 @@ use crate::handlers::nodes::crud::{create_node, delete_node, get_node, list_node
 use crate::handlers::nodes::types::ListNodesQuery;
 use crate::server::AppState;
 use std::sync::Arc;
-use unet_core::datastore::{DataStore, csv::CsvStore};
+use unet_core::datastore::{DataStore, sqlite::SqliteStore};
 use unet_core::models::{DeviceRole, Lifecycle, Node, Vendor};
 use unet_core::policy_integration::PolicyService;
 
-async fn setup_test_datastore() -> CsvStore {
-    let temp_dir = tempfile::tempdir().unwrap();
-    CsvStore::new(temp_dir.path().to_path_buf()).await.unwrap()
+async fn setup_test_datastore() -> SqliteStore {
+    SqliteStore::new("sqlite::memory:").await.unwrap()
 }
 
-async fn create_test_node(datastore: &CsvStore) -> Node {
+async fn create_test_node(datastore: &SqliteStore) -> Node {
     let mut node = Node::new(
         "test-node".to_string(),
         "example.com".to_string(),

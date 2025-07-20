@@ -95,17 +95,16 @@ mod tests {
     use axum::extract::{Path, State};
     use std::sync::Arc;
     use unet_core::{
-        datastore::{DataStore, csv::CsvStore},
+        datastore::{DataStore, sqlite::SqliteStore},
         models::*,
         policy_integration::PolicyService,
     };
 
-    async fn setup_test_datastore() -> CsvStore {
-        let temp_dir = tempfile::tempdir().unwrap();
-        CsvStore::new(temp_dir.path().to_path_buf()).await.unwrap()
+    async fn setup_test_datastore() -> SqliteStore {
+        SqliteStore::new("sqlite::memory:").await.unwrap()
     }
 
-    async fn create_test_node(datastore: &CsvStore) -> Node {
+    async fn create_test_node(datastore: &SqliteStore) -> Node {
         let mut node = Node::new(
             "test-node".to_string(),
             "example.com".to_string(),

@@ -511,7 +511,7 @@ return Err(ApiError::conflict("A node with this name already exists"));
 
 5. **Implement in datastores**
    ```rust
-   // Update both SQLite and CSV implementations
+   // Update the SQLite implementation
    ```
 
 6. **Add API endpoints**

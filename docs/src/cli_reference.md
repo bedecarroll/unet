@@ -7,7 +7,7 @@
 
 ## Overview
 
-μNet provides a comprehensive command-line interface for network configuration management. The CLI supports both local (SQLite/CSV) and remote (HTTP API) operation modes.
+μNet provides a comprehensive command-line interface for network configuration management. The CLI supports local SQLite and remote (HTTP API) operation modes.
 
 **Binary Name:** `unet`  
 **Current Version:** 0.1.0  
