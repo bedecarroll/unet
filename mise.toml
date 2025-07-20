@@ -1,5 +1,15 @@
 min_version = '2024.11.1'
 
+[tools]
+rust = { version = "latest", components = "rustc,cargo,clippy,rustfmt,rust-std,rust-analyzer,rust-src,llvm-tools-preview" }
+cargo-binstall = "latest"
+"cargo:cargo-audit" = "latest"
+"cargo:cargo-llvm-cov" = "latest"
+"cargo:cargo-nextest" = "latest"
+"cargo:cargo-tarpaulin" = "latest"
+typos = "latest"
+"npm:markdownlint-cli2" = "latest"
+
 [tasks.lint]
 description = "Fix code issues and run linters"
 run = [
