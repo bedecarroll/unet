@@ -46,10 +46,13 @@ derived state (SNMP polling)
 - **NEVER** add clippy allows or change clippy lint levels
 - **ALWAYS** remove all dead code and unused variables
 - **NEVER** leave placeholder implementations (`todo!()`, `unimplemented!()`)
-- **ALWAYS** write comprehensive tests for new functionality
+- **NEVER** commit unused functions, commented code blocks, or stub implementations
+- **NEVER** leave "example code for future development" in the codebase
+- **ALWAYS** follow Test Driven Development (TDD) practices - see TDD section below
 - **NEVER** commit code that doesn't compile or pass tests
 - **ALWAYS** keep Rust files under 300 lines (absolute maximum 500 lines)
 - **ALWAYS** split large files into smaller, focused modules
+- **ALWAYS** run `mise run check-large-files` before commits to verify file sizes
 
 ### 4. Documentation Standards
 
@@ -59,11 +62,17 @@ derived state (SNMP polling)
 - **ALWAYS** use objective statements with measurable criteria
 - **NEVER** make claims about production-readiness without evidence
 - **ALWAYS** focus on factual status, features, and completion percentages
-- **NEVER** provide time estimates (days, weeks, months) as they depend on
-external factors
-- **ALWAYS** use implementation complexity estimates (simple, moderate,
-complex) if estimates are required
+- **NEVER** provide time estimates as they depend on external factors
+- **ALWAYS** use implementation complexity estimates (simple, moderate, complex) if estimates are required
 - **NEVER** promise delivery timelines or completion dates
+- **ALWAYS** document public APIs with rustdoc
+- **NEVER** document obvious getter/setter methods
+- **ALWAYS** include examples in complex function documentation
+- **NEVER** use outdated or misleading comments
+- **ALWAYS** update relevant documentation when changing behavior
+- **NEVER** leave documentation stale after code changes
+- **ALWAYS** maintain the established documentation structure in `docs/src/` using mdBook
+- **ALWAYS** use backticks around technical terms and library names
 
 ### 5. Tool Usage Patterns
 
@@ -72,6 +81,88 @@ complex) if estimates are required
 - **ALWAYS** use Read tool before Edit/MultiEdit operations
 - **ALWAYS** run `mise run lint` after code changes
 - **NEVER** skip the TodoWrite tool for multi-step tasks
+- **REFERENCE** `docs/src/developer_guide.md` for detailed implementation patterns and decision trees
+
+---
+
+## Test Driven Development (TDD)
+
+μNet follows **strict Test Driven Development** practices. All code development MUST follow the Red-Green-Refactor cycle.
+
+### TDD Principles
+
+- **ALWAYS** write tests BEFORE writing any implementation code
+- **NEVER** write implementation code without failing tests first
+- **ALWAYS** follow the Red-Green-Refactor cycle:
+  1. **Red**: Write a failing test that defines the desired behavior
+  2. **Green**: Write the minimal code to make the test pass
+  3. **Refactor**: Improve code quality while keeping tests passing
+
+### TDD Workflow Requirements
+
+- **ALWAYS** start development by writing a failing test
+- **VERIFY** the test fails for the right reason before implementing
+- **NEVER** skip the Red phase - confirm test failure first
+- **ALWAYS** run tests after each micro-change during implementation
+- **NEVER** implement more than needed to make tests pass
+- **ALWAYS** refactor with confidence once tests are green
+
+### Test Design Guidelines
+
+- **ALWAYS** write clear, descriptive test names that explain the behavior
+- **NEVER** write vague test names like `test_function()` or `it_works()`
+- **ALWAYS** structure tests with Arrange-Act-Assert pattern
+- **NEVER** test multiple behaviors in a single test function
+- **ALWAYS** test edge cases and error conditions
+- **NEVER** write tests that depend on external state or other tests
+
+### TDD Coverage Requirements
+
+- **ALL** new functionality MUST have tests written FIRST (before implementation)
+- **ALL** tests MUST fail initially (Red phase verification required)
+- **ALL** new API endpoints MUST have integration tests written before implementation
+- **ALL** new CLI commands MUST have E2E tests written before implementation
+- **ALL** policy rules MUST have evaluation tests written before implementation
+- **NEVER** write implementation code without a failing test
+
+### TDD Test Patterns
+
+```rust
+// CORRECT: TDD test written BEFORE implementation
+#[tokio::test]
+async fn test_node_calculates_uptime_correctly() {
+    // Arrange
+    let store = setup_test_datastore().await;
+    let node = create_test_node_with_start_time(&store, "2024-01-01T00:00:00Z").await.unwrap();
+    
+    // Act
+    let uptime = node.calculate_uptime().await.unwrap(); // This method doesn't exist yet!
+    
+    // Assert
+    assert!(uptime.as_secs() > 0);
+    cleanup_test_data(&store).await;
+}
+
+// CORRECT: Test edge cases first
+#[tokio::test]
+async fn test_node_uptime_handles_invalid_start_time() {
+    // Write this test BEFORE implementing error handling
+    let store = setup_test_datastore().await;
+    let node = create_test_node_with_invalid_time(&store).await.unwrap();
+    
+    let result = node.calculate_uptime().await;
+    assert!(result.is_err());
+    cleanup_test_data(&store).await;
+}
+```
+
+### Test-First Development Rules
+
+- **ALWAYS** write the test name and structure first
+- **ALWAYS** verify the test fails for the expected reason
+- **NEVER** proceed to implementation until test failure is confirmed
+- **ALWAYS** write minimal code to make tests pass
+- **NEVER** over-implement beyond what tests require
 
 ---
 
@@ -79,10 +170,12 @@ complex) if estimates are required
 
 ### Required Context Gathering
 
-1. **Read architecture document first**: `docs/src/architecture.md`
-2. **Search for existing patterns**: Use Grep to find similar implementations
-3. **Check test patterns**: Look at existing tests before writing new ones
-4. **Verify dependencies**: Check `Cargo.toml` for available crates
+1. **Write failing tests first**: Define expected behavior through tests
+2. **Read architecture document**: `docs/src/architecture.md`
+3. **Search for existing patterns**: Use Grep to find similar implementations
+4. **Check test patterns**: Look at existing tests for structure and naming
+5. **Verify test failure**: Ensure tests fail for the right reason before implementing
+6. **Verify dependencies**: Check `Cargo.toml` for available crates
 
 ---
 
@@ -90,11 +183,14 @@ complex) if estimates are required
 
 When implementing features:
 
-1. **Search existing codebase** for similar patterns
-2. **Follow established conventions** over creating new ones  
-3. **Prefer composition** over inheritance
-4. **Default to explicit** over implicit behavior
-5. **Favor readability** over cleverness
+1. **Write failing tests first** to define expected behavior (TDD Red phase)
+2. **Search existing codebase** for similar patterns and test structures
+3. **Follow established conventions** over creating new ones  
+4. **Prefer composition** over inheritance
+5. **Default to explicit** over implicit behavior
+6. **Favor readability** over cleverness
+7. **Implement minimally** to make tests pass (TDD Green phase)
+8. **Refactor confidently** with test coverage (TDD Refactor phase)
 
 ---
 
@@ -115,19 +211,39 @@ unet/
 ### Development Tools (mise.toml)
 
 - **linting:** `mise run lint` - lints and auto-fixes linting issues (typos, clippy, formatting)
-- **testing:** `mise run test` - runs unit tests with coverage
+- **testing:** `mise run test` - runs unit tests with coverage via llvm-cov and nextest
+- **file size check:** `mise run check-large-files` - identifies files exceeding size guidelines
 
-### Example Development Workflow
+### Example TDD Development Workflow
 
 ```bash
-# 1. Make your changes
-vim crates/unet-core/src/models/node.rs
+# 1. ALWAYS start by writing a failing test first (RED phase)
+vim crates/unet-core/src/models/tests/node.rs
+# Write test: test_node_calculates_uptime_correctly()
 
-# 2. Run tests to ensure functionality works
+# 2. Verify the test fails for the right reason
+mise run test
+# Expected: test should fail because function doesn't exist
+
+# 3. Write minimal implementation to make test pass (GREEN phase)
+vim crates/unet-core/src/models/node.rs
+# Add just enough code to make the test pass
+
+# 4. Run tests to confirm they pass
 mise run test
 
-# 3. Check if any manual fixes are needed, will format code
+# 5. Refactor while keeping tests green (REFACTOR phase)
+vim crates/unet-core/src/models/node.rs
+# Improve code quality, extract methods, etc.
+
+# 6. Run tests after each refactoring step
+mise run test
+
+# 7. Check if any manual fixes are needed, will format code
 mise run lint
+
+# 8. Verify file sizes are within guidelines
+mise run check-large-files
 ```
 
 ---
@@ -207,30 +323,6 @@ async fn create_node(
 
 ---
 
-## Testing Requirements
-
-### Test Coverage
-
-- **ALL** new functionality MUST have unit tests
-- **ALL** new API endpoints MUST have integration tests
-- **ALL** new CLI commands MUST have E2E tests
-- **ALL** policy rules MUST have evaluation tests
-
-### Test Patterns
-
-```rust
-// CORRECT: Proper async test setup
-#[tokio::test]
-async fn test_node_creation() {
-    let store = setup_test_datastore().await;
-    let node = create_test_node(&store).await.unwrap();
-    assert_eq!(node.name, "test-node");
-    cleanup_test_data(&store).await;
-}
-```
-
----
-
 ## Code Quality Patterns
 
 ### Numeric Literals
@@ -294,25 +386,6 @@ async fn test_node_creation() {
 
 ---
 
-## Documentation Standards
-
-### Code Documentation
-
-- **ALWAYS** document public APIs with rustdoc
-- **NEVER** document obvious getter/setter methods
-- **ALWAYS** include examples in complex function documentation
-- **NEVER** use outdated or misleading comments
-
-### Project Documentation
-
-Documentation is maintained in `docs/src/` using mdBook:
-
-- **ALWAYS** update relevant documentation when changing behavior
-- **NEVER** leave documentation stale after code changes
-- **ALWAYS** maintain the established documentation structure
-
----
-
 ## Git Workflow
 
 ### Branch Naming
@@ -342,9 +415,15 @@ update
 
 Before submitting any code changes, ensure:
 
-- [ ] All tests pass (`mise run test`)
+- [ ] **TDD compliance**: All functionality was implemented test-first
+- [ ] **Red phase verified**: Initial tests failed for the expected reasons
+- [ ] All tests pass (`mise run test` - uses llvm-cov + nextest)
 - [ ] Code is properly formatted and lint-free (`mise run lint`)
-- [ ] No dead code or unused variables
+- [ ] No dead code, unused variables, or placeholder implementations
+- [ ] All files are under 300 lines (`mise run check-large-files` shows no results)
+- [ ] No commented-out code blocks or stub functions
+- [ ] **Test coverage**: Every new function/method has corresponding tests
+- [ ] **Test quality**: Tests have descriptive names and clear Arrange-Act-Assert structure
 - [ ] Documentation is updated if behavior changed
 - [ ] Security implications are considered
 - [ ] Integration with existing systems is verified
@@ -357,6 +436,10 @@ Before submitting any code changes, ensure:
 
 - **NEVER** add clippy allows or change clippy lint levels
 - **NEVER** leave dead code or unused variables in the codebase
+- **NEVER** commit unused functions, even as "examples" or "stubs for future use"
+- **NEVER** leave commented-out code blocks in commits
+- **NEVER** commit placeholder implementations (`todo!()`, `unimplemented!()`, `panic!()`)
+- **NEVER** violate TDD practices - see TDD section for complete requirements
 - **NEVER** expose internal database structure to API consumers
 - **NEVER** bypass the policy engine for configuration changes
 - **NEVER** store credentials in version control
@@ -364,6 +447,7 @@ Before submitting any code changes, ensure:
 - **NEVER** implement custom crypto - use established crates
 - **NEVER** create SQL injection vulnerabilities
 - **NEVER** ignore network timeouts in production code
+- **NEVER** commit files exceeding 500 lines (target: under 300 lines)
 
 ---
 

@@ -14,7 +14,12 @@
 - [Policy Guide](policy_guide.md)
 - [API Reference](api_reference.md)
 
+## Development
+
+- [Developer Guide](developer_guide.md)
+
 ## Reference
 
 - [Architecture](architecture.md)
+- [Database Schema](database_schema.md)
 - [Roadmap](roadmap.md)
