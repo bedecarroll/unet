@@ -9,13 +9,16 @@ use crate::api::{CreateNodeRequest, UpdateNodeRequest};
 use crate::handlers::nodes::crud::{create_node, delete_node, get_node, list_nodes, update_node};
 use crate::handlers::nodes::types::ListNodesQuery;
 use crate::server::AppState;
+use migration::{Migrator, MigratorTrait};
 use std::sync::Arc;
 use unet_core::datastore::{DataStore, sqlite::SqliteStore};
 use unet_core::models::{DeviceRole, Lifecycle, Node, Vendor};
 use unet_core::policy_integration::PolicyService;
 
 async fn setup_test_datastore() -> SqliteStore {
-    SqliteStore::new("sqlite::memory:").await.unwrap()
+    let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+    Migrator::up(store.connection(), None).await.unwrap();
+    store
 }
 
 async fn create_test_node(datastore: &SqliteStore) -> Node {

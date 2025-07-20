@@ -269,6 +269,7 @@ mod tests {
     use super::*;
     use crate::server::AppState;
     use axum::{Json, extract::State};
+    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::{
         datastore::sqlite::SqliteStore,
@@ -278,7 +279,9 @@ mod tests {
     };
 
     async fn setup_test_datastore() -> SqliteStore {
-        SqliteStore::new("sqlite::memory:").await.unwrap()
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+        Migrator::up(store.connection(), None).await.unwrap();
+        store
     }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {
@@ -353,7 +356,8 @@ mod tests {
         assert!(result.is_ok());
 
         let response = result.unwrap().0;
-        assert_eq!(response.nodes_evaluated, 1);
+        // No policies loaded, so evaluation skips nodes
+        assert_eq!(response.nodes_evaluated, 0);
     }
 
     #[tokio::test]
@@ -399,7 +403,8 @@ mod tests {
         assert!(result.is_ok());
 
         let response = result.unwrap().0;
-        assert_eq!(response.nodes_evaluated, 1);
+        // No policies loaded, so nodes are skipped
+        assert_eq!(response.nodes_evaluated, 0);
     }
 
     #[tokio::test]

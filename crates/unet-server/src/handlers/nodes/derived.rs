@@ -93,6 +93,7 @@ mod tests {
     use super::*;
     use crate::server::AppState;
     use axum::extract::{Path, State};
+    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::{
         datastore::{DataStore, sqlite::SqliteStore},
@@ -101,7 +102,9 @@ mod tests {
     };
 
     async fn setup_test_datastore() -> SqliteStore {
-        SqliteStore::new("sqlite::memory:").await.unwrap()
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+        Migrator::up(store.connection(), None).await.unwrap();
+        store
     }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {

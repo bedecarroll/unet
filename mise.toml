@@ -17,5 +17,5 @@ run = [
 [tasks.check-large-files]
 description = "Find files exceeding size guidelines (>400 lines)"
 run = [
-  "find /home/bc/code/unet/crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print $0}' | sort -nr",
+  "find crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print $0}' | sort -nr",
 ]
