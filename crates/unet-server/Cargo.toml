@@ -60,3 +60,4 @@ chrono = { workspace = true }
 tokio-test = { workspace = true }
 # reqwest = { workspace = true } # Will be added when HTTP client is needed
 tempfile = { workspace = true }
+migration = { path = "../migrations" }

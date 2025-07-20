@@ -223,6 +223,7 @@ impl EvaluationStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use migration::{Migrator, MigratorTrait};
     use unet_core::{
         datastore::{DataStore, sqlite::SqliteStore},
         models::*,
@@ -231,7 +232,9 @@ mod tests {
     };
 
     async fn setup_test_datastore() -> SqliteStore {
-        SqliteStore::new("sqlite::memory:").await.unwrap()
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+        Migrator::up(store.connection(), None).await.unwrap();
+        store
     }
 
     fn create_test_node() -> Node {
