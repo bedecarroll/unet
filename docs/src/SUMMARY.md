@@ -17,6 +17,7 @@
 ## Development
 
 - [Developer Guide](developer_guide.md)
+- [Codex Startup Script](codex_startup_script.md)
 
 ## Reference
 
