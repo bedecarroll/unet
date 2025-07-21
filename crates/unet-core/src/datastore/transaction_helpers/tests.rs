@@ -191,6 +191,18 @@ mod transaction_helper_tests {
             unimplemented!()
         }
 
+        async fn create_vendor(&self, _name: &str) -> DataStoreResult<()> {
+            Ok(())
+        }
+
+        async fn list_vendors(&self) -> DataStoreResult<Vec<String>> {
+            Ok(Vec::new())
+        }
+
+        async fn delete_vendor(&self, _name: &str) -> DataStoreResult<()> {
+            Ok(())
+        }
+
         // Batch operations
         async fn batch_nodes(
             &self,

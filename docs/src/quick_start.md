@@ -31,6 +31,21 @@ cp target/release/unet-server ./unet-server
 # Creates unet.db in current directory
 ```
 
+### Managing Vendors
+
+Common vendors are seeded automatically. Manage them using the CLI:
+
+```bash
+# List vendors
+unet vendors list
+
+# Add a vendor
+unet vendors add CustomVendor
+
+# Remove a vendor
+unet vendors delete CustomVendor
+```
+
 ### 2. Create Sample Data
 
 > **Note:** Pre-built example files are not yet available. You can create sample data manually:

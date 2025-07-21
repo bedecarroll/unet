@@ -10,6 +10,7 @@ mod locations;
 mod nodes;
 mod store;
 mod transaction;
+mod vendors;
 
 #[cfg(test)]
 mod tests;

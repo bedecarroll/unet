@@ -2,7 +2,9 @@
 // Moved from root test_sqlite_datastore.rs, converted into proper cargo integration test.
 
 use migration::{Migrator, MigratorTrait};
+use sea_orm::EntityTrait;
 use unet_core::datastore::{DataStore, QueryOptions, sqlite::SqliteStore};
+use unet_core::entities::Vendors;
 use unet_core::models::{DeviceRole, Lifecycle, Node, Vendor};
 
 /// End-to-end integration test for SQLite-based DataStore
@@ -18,6 +20,17 @@ async fn sqlite_datastore_integration() {
     Migrator::up(store.connection(), None)
         .await
         .expect("Failed to run database migrations");
+
+    // Verify seeded vendors
+    let vendor_names: Vec<String> = Vendors::find()
+        .all(store.connection())
+        .await
+        .expect("Query vendors failed")
+        .into_iter()
+        .map(|v| v.name)
+        .collect();
+    assert!(vendor_names.contains(&"Cisco".to_string()));
+    assert!(vendor_names.contains(&"Juniper".to_string()));
 
     // Health check
     store.health_check().await.expect("Health check failed");
@@ -73,4 +86,31 @@ async fn sqlite_datastore_integration() {
         .await
         .expect("Error checking deletion");
     assert!(after_delete.is_none(), "Node was not deleted");
+}
+
+/// Verify vendor management through the datastore
+#[tokio::test]
+async fn vendor_management() {
+    let store = SqliteStore::new("sqlite::memory:")
+        .await
+        .expect("Failed to init DB");
+    Migrator::up(store.connection(), None)
+        .await
+        .expect("migrations");
+
+    // Add vendor
+    store
+        .create_vendor("ExampleCorp")
+        .await
+        .expect("add vendor");
+    let vendors = store.list_vendors().await.expect("list vendors");
+    assert!(vendors.contains(&"ExampleCorp".to_string()));
+
+    // Delete vendor
+    store
+        .delete_vendor("ExampleCorp")
+        .await
+        .expect("delete vendor");
+    let vendors = store.list_vendors().await.expect("list vendors");
+    assert!(!vendors.contains(&"ExampleCorp".to_string()));
 }
