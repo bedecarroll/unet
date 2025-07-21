@@ -12,6 +12,7 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           experimental: true
+      - run: mise install
       - run: cargo fetch
       - run: mise run lint
       - run: mise run test
