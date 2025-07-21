@@ -1,4 +1,6 @@
 min_version = '2024.11.1'
+[settings]
+idiomatic_version_file_enable_tools = ["rust"]
 
 [tools]
 rust = { version = "latest", components = "rustc,cargo,clippy,rustfmt,rust-std,rust-analyzer,rust-src,llvm-tools-preview" }
