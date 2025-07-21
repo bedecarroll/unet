@@ -10,10 +10,13 @@ use uuid::Uuid;
 use super::{SessionConfig, SnmpValue};
 
 // Re-export all public types
+pub use self::core::PollingScheduler;
 pub use self::handle::PollingHandle;
-pub use self::scheduler::PollingScheduler;
 
+mod core;
+mod execution;
 mod handle;
+mod management;
 mod scheduler;
 
 /// Configuration for polling scheduler

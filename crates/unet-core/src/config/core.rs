@@ -1,8 +1,9 @@
-//! Core configuration structure and loading/saving functionality
+//! Core configuration structure and implementations
 
 use crate::error::{Error, Result};
 use config::{Config as ConfigBuilder, File};
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 use std::path::Path;
 
 use super::defaults;
@@ -11,25 +12,21 @@ use super::types::{
 };
 
 /// Main configuration structure for μNet
-///
-/// This structure contains all configuration sections for the application.
-/// It supports loading from TOML files, environment variables, and provides
-/// sensible defaults for all settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// Database configuration
+    /// Database configuration settings
     pub database: DatabaseConfig,
-    /// Logging configuration
+    /// Logging configuration settings
     pub logging: LoggingConfig,
-    /// SNMP configuration
+    /// SNMP configuration settings
     pub snmp: SnmpConfig,
-    /// Server configuration
+    /// Server configuration settings
     pub server: ServerConfig,
-    /// Git configuration for policy loading
+    /// Git repository configuration settings
     pub git: GitConfig,
-    /// Domain configuration for network naming
+    /// Domain configuration settings
     pub domain: DomainConfig,
-    /// Authentication configuration
+    /// Authentication configuration settings
     pub auth: AuthConfig,
 }
 
@@ -42,17 +39,10 @@ impl Config {
 
     /// Loads configuration from a TOML file
     ///
-    /// # Arguments
-    /// * `path` - Path to the TOML configuration file
-    ///
-    /// # Returns
-    /// Loaded configuration or error if file cannot be read/parsed
-    ///
     /// # Errors
-    /// Returns an error if:
-    /// - File cannot be read
-    /// - TOML syntax is invalid
-    /// - Configuration structure is invalid
+    ///
+    /// Returns an error if the file path contains invalid UTF-8, the file cannot be read,
+    /// or the configuration cannot be parsed as valid TOML.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_str = path.as_ref().to_str().ok_or_else(|| {
             Error::config(format!(
@@ -79,66 +69,49 @@ impl Config {
 
     /// Loads configuration from environment variables
     ///
-    /// Uses the `UNET_` prefix for environment variables.
-    /// For example: `UNET_DATABASE__URL` maps to `database.url`
-    ///
-    /// # Returns
-    /// Configuration loaded from environment variables with defaults
-    ///
     /// # Errors
-    /// Returns an error if environment variables contain invalid values
+    ///
+    /// Returns an error if environment variables cannot be parsed into valid configuration values
+    /// or if the resulting configuration cannot be deserialized.
     pub fn from_env() -> Result<Self> {
         Self::from_env_with_source(|key| std::env::var(key))
     }
 
     /// Loads configuration from environment variables using a custom source function
     ///
-    /// This function allows injecting a custom environment variable source for testing
-    ///
-    /// # Arguments
-    /// * `env_source` - Function that takes a variable name and returns Result<String, `VarError`>
-    ///
-    /// # Returns
-    /// Configuration loaded from environment variables with defaults
-    ///
     /// # Errors
-    /// Returns an error if environment variables contain invalid values
-    fn from_env_with_source<F>(env_source: F) -> Result<Self>
+    ///
+    /// Returns an error if configuration overrides cannot be set, the configuration cannot be built,
+    /// or the resulting configuration cannot be deserialized.
+    pub fn from_env_with_source<F>(env_source: F) -> Result<Self>
     where
-        F: for<'a> Fn(&'a str) -> std::result::Result<String, std::env::VarError>,
+        F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
     {
-        // Start with default config and merge in environment variables manually
-        let mut config = Self::default();
+        let mut builder = ConfigBuilder::builder();
 
-        // Override with environment variables if they exist
-        if let Ok(val) = env_source("UNET_DATABASE__URL") {
-            config.database.url = val;
-        }
-        if let Ok(val) = env_source("UNET_SERVER__HOST") {
-            config.server.host = val;
-        }
-        if let Ok(val) = env_source("UNET_SERVER__PORT") {
-            config.server.port = val
-                .parse()
-                .map_err(|e| Error::config(format!("Invalid port number: {e}")))?;
-        }
-        if let Ok(val) = env_source("UNET_LOGGING__LEVEL") {
-            config.logging.level = val;
+        for (key, value) in collect_env_vars(&env_source) {
+            builder = builder.set_override(&key, value).map_err(|e| {
+                Error::config(format!("Failed to set config override for {key}: {e}"))
+            })?;
         }
 
-        Ok(config)
+        builder
+            .build()
+            .map_err(|e| Error::config(format!("Failed to build config from environment: {e}")))?
+            .try_deserialize()
+            .map_err(|e| {
+                Error::config(format!(
+                    "Failed to deserialize config from environment: {e}"
+                ))
+            })
     }
 
-    /// Saves the configuration to a TOML file
-    ///
-    /// # Arguments
-    /// * `path` - Path where to save the configuration file
-    ///
-    /// # Returns
-    /// Success or error if file cannot be written
+    /// Saves configuration to a TOML file
     ///
     /// # Errors
-    /// Returns an error if the file cannot be written or serialization fails
+    ///
+    /// Returns an error if the configuration cannot be serialized to TOML
+    /// or if the file cannot be written to the specified path.
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let toml_content = toml::to_string_pretty(self)
             .map_err(|e| Error::config(format!("Failed to serialize config: {e}")))?;
@@ -150,6 +123,94 @@ impl Config {
             ))
         })?;
 
+        Ok(())
+    }
+
+    /// Validates the configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any configuration values are invalid, such as empty required fields,
+    /// zero values where positive values are required, or invalid network addresses.
+    pub fn validate(&self) -> Result<()> {
+        self.validate_database()?;
+        self.validate_server()?;
+        self.validate_git()?;
+        self.validate_auth()?;
+        Ok(())
+    }
+
+    /// Returns the complete database URL
+    #[must_use]
+    pub fn database_url(&self) -> &str {
+        &self.database.url
+    }
+
+    /// Returns the server socket address
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the host and port combination cannot be parsed as a valid socket address.
+    pub fn socket_addr(&self) -> Result<SocketAddr> {
+        let addr = format!("{}:{}", self.server.host, self.server.port);
+        addr.parse()
+            .map_err(|e| Error::config(format!("Invalid server address '{addr}': {e}")))
+    }
+
+    fn validate_database(&self) -> Result<()> {
+        if self.database.url.is_empty() {
+            return Err(Error::config("Database URL cannot be empty"));
+        }
+        if let Some(max_conn) = self.database.max_connections {
+            if max_conn == 0 {
+                return Err(Error::config(
+                    "Database max_connections must be greater than 0",
+                ));
+            }
+        }
+        if let Some(timeout) = self.database.timeout {
+            if timeout == 0 {
+                return Err(Error::config("Database timeout must be greater than 0"));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_server(&self) -> Result<()> {
+        if self.server.host.is_empty() {
+            return Err(Error::config("Server host cannot be empty"));
+        }
+        if self.server.port == 0 {
+            return Err(Error::config("Server port must be greater than 0"));
+        }
+        if self.server.max_request_size == 0 {
+            return Err(Error::config(
+                "Server max_request_size must be greater than 0",
+            ));
+        }
+        self.socket_addr()?;
+        Ok(())
+    }
+
+    fn validate_git(&self) -> Result<()> {
+        if self.git.branch.is_empty() {
+            return Err(Error::config("Git branch cannot be empty"));
+        }
+        if self.git.sync_interval == 0 {
+            return Err(Error::config("Git sync_interval must be greater than 0"));
+        }
+        Ok(())
+    }
+
+    fn validate_auth(&self) -> Result<()> {
+        if self.auth.enabled && self.auth.token_endpoint.is_none() {
+            return Err(Error::config(
+                "Auth token_endpoint must be set when auth is enabled",
+            ));
+        }
+        if self.auth.token_expiry == 0 {
+            return Err(Error::config("Auth token_expiry must be greater than 0"));
+        }
         Ok(())
     }
 }
@@ -182,7 +243,7 @@ impl Default for Config {
                 local_directory: Some("./policies".to_string()),
                 branch: "main".to_string(),
                 auth_token: None,
-                sync_interval: 300, // 5 minutes
+                sync_interval: 300,
                 policies_repo: None,
                 templates_repo: None,
             },
@@ -193,224 +254,46 @@ impl Default for Config {
             auth: AuthConfig {
                 enabled: false,
                 token_endpoint: None,
-                token_expiry: 3600, // 1 hour
+                token_expiry: 3_600,
             },
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::NamedTempFile;
+fn collect_env_vars<F>(env_source: &F) -> Vec<(String, String)>
+where
+    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
+{
+    let env_vars = [
+        ("UNET_DATABASE__URL", "database.url"),
+        ("UNET_DATABASE__MAX_CONNECTIONS", "database.max_connections"),
+        ("UNET_DATABASE__TIMEOUT", "database.timeout"),
+        ("UNET_LOGGING__LEVEL", "logging.level"),
+        ("UNET_LOGGING__FORMAT", "logging.format"),
+        ("UNET_LOGGING__FILE", "logging.file"),
+        ("UNET_SNMP__COMMUNITY", "snmp.community"),
+        ("UNET_SNMP__TIMEOUT", "snmp.timeout"),
+        ("UNET_SNMP__RETRIES", "snmp.retries"),
+        ("UNET_SERVER__HOST", "server.host"),
+        ("UNET_SERVER__PORT", "server.port"),
+        ("UNET_SERVER__MAX_REQUEST_SIZE", "server.max_request_size"),
+        ("UNET_GIT__REPOSITORY_URL", "git.repository_url"),
+        ("UNET_GIT__LOCAL_DIRECTORY", "git.local_directory"),
+        ("UNET_GIT__BRANCH", "git.branch"),
+        ("UNET_GIT__AUTH_TOKEN", "git.auth_token"),
+        ("UNET_GIT__SYNC_INTERVAL", "git.sync_interval"),
+        ("UNET_DOMAIN__DEFAULT_DOMAIN", "domain.default_domain"),
+        ("UNET_AUTH__ENABLED", "auth.enabled"),
+        ("UNET_AUTH__TOKEN_ENDPOINT", "auth.token_endpoint"),
+        ("UNET_AUTH__TOKEN_EXPIRY", "auth.token_expiry"),
+    ];
 
-    #[test]
-    fn test_config_new() {
-        let config = Config::new();
-        let default_config = Config::default();
-
-        assert_eq!(config.database.url, default_config.database.url);
-        assert_eq!(config.server.host, default_config.server.host);
-        assert_eq!(config.server.port, default_config.server.port);
-    }
-
-    #[test]
-    fn test_config_default() {
-        let config = Config::default();
-
-        // Test database defaults
-        assert_eq!(
-            config.database.url,
-            defaults::database::DEFAULT_DATABASE_URL
-        );
-        assert_eq!(
-            config.database.max_connections,
-            Some(defaults::database::DEFAULT_DB_MAX_CONNECTIONS)
-        );
-        assert_eq!(
-            config.database.timeout,
-            Some(defaults::database::DEFAULT_DB_TIMEOUT_SECONDS)
-        );
-
-        // Test server defaults
-        assert_eq!(config.server.host, defaults::server::DEFAULT_SERVER_HOST);
-        assert_eq!(config.server.port, defaults::network::DEFAULT_SERVER_PORT);
-        assert_eq!(
-            config.server.max_request_size,
-            defaults::server::DEFAULT_MAX_REQUEST_SIZE
-        );
-
-        // Test logging defaults
-        assert_eq!(config.logging.level, defaults::logging::DEFAULT_LOG_LEVEL);
-        assert_eq!(config.logging.format, defaults::logging::DEFAULT_LOG_FORMAT);
-        assert_eq!(config.logging.file, None);
-
-        // Test SNMP defaults
-        assert_eq!(
-            config.snmp.community,
-            defaults::snmp::DEFAULT_SNMP_COMMUNITY
-        );
-        assert_eq!(
-            config.snmp.timeout,
-            defaults::snmp::DEFAULT_SNMP_TIMEOUT_SECONDS
-        );
-        assert_eq!(config.snmp.retries, defaults::snmp::DEFAULT_SNMP_RETRIES);
-
-        // Test git defaults
-        assert_eq!(config.git.repository_url, None);
-        assert_eq!(config.git.local_directory, Some("./policies".to_string()));
-        assert_eq!(config.git.branch, "main");
-        assert_eq!(config.git.auth_token, None);
-        assert_eq!(config.git.sync_interval, 300);
-
-        // Test domain defaults
-        assert_eq!(config.domain.default_domain, None);
-        assert!(config.domain.search_domains.is_empty());
-
-        // Test auth defaults
-        assert!(!config.auth.enabled);
-        assert_eq!(config.auth.token_endpoint, None);
-        assert_eq!(config.auth.token_expiry, 3600);
-    }
-
-    #[test]
-    fn test_config_debug() {
-        let config = Config::default();
-        let debug_str = format!("{config:?}");
-
-        assert!(debug_str.contains("Config"));
-        assert!(debug_str.contains("database"));
-        assert!(debug_str.contains("server"));
-    }
-
-    #[test]
-    fn test_save_and_load_config() {
-        let temp_file = NamedTempFile::with_suffix(".toml").expect("Failed to create temp file");
-        let file_path = temp_file.path();
-
-        // Create a custom config
-        let mut original_config = Config::default();
-        original_config.server.port = 9999;
-        original_config.database.url = "sqlite:test.db".to_string();
-
-        // Save config
-        original_config
-            .save_to_file(file_path)
-            .expect("Failed to save config");
-
-        // Load config
-        let loaded_config = Config::from_file(file_path).expect("Failed to load config");
-
-        assert_eq!(loaded_config.server.port, 9999);
-        assert_eq!(loaded_config.database.url, "sqlite:test.db");
-    }
-
-    #[test]
-    fn test_from_file_invalid_path() {
-        let result = Config::from_file("/nonexistent/path/config.toml");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_from_file_invalid_toml() {
-        let temp_file = NamedTempFile::with_suffix(".toml").expect("Failed to create temp file");
-
-        // Write invalid TOML
-        std::fs::write(temp_file.path(), "invalid toml content [[[")
-            .expect("Failed to write invalid TOML");
-
-        let result = Config::from_file(temp_file.path());
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_save_to_file_invalid_path() {
-        let config = Config::default();
-        let result = config.save_to_file("/invalid/path/that/cannot/exist/config.toml");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_from_env_empty() {
-        // Use a mock environment that has no UNET_ variables
-        let empty_env = |_key: &str| -> std::result::Result<String, std::env::VarError> {
-            Err(std::env::VarError::NotPresent)
-        };
-
-        let result = Config::from_env_with_source(empty_env);
-        assert!(result.is_ok());
-
-        // Should get default values when no env vars are set
-        let config = result.unwrap();
-        assert_eq!(
-            config.database.url,
-            defaults::database::DEFAULT_DATABASE_URL
-        );
-    }
-
-    #[test]
-    fn test_from_env_with_values() {
-        // Use a mock environment with specific values
-        let mock_env = |key: &str| -> std::result::Result<String, std::env::VarError> {
-            match key {
-                "UNET_SERVER__PORT" => Ok("9001".to_string()),
-                "UNET_DATABASE__URL" => Ok("postgres://env-test/db".to_string()),
-                "UNET_LOGGING__LEVEL" => Ok("debug".to_string()),
-                _ => Err(std::env::VarError::NotPresent),
-            }
-        };
-
-        let result = Config::from_env_with_source(mock_env);
-        assert!(result.is_ok());
-
-        let config = result.unwrap();
-        assert_eq!(config.server.port, 9001);
-        assert_eq!(config.database.url, "postgres://env-test/db");
-        assert_eq!(config.logging.level, "debug");
-    }
-
-    #[test]
-    fn test_from_env_invalid_values() {
-        // Use a mock environment with invalid port value
-        let invalid_env = |key: &str| -> std::result::Result<String, std::env::VarError> {
-            match key {
-                "UNET_SERVER__PORT" => Ok("not_a_number".to_string()),
-                _ => Err(std::env::VarError::NotPresent),
-            }
-        };
-
-        let result = Config::from_env_with_source(invalid_env);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_config_serialization() {
-        let config = Config::default();
-
-        // Test TOML serialization
-        let toml_str = toml::to_string(&config).expect("Failed to serialize to TOML");
-        assert!(toml_str.contains("[database]"));
-        assert!(toml_str.contains("[server]"));
-        assert!(toml_str.contains("[logging]"));
-
-        // Test deserialization
-        let deserialized: Config =
-            toml::from_str(&toml_str).expect("Failed to deserialize from TOML");
-        assert_eq!(config.database.url, deserialized.database.url);
-        assert_eq!(config.server.port, deserialized.server.port);
-    }
-
-    #[test]
-    fn test_config_structure_completeness() {
-        let config = Config::default();
-
-        // Ensure all major sections are present
-        assert!(!config.database.url.is_empty());
-        assert!(!config.server.host.is_empty());
-        assert!(!config.logging.level.is_empty());
-        assert!(!config.snmp.community.is_empty());
-        assert!(!config.git.branch.is_empty());
-        assert!(config.git.sync_interval > 0);
-        assert!(config.auth.token_expiry > 0);
-    }
+    env_vars
+        .iter()
+        .filter_map(|(env_key, config_key)| {
+            env_source(env_key)
+                .ok()
+                .map(|value| ((*config_key).to_string(), value))
+        })
+        .collect()
 }

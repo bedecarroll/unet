@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [master]
   pull_request:
-    branches: [ main, develop ]
+    branches: [master]
 
 env:
   CARGO_TERM_COLOR: always
@@ -35,8 +35,16 @@ jobs:
       - name: Build
         run: cargo build --workspace --verbose
 
+      - name: Install cargo-nextest and cargo-llvm-cov
+        run: |
+          cargo install cargo-nextest
+          cargo install cargo-llvm-cov
+
       - name: Run tests
-        run: cargo test --workspace --verbose
+        run: cargo nextest run --workspace
+
+      - name: Check coverage
+        run: cargo llvm-cov --workspace --all-features --all-targets --fail-under-lines 70
 
   security:
     name: Security audit
@@ -84,3 +92,4 @@ jobs:
 
       - name: Test book
         run: mdbook test docs
+

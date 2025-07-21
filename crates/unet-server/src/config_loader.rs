@@ -65,7 +65,7 @@ pub fn apply_cli_overrides(config: &mut Config, args: &Args) {
 /// Determine the database URL to use (CLI override or config)
 pub fn determine_database_url(args: &Args, config: &Config) -> String {
     if args.database_url == "sqlite://unet.db" {
-        config.database_url()
+        config.database_url().to_string()
     } else {
         args.database_url.clone()
     }

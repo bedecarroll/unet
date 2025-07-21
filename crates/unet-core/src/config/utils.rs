@@ -11,8 +11,8 @@ impl Config {
     /// # Returns
     /// The database URL to use for connections
     #[must_use]
-    pub fn database_url(&self) -> String {
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| self.database.url.clone())
+    pub fn effective_database_url(&self) -> String {
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| self.database_url().to_string())
     }
 
     /// Check if the configuration represents a development environment
@@ -24,7 +24,7 @@ impl Config {
     /// `true` if this appears to be a development configuration
     #[must_use]
     pub fn is_development(&self) -> bool {
-        self.database_url().starts_with("sqlite:")
+        self.effective_database_url().starts_with("sqlite:")
             && (self.server.host == "127.0.0.1" || self.server.host == "localhost")
     }
 
@@ -63,8 +63,12 @@ mod tests {
 
     #[test]
     fn test_database_url_from_config() {
+        // Ensure clean state at beginning of test
+        unsafe {
+            std::env::remove_var("DATABASE_URL");
+        }
         let config = create_test_config();
-        assert_eq!(config.database_url(), "sqlite:test.db");
+        assert_eq!(config.effective_database_url(), "sqlite:test.db");
     }
 
     #[test]
@@ -73,7 +77,7 @@ mod tests {
             std::env::set_var("DATABASE_URL", "postgres://localhost/test");
         }
         let config = create_test_config();
-        assert_eq!(config.database_url(), "postgres://localhost/test");
+        assert_eq!(config.effective_database_url(), "postgres://localhost/test");
         unsafe {
             std::env::remove_var("DATABASE_URL");
         }
@@ -85,7 +89,7 @@ mod tests {
             std::env::remove_var("DATABASE_URL");
         }
         let config = create_test_config();
-        assert_eq!(config.database_url(), "sqlite:test.db");
+        assert_eq!(config.effective_database_url(), "sqlite:test.db");
     }
 
     #[test]
@@ -141,20 +145,24 @@ mod tests {
 
     #[test]
     fn test_database_url_with_env_override() {
-        // Test that DATABASE_URL env var takes precedence
+        // Ensure clean state at beginning of test
         unsafe {
-            std::env::set_var("DATABASE_URL", "mysql://env-override/db");
+            std::env::remove_var("DATABASE_URL");
         }
 
         let mut config = create_test_config();
         config.database.url = "sqlite:config.db".to_string();
 
-        assert_eq!(config.database_url(), "mysql://env-override/db");
+        // Test that DATABASE_URL env var takes precedence
+        unsafe {
+            std::env::set_var("DATABASE_URL", "mysql://env-override/db");
+        }
+        assert_eq!(config.effective_database_url(), "mysql://env-override/db");
 
         unsafe {
             std::env::remove_var("DATABASE_URL");
         }
-        assert_eq!(config.database_url(), "sqlite:config.db");
+        assert_eq!(config.effective_database_url(), "sqlite:config.db");
     }
 
     #[test]
@@ -182,16 +190,16 @@ mod tests {
 
         // Test SQLite variations
         config.database.url = "sqlite:memory:".to_string();
-        assert!(config.database_url().starts_with("sqlite:"));
+        assert!(config.effective_database_url().starts_with("sqlite:"));
 
         config.database.url = "sqlite:///path/to/db".to_string();
-        assert!(config.database_url().starts_with("sqlite:"));
+        assert!(config.effective_database_url().starts_with("sqlite:"));
 
         // Test other database types
         config.database.url = "postgresql://localhost/db".to_string();
-        assert!(config.database_url().starts_with("postgresql:"));
+        assert!(config.effective_database_url().starts_with("postgresql:"));
 
         config.database.url = "mysql://localhost/db".to_string();
-        assert!(config.database_url().starts_with("mysql:"));
+        assert!(config.effective_database_url().starts_with("mysql:"));
     }
 }

@@ -14,16 +14,22 @@ typos = "latest"
 
 [tasks.lint]
 description = "Fix code issues and run linters"
-run = [
-  "typos -w",
-  "cargo clippy --workspace --allow-dirty --fix --frozen",
-  "cargo fmt",
-]
+run = ["typos -w", "cargo clippy --workspace --allow-dirty --fix", "cargo fmt"]
 
 [tasks.test]
 description = "Run unit tests"
+run = ["cargo nextest run"]
+
+[tasks.coverage]
+description = "Generate code coverage report and enforce minimum threshold"
 run = [
-  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --frozen --no-clean nextest",
+  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --fail-under-lines 72",
+]
+
+[tasks.coverage-report]
+description = "Generate code coverage report without enforcement (for development)"
+run = [
+  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines",
 ]
 
 [tasks.check-large-files]

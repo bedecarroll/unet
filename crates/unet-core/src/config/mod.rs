@@ -9,7 +9,6 @@ pub mod defaults;
 pub mod network;
 pub mod types;
 pub mod utils;
-pub mod validation;
 
 // Re-export the main Config struct and commonly used items
 pub use core::Config;
