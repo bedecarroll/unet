@@ -210,6 +210,16 @@ pub trait DataStore: Send + Sync {
     /// Returns an error if the location cannot be deleted or doesn't exist
     async fn delete_location(&self, id: &Uuid) -> DataStoreResult<()>;
 
+    // Vendor operations
+    /// Creates a new vendor record
+    async fn create_vendor(&self, name: &str) -> DataStoreResult<()>;
+
+    /// Lists all vendor names
+    async fn list_vendors(&self) -> DataStoreResult<Vec<String>>;
+
+    /// Deletes a vendor record by name
+    async fn delete_vendor(&self, name: &str) -> DataStoreResult<()>;
+
     // Batch operations
     /// Performs batch operations on nodes
     ///

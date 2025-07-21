@@ -93,6 +93,25 @@ Network connections between devices, including both internal links and internet 
 - `idx_link_node_b` (on `node_b_id`)
 - `idx_link_circuit_id` (on `circuit_id`)
 
+### Vendors
+
+List of supported network equipment vendors.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `name` | TEXT | PRIMARY KEY, NOT NULL | Vendor name |
+
+Seeded vendors include Cisco, Juniper, Arista, and others. Use the CLI to manage the list:
+
+```bash
+# List vendors
+unet vendors list
+# Add vendor
+unet vendors add CustomVendor
+# Remove vendor
+unet vendors delete CustomVendor
+```
+
 ## Derived State Tables
 
 ### Node Status

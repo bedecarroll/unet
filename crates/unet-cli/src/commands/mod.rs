@@ -4,6 +4,7 @@ pub mod links;
 pub mod locations;
 pub mod nodes;
 pub mod policy;
+pub mod vendors;
 
 use anyhow::Result;
 

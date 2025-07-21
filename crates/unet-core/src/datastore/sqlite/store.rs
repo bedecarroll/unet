@@ -1,6 +1,6 @@
 //! Main `SQLite` store implementation
 
-use super::{links, locations, nodes};
+use super::{links, locations, nodes, vendors};
 
 use super::super::DataStore;
 use super::super::types::{
@@ -187,6 +187,18 @@ impl DataStore for SqliteStore {
 
     async fn delete_location(&self, id: &Uuid) -> DataStoreResult<()> {
         locations::delete_location(self, id).await
+    }
+
+    async fn create_vendor(&self, name: &str) -> DataStoreResult<()> {
+        vendors::create_vendor(self, name).await
+    }
+
+    async fn list_vendors(&self) -> DataStoreResult<Vec<String>> {
+        vendors::list_vendors(self).await
+    }
+
+    async fn delete_vendor(&self, name: &str) -> DataStoreResult<()> {
+        vendors::delete_vendor(self, name).await
     }
 
     async fn batch_locations(

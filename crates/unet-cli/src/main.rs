@@ -76,6 +76,9 @@ enum Commands {
     /// Link management commands
     #[command(subcommand)]
     Links(commands::links::LinkCommands),
+    /// Vendor management commands
+    #[command(subcommand)]
+    Vendors(commands::vendors::VendorCommands),
     /// Policy management commands
     #[command(subcommand)]
     Policy(commands::policy::PolicyCommands),
@@ -160,6 +163,9 @@ async fn main() -> Result<()> {
         }
         Commands::Links(link_cmd) => {
             commands::links::execute(link_cmd, datastore.as_ref(), cli.output).await
+        }
+        Commands::Vendors(vendor_cmd) => {
+            commands::vendors::execute(vendor_cmd, datastore.as_ref(), cli.output).await
         }
         Commands::Policy(policy_cmd) => {
             commands::policy::execute(policy_cmd, datastore.as_ref()).await

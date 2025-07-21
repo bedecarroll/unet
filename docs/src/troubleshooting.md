@@ -310,10 +310,14 @@ unet nodes list --page 1 --per-page 20
 # 3. Add indexes (for large datasets)
 sqlite3 unet.db "CREATE INDEX idx_nodes_vendor ON nodes(vendor);"
 
-# 4. Use specific filters
+# 4. Manually create vendor records
+unet vendors add ExampleCorp
+unet vendors delete ExampleCorp
+
+# 5. Use specific filters
 unet nodes list --vendor cisco --role core
 
-# 5. Consider using server mode
+# 6. Consider using server mode
 unet-server &
 export UNET_SERVER=http://localhost:8080
 unet nodes list  # Now uses HTTP API
