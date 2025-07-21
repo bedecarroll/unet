@@ -211,7 +211,8 @@ unet/
 ### Development Tools (mise.toml)
 
 - **linting:** `mise run lint` - lints and auto-fixes linting issues (typos, clippy, formatting)
-- **testing:** `mise run test` - runs unit tests with coverage via llvm-cov and nextest
+- **testing:** `mise run test` - runs unit tests with nextest
+- **coverage:** `mise run coverage` - generates code coverage reports with llvm-cov
 - **file size check:** `mise run check-large-files` - identifies files exceeding size guidelines
 
 ### Example TDD Development Workflow
@@ -242,7 +243,10 @@ mise run test
 # 7. Check if any manual fixes are needed, will format code
 mise run lint
 
-# 8. Verify file sizes are within guidelines
+# 8. Generate coverage report to ensure adequate test coverage
+mise run coverage
+
+# 9. Verify file sizes are within guidelines
 mise run check-large-files
 ```
 
@@ -417,7 +421,8 @@ Before submitting any code changes, ensure:
 
 - [ ] **TDD compliance**: All functionality was implemented test-first
 - [ ] **Red phase verified**: Initial tests failed for the expected reasons
-- [ ] All tests pass (`mise run test` - uses llvm-cov + nextest)
+- [ ] All tests pass (`mise run test`)
+- [ ] Code coverage is adequate (`mise run coverage` - maintain 72%+ coverage)
 - [ ] Code is properly formatted and lint-free (`mise run lint`)
 - [ ] No dead code, unused variables, or placeholder implementations
 - [ ] All files are under 300 lines (`mise run check-large-files` shows no results)

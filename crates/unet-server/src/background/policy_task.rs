@@ -1,68 +1,44 @@
-//! Background tasks for the μNet server
+//! Policy evaluation background task
 
+use crate::background::scheduler::EvaluationStats;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::{interval, sleep};
 use tracing::{debug, error, info, warn};
-
-use unet_core::{config::Config, datastore::DataStore, policy_integration::PolicyService};
-
-/// Background task manager
-pub struct BackgroundTasks {
-    config: Config,
-    datastore: Arc<dyn DataStore + Send + Sync>,
-    policy_service: PolicyService,
-}
-
-impl BackgroundTasks {
-    /// Create a new background task manager
-    pub fn new(
-        config: Config,
-        datastore: Arc<dyn DataStore + Send + Sync>,
-        policy_service: PolicyService,
-    ) -> Self {
-        Self {
-            config,
-            datastore,
-            policy_service,
-        }
-    }
-
-    /// Start all background tasks
-    pub fn start(&self) {
-        info!("Starting background tasks");
-
-        // Start policy evaluation task
-        let policy_task = PolicyEvaluationTask {
-            datastore: self.datastore.clone(),
-            policy_service: self.policy_service.clone(),
-            interval_seconds: self.config.git.sync_interval,
-        };
-
-        tokio::spawn(async move {
-            policy_task.run().await;
-        });
-
-        info!("Background tasks started");
-    }
-}
+use unet_core::{
+    datastore::DataStore,
+    models::Node,
+    policy::{PolicyExecutionResult, PolicyRule},
+    policy_integration::PolicyService,
+};
 
 /// Background task for periodic policy evaluation
-struct PolicyEvaluationTask {
+pub struct PolicyEvaluationTask {
     datastore: Arc<dyn DataStore + Send + Sync>,
     policy_service: PolicyService,
     interval_seconds: u64,
 }
 
 impl PolicyEvaluationTask {
+    pub fn new(
+        datastore: Arc<dyn DataStore + Send + Sync>,
+        policy_service: PolicyService,
+        interval_seconds: u64,
+    ) -> Self {
+        Self {
+            datastore,
+            policy_service,
+            interval_seconds,
+        }
+    }
+
     /// Run the policy evaluation task
-    async fn run(&self) {
+    pub async fn run(&mut self) {
         info!(
             "Starting policy evaluation background task with interval: {}s",
             self.interval_seconds
         );
 
-        // Wait a bit before starting the first evaluation
         sleep(Duration::from_secs(30)).await;
 
         let mut interval = interval(Duration::from_secs(self.interval_seconds));
@@ -74,14 +50,16 @@ impl PolicyEvaluationTask {
         }
     }
 
-    async fn run_policy_evaluation_cycle(&self) {
+    pub async fn run_policy_evaluation_cycle(&mut self) {
         if let Err(e) = self.evaluate_all_policies().await {
             error!("Policy evaluation failed: {}", e);
         }
     }
 
     /// Evaluate policies for all nodes
-    async fn evaluate_all_policies(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn evaluate_all_policies(
+        &mut self,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let start_time = std::time::Instant::now();
 
         let nodes = self.get_nodes_for_evaluation().await?;
@@ -102,30 +80,32 @@ impl PolicyEvaluationTask {
         Ok(())
     }
 
-    async fn get_nodes_for_evaluation(
+    pub async fn get_nodes_for_evaluation(
         &self,
-    ) -> Result<Vec<unet_core::models::Node>, Box<dyn std::error::Error + Send + Sync>> {
-        self.datastore
+    ) -> Result<Vec<Node>, Box<dyn std::error::Error + Send + Sync>> {
+        let nodes = self
+            .datastore
             .get_nodes_for_policy_evaluation()
             .await
-            .map_err(|e| format!("Failed to get nodes: {e}").into())
+            .map_err(|e| format!("Failed to get nodes for evaluation: {e}"))?;
+
+        debug!("Found {} nodes for policy evaluation", nodes.len());
+        Ok(nodes)
     }
 
-    fn load_policies_for_evaluation(
-        &self,
-    ) -> Result<Vec<unet_core::policy::PolicyRule>, Box<dyn std::error::Error + Send + Sync>> {
-        let mut policy_service = self.policy_service.clone();
-        let policies = policy_service
+    pub fn load_policies_for_evaluation(
+        &mut self,
+    ) -> Result<Vec<PolicyRule>, Box<dyn std::error::Error + Send + Sync>> {
+        let policies = self
+            .policy_service
             .load_policies()
             .map_err(|e| format!("Failed to load policies: {e}"))?;
 
-        info!("Loaded {} policies for evaluation", policies.len());
+        debug!("Loaded {} policies for evaluation", policies.len());
         Ok(policies)
     }
 
-    async fn evaluate_nodes(&self, nodes: &[unet_core::models::Node]) -> EvaluationStats {
-        info!("Evaluating policies for {} nodes", nodes.len());
-
+    pub async fn evaluate_nodes(&self, nodes: &[Node]) -> super::scheduler::EvaluationStats {
         let mut stats = EvaluationStats::new();
         let mut policy_service = self.policy_service.clone();
 
@@ -139,9 +119,9 @@ impl PolicyEvaluationTask {
 
     async fn evaluate_single_node(
         &self,
-        policy_service: &mut unet_core::policy_integration::PolicyService,
-        node: &unet_core::models::Node,
-        stats: &mut EvaluationStats,
+        policy_service: &mut PolicyService,
+        node: &Node,
+        stats: &mut super::scheduler::EvaluationStats,
     ) {
         match policy_service.evaluate_node(&*self.datastore, node).await {
             Ok(results) => {
@@ -167,9 +147,9 @@ impl PolicyEvaluationTask {
 
     async fn store_evaluation_results(
         &self,
-        policy_service: &unet_core::policy_integration::PolicyService,
-        node: &unet_core::models::Node,
-        results: &[unet_core::policy::PolicyExecutionResult],
+        policy_service: &PolicyService,
+        node: &Node,
+        results: &[PolicyExecutionResult],
     ) {
         if let Err(e) = policy_service
             .store_results(&*self.datastore, &node.id, results)
@@ -179,55 +159,32 @@ impl PolicyEvaluationTask {
         }
     }
 
-    fn log_evaluation_results(
-        nodes: &[unet_core::models::Node],
-        stats: &EvaluationStats,
+    pub fn log_evaluation_results(
+        nodes: &[Node],
+        stats: &super::scheduler::EvaluationStats,
         duration: std::time::Duration,
     ) {
         info!(
             "Policy evaluation completed: {} nodes processed, {} successful, {} failed, {} total results, took {:?}",
             nodes.len(),
-            stats.successful_evaluations,
-            stats.failed_evaluations,
-            stats.total_results,
+            stats.successful_evaluations(),
+            stats.failed_evaluations(),
+            stats.total_results(),
             duration
         );
-    }
-}
-
-struct EvaluationStats {
-    total_results: usize,
-    successful_evaluations: usize,
-    failed_evaluations: usize,
-}
-
-impl EvaluationStats {
-    const fn new() -> Self {
-        Self {
-            total_results: 0,
-            successful_evaluations: 0,
-            failed_evaluations: 0,
-        }
-    }
-
-    const fn record_success(&mut self, result_count: usize) {
-        self.total_results += result_count;
-        self.successful_evaluations += 1;
-    }
-
-    const fn record_failure(&mut self) {
-        self.failed_evaluations += 1;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::background::scheduler::EvaluationStats;
     use migration::{Migrator, MigratorTrait};
+    use std::sync::Arc;
     use unet_core::{
-        datastore::{DataStore, sqlite::SqliteStore},
+        datastore::sqlite::SqliteStore,
         models::*,
-        policy::PolicyExecutionResult,
+        policy::{Action, ActionExecutionResult, ActionResult, EvaluationResult, PolicyRule},
         policy_integration::PolicyService,
     };
 
@@ -244,19 +201,8 @@ mod tests {
             Vendor::Cisco,
             DeviceRole::Router,
         );
-        node.model = "ASR1000".to_string(); // Required field
+        node.model = "ASR1000".to_string();
         node
-    }
-
-    #[tokio::test]
-    async fn test_background_tasks_new() {
-        let datastore = setup_test_datastore().await;
-        let config = Config::default();
-        let policy_service = PolicyService::with_local_dir("/tmp");
-
-        let background_tasks = BackgroundTasks::new(config, Arc::new(datastore), policy_service);
-
-        assert_eq!(background_tasks.config.git.sync_interval, 300);
     }
 
     #[tokio::test]
@@ -264,11 +210,7 @@ mod tests {
         let datastore = setup_test_datastore().await;
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let result = task.get_nodes_for_evaluation().await;
         assert!(result.is_ok());
@@ -284,11 +226,7 @@ mod tests {
 
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let result = task.get_nodes_for_evaluation().await;
         assert!(result.is_ok());
@@ -301,17 +239,11 @@ mod tests {
         let datastore = setup_test_datastore().await;
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let mut task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let result = task.load_policies_for_evaluation();
         assert!(result.is_ok());
         let _policies = result.unwrap();
-        // PolicyService might have default policies even with local directory
-        // No need to assert len() >= 0 since it's always true for usize
     }
 
     #[tokio::test]
@@ -319,16 +251,12 @@ mod tests {
         let datastore = setup_test_datastore().await;
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let stats = task.evaluate_nodes(&[]).await;
-        assert_eq!(stats.total_results, 0);
-        assert_eq!(stats.successful_evaluations, 0);
-        assert_eq!(stats.failed_evaluations, 0);
+        assert_eq!(stats.total_results(), 0);
+        assert_eq!(stats.successful_evaluations(), 0);
+        assert_eq!(stats.failed_evaluations(), 0);
     }
 
     #[tokio::test]
@@ -337,41 +265,11 @@ mod tests {
         let policy_service = PolicyService::with_local_dir("/tmp");
         let nodes = vec![create_test_node()];
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let stats = task.evaluate_nodes(&nodes).await;
-        assert_eq!(stats.successful_evaluations, 1);
-        assert_eq!(stats.failed_evaluations, 0);
-    }
-
-    #[tokio::test]
-    async fn test_evaluation_stats_new() {
-        let stats = EvaluationStats::new();
-        assert_eq!(stats.total_results, 0);
-        assert_eq!(stats.successful_evaluations, 0);
-        assert_eq!(stats.failed_evaluations, 0);
-    }
-
-    #[tokio::test]
-    async fn test_evaluation_stats_record_success() {
-        let mut stats = EvaluationStats::new();
-        stats.record_success(5);
-        assert_eq!(stats.total_results, 5);
-        assert_eq!(stats.successful_evaluations, 1);
-        assert_eq!(stats.failed_evaluations, 0);
-    }
-
-    #[tokio::test]
-    async fn test_evaluation_stats_record_failure() {
-        let mut stats = EvaluationStats::new();
-        stats.record_failure();
-        assert_eq!(stats.total_results, 0);
-        assert_eq!(stats.successful_evaluations, 0);
-        assert_eq!(stats.failed_evaluations, 1);
+        assert_eq!(stats.successful_evaluations(), 1);
+        assert_eq!(stats.failed_evaluations(), 0);
     }
 
     #[tokio::test]
@@ -379,11 +277,7 @@ mod tests {
         let datastore = setup_test_datastore().await;
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let mut task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         task.run_policy_evaluation_cycle().await;
     }
@@ -393,11 +287,7 @@ mod tests {
         let datastore = setup_test_datastore().await;
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let mut task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let result = task.evaluate_all_policies().await;
         assert!(result.is_ok());
@@ -411,11 +301,7 @@ mod tests {
 
         let policy_service = PolicyService::with_local_dir("/tmp");
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service,
-            interval_seconds: 1,
-        };
+        let mut task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
 
         let result = task.evaluate_all_policies().await;
         assert!(result.is_ok());
@@ -433,10 +319,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_store_evaluation_results() {
-        use unet_core::policy::{
-            Action, ActionExecutionResult, ActionResult, EvaluationResult, PolicyRule,
-        };
-
         let datastore = setup_test_datastore().await;
         let policy_service = PolicyService::with_local_dir("/tmp");
         let node = create_test_node();
@@ -476,11 +358,7 @@ mod tests {
             }),
         )];
 
-        let task = PolicyEvaluationTask {
-            datastore: Arc::new(datastore),
-            policy_service: policy_service.clone(),
-            interval_seconds: 1,
-        };
+        let task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service.clone(), 1);
 
         task.store_evaluation_results(&policy_service, &node, &results)
             .await;
