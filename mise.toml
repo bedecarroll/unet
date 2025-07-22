@@ -14,7 +14,7 @@ typos = "latest"
 
 [tasks.lint]
 description = "Fix code issues and run linters"
-run = ["typos -w", "cargo clippy --workspace --allow-dirty --fix", "cargo fmt"]
+run = ["typos -w", "cargo fmt", "cargo clippy --workspace --allow-dirty --fix"]
 
 [tasks.test]
 description = "Run unit tests"
@@ -28,9 +28,7 @@ run = [
 
 [tasks.coverage-report]
 description = "Generate code coverage report without enforcement (for development)"
-run = [
-  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines",
-]
+run = ["cargo llvm-cov --all-features --show-missing-lines report"]
 
 [tasks.check-large-files]
 description = "Find files exceeding size guidelines (>400 lines)"
