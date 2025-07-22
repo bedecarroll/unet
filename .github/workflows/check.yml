@@ -11,40 +11,19 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  check:
-    name: Check
+  ci:
+    name: CI
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
         with:
-          components: rustfmt, clippy
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Check format
-        run: cargo fmt --all -- --check
-
-      - name: Check clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Build
-        run: cargo build --workspace --verbose
-
-      - name: Install cargo-nextest and cargo-llvm-cov
-        run: |
-          cargo install cargo-nextest
-          cargo install cargo-llvm-cov
-
-      - name: Run tests
-        run: cargo nextest run --workspace
-
-      - name: Check coverage
-        run: cargo llvm-cov --workspace --all-features --all-targets --fail-under-lines 70
+          experimental: true
+      - run: mise install
+      - run: mise run lint
+      - run: mise run test
+      - run: mise run coverage
+      - run: mise run check-large-files
 
   security:
     name: Security audit
@@ -87,9 +66,5 @@ jobs:
           curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
           echo `pwd`/mdbook >> $GITHUB_PATH
 
-      - name: Build book
-        run: mdbook build docs
-
       - name: Test book
         run: mdbook test docs
-
