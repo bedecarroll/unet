@@ -342,4 +342,109 @@ mod tests {
         let stats = client.get_stats();
         assert_eq!(stats.total_requests, 0);
     }
+
+    #[tokio::test]
+    async fn test_snmp_client_stats_async() {
+        let config = SnmpClientConfig {
+            max_connections: 5,
+            ..Default::default()
+        };
+        let client = SnmpClient::new(config);
+        let stats = client.stats().await;
+
+        assert_eq!(stats.max_connections, 5);
+        assert_eq!(stats.active_sessions, 0);
+        assert_eq!(stats.active_connections, 0);
+        assert_eq!(stats.total_requests, 0);
+        assert_eq!(stats.failed_requests, 0);
+        assert_eq!(stats.avg_response_time, Duration::ZERO);
+        assert_eq!(stats.available_permits, 5);
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_close_session() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config);
+        let address = "127.0.0.1:161".parse().unwrap();
+
+        // Close session that doesn't exist - should not panic
+        client.close_session(address).await;
+
+        let stats = client.stats().await;
+        assert_eq!(stats.active_sessions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_close_all_sessions() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config);
+
+        // Close all sessions when none exist - should not panic
+        client.close_all_sessions().await;
+
+        let stats = client.stats().await;
+        assert_eq!(stats.active_sessions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_cleanup_sessions() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config);
+        let max_age = Duration::from_secs(3600); // 1 hour
+
+        // Cleanup when no sessions exist - should not panic
+        client.cleanup_sessions(max_age).await;
+
+        let stats = client.stats().await;
+        assert_eq!(stats.active_sessions, 0);
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_get_session_pool_exhausted() {
+        let config = SnmpClientConfig {
+            max_connections: 0, // Set to 0 to trigger pool exhausted
+            ..Default::default()
+        };
+        let client = SnmpClient::new(config);
+        let address = "127.0.0.1:161".parse().unwrap();
+
+        // This should return pool exhausted error since max_connections is 0
+        let result = client.get_session_mut(address, None).await;
+        assert!(result.is_err());
+
+        if let Err(SnmpError::PoolExhausted { max_connections }) = result {
+            assert_eq!(max_connections, 0);
+        } else {
+            panic!("Expected PoolExhausted error");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_get_session_with_config() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config);
+        let address = "127.0.0.1:161".parse().unwrap();
+
+        let session_config = SessionConfig {
+            address,
+            timeout: Duration::from_secs(10),
+            retries: 5,
+            ..Default::default()
+        };
+
+        // This will create a new session but won't actually connect since it's a test
+        let result = client.get_session_mut(address, Some(session_config)).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_get_session_without_config() {
+        let config = SnmpClientConfig::default();
+        let client = SnmpClient::new(config);
+        let address = "127.0.0.1:161".parse().unwrap();
+
+        // This will create a new session using default config
+        let result = client.get_session_mut(address, None).await;
+        assert!(result.is_ok());
+    }
 }

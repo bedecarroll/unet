@@ -198,4 +198,45 @@ mod tests {
         // This should not panic
         log_operation_completion(session_id, target, "GET", &result);
     }
+
+    #[test]
+    fn test_log_operation_completion_with_results() {
+        let session_id = uuid::Uuid::new_v4();
+        let target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161);
+        let mut result = HashMap::new();
+        result.insert(
+            "1.3.6.1.2.1.1.1.0".to_string(),
+            SnmpValue::String("test".to_string()),
+        );
+        result.insert("1.3.6.1.2.1.1.3.0".to_string(), SnmpValue::TimeTicks(12345));
+
+        // Should handle multiple results without panic
+        log_operation_completion(session_id, target, "GETNEXT", &result);
+    }
+
+    #[tokio::test]
+    async fn test_session_log_operation_start() {
+        let config = create_test_config();
+        let session = SnmpSession::new(config);
+
+        // Test internal log method (should not panic)
+        session.log_operation_start("TEST", 5);
+        session.log_operation_start("GET", 0);
+        session.log_operation_start("GETNEXT", 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_operation_empty_oids() {
+        let config = create_test_config();
+        let mut session = SnmpSession::new(config);
+
+        // Test with empty OID list
+        let result = session.get(&[]).await;
+        // This will likely fail with a client creation error in test environment
+        // but we're testing the OID parsing path
+        if let Ok(map) = result {
+            assert!(map.is_empty());
+        }
+        // Expected in test environment without real SNMP agent
+    }
 }

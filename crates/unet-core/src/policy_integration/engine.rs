@@ -234,4 +234,95 @@ mod tests {
             assert_eq!(node_data.get("has_location").unwrap(), false);
         }
     }
+
+    #[test]
+    fn test_create_evaluation_context_no_management_ip() {
+        let engine = DefaultPolicyEvaluationEngine::new();
+        let mut node = create_test_node();
+        node.management_ip = None;
+
+        let context = engine.create_evaluation_context(&node).unwrap();
+        let context_value = &context.node_data;
+
+        if let Some(node_data) = context_value.get("node") {
+            assert_eq!(node_data.get("has_management_ip").unwrap(), false);
+        }
+    }
+
+    #[test]
+    fn test_create_evaluation_context_with_location() {
+        let engine = DefaultPolicyEvaluationEngine::new();
+        let mut node = create_test_node();
+        node.location_id = Some(Uuid::new_v4());
+
+        let context = engine.create_evaluation_context(&node).unwrap();
+        let context_value = &context.node_data;
+
+        if let Some(node_data) = context_value.get("node") {
+            assert_eq!(node_data.get("has_location").unwrap(), true);
+        }
+    }
+
+    #[test]
+    fn test_default_policy_evaluation_engine_creation() {
+        let engine1 = DefaultPolicyEvaluationEngine::new();
+        let engine2 = DefaultPolicyEvaluationEngine;
+
+        // Both creation methods should work (they create equivalent instances)
+        let node = create_test_node();
+        let context1 = engine1.create_evaluation_context(&node).unwrap();
+        let context2 = engine2.create_evaluation_context(&node).unwrap();
+
+        // Both should create valid contexts
+        assert!(context1.node_data.get("node").is_some());
+        assert!(context2.node_data.get("node").is_some());
+    }
+
+    #[test]
+    fn test_create_evaluation_context_fqdn_field() {
+        let engine = DefaultPolicyEvaluationEngine::new();
+        let node = create_test_node();
+
+        let context = engine.create_evaluation_context(&node).unwrap();
+        let context_value = &context.node_data;
+
+        if let Some(node_data) = context_value.get("node") {
+            // Should have fqdn field added explicitly
+            assert_eq!(node_data.get("fqdn").unwrap(), "test-node.example.com");
+        }
+    }
+
+    #[test]
+    fn test_create_evaluation_context_computed_fields() {
+        let engine = DefaultPolicyEvaluationEngine::new();
+        let node = create_test_node();
+
+        let context = engine.create_evaluation_context(&node).unwrap();
+        let context_value = &context.node_data;
+
+        if let Some(node_data) = context_value.get("node") {
+            // Test all computed fields are present
+            assert!(node_data.get("fqdn").is_some());
+            assert!(node_data.get("has_management_ip").is_some());
+            assert!(node_data.get("has_location").is_some());
+
+            // Test their values
+            assert_eq!(
+                node_data.get("fqdn").unwrap().as_str().unwrap(),
+                "test-node.example.com"
+            );
+            assert!(
+                node_data
+                    .get("has_management_ip")
+                    .unwrap()
+                    .as_bool()
+                    .unwrap()
+            );
+            assert!(!node_data.get("has_location").unwrap().as_bool().unwrap());
+        }
+    }
+
+    // The async methods are difficult to test without a full datastore implementation,
+    // so we focus on the synchronous methods and leave integration tests to handle
+    // the async functionality with real datastore instances.
 }

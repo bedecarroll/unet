@@ -128,4 +128,98 @@ mod tests {
         let snmp_value = convert_object_value_to_snmp_value(&value);
         assert_eq!(snmp_value, SnmpValue::Opaque(data));
     }
+
+    #[test]
+    fn test_convert_object_value_time_ticks() {
+        let value = ObjectValue::TimeTicks(987_654_321);
+        let snmp_value = convert_object_value_to_snmp_value(&value);
+        assert_eq!(snmp_value, SnmpValue::TimeTicks(987_654_321));
+    }
+
+    #[test]
+    fn test_convert_object_value_object_id() {
+        use csnmp::ObjectIdentifier;
+        use std::str::FromStr;
+
+        let oid = ObjectIdentifier::from_str("1.3.6.1.2.1.1.1.0").unwrap();
+        let value = ObjectValue::ObjectId(oid);
+        let snmp_value = convert_object_value_to_snmp_value(&value);
+        assert_eq!(snmp_value, SnmpValue::Oid("1.3.6.1.2.1.1.1.0".to_string()));
+    }
+
+    #[test]
+    fn test_convert_object_value_unsigned32() {
+        let value = ObjectValue::Unsigned32(42);
+        let snmp_value = convert_object_value_to_snmp_value(&value);
+        // Unsigned32 maps to Null as per the implementation
+        assert_eq!(snmp_value, SnmpValue::Null);
+    }
+
+    #[test]
+    fn test_parse_oids_empty() {
+        let oids = [];
+        let result = parse_oids(&oids);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_parse_oids_mixed_valid_invalid() {
+        let oids = ["1.3.6.1.2.1.1.1.0", "invalid.oid", "1.3.6.1.2.1.1.2.0"];
+        let result = parse_oids(&oids);
+        assert!(result.is_err());
+
+        // Should fail on first invalid OID
+        if let Err(SnmpError::InvalidOid { oid }) = result {
+            assert_eq!(oid, "invalid.oid");
+        } else {
+            panic!("Expected InvalidOid error");
+        }
+    }
+
+    #[test]
+    fn test_convert_object_value_string_empty() {
+        let value = ObjectValue::String(Vec::new());
+        let snmp_value = convert_object_value_to_snmp_value(&value);
+        assert_eq!(snmp_value, SnmpValue::String(String::new()));
+    }
+
+    #[test]
+    fn test_convert_object_value_string_partial_utf8() {
+        // Mix valid UTF-8 with invalid bytes
+        let mut bytes = b"hello".to_vec();
+        bytes.extend_from_slice(&[0xff, 0xfe]); // Invalid UTF-8 bytes
+
+        let value = ObjectValue::String(bytes);
+        let snmp_value = convert_object_value_to_snmp_value(&value);
+        // Should convert to hex since it's not valid UTF-8
+        assert_eq!(
+            snmp_value,
+            SnmpValue::String("0x68656c6c6ffffe".to_string())
+        );
+    }
+
+    #[test]
+    fn test_convert_object_value_opaque_empty() {
+        let value = ObjectValue::Opaque(Vec::new());
+        let snmp_value = convert_object_value_to_snmp_value(&value);
+        assert_eq!(snmp_value, SnmpValue::Opaque(Vec::new()));
+    }
+
+    #[test]
+    fn test_parse_oids_long_list() {
+        let oids = [
+            "1.3.6.1.2.1.1.1.0",
+            "1.3.6.1.2.1.1.2.0",
+            "1.3.6.1.2.1.1.3.0",
+            "1.3.6.1.2.1.1.4.0",
+            "1.3.6.1.2.1.1.5.0",
+            "1.3.6.1.2.1.2.1.0",
+            "1.3.6.1.2.1.2.2.1.1.1",
+            "1.3.6.1.2.1.2.2.1.2.1",
+        ];
+        let result = parse_oids(&oids);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 8);
+    }
 }

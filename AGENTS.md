@@ -215,6 +215,44 @@ unet/
 - **coverage:** `mise run coverage` - generates code coverage reports with llvm-cov
 - **file size check:** `mise run check-large-files` - identifies files exceeding size guidelines
 
+### Nextest Usage Patterns
+
+μNet uses `cargo-nextest` for faster test execution. **ALWAYS** use `mise run test` (which runs `cargo nextest run`) instead of `cargo test`.
+
+#### Nextest Syntax Differences
+
+- **CORRECT nextest syntax:** `mise run test -- -p package_name test_filter`
+- **INCORRECT:** `mise run test -- --exact test_name` (--exact doesn't exist in nextest)
+- **CORRECT:** `mise run test -- -p unet-server test_evaluate_policies_all_nodes`
+- **CORRECT:** `mise run test -- test_pattern` (runs all tests matching pattern across workspace)
+
+#### Common Testing Commands
+
+```bash
+# Run all tests
+mise run test
+
+# Run tests for specific package
+mise run test -- -p unet-server
+
+# Run specific test by name pattern
+mise run test -- -p unet-server test_process_node_evaluation
+
+# Run tests matching pattern across workspace
+mise run test -- policy_execution
+
+# Run tests with verbose output
+mise run test -- -v test_pattern
+```
+
+#### Key Nextest Features
+
+- **Faster execution:** Parallel test execution by default
+- **Better filtering:** Use test name patterns as positional arguments
+- **No --exact flag:** Test filters are substring matches by default
+- **Package filtering:** Use `-p package_name` to limit scope
+- **Consistent syntax:** Same filtering works across packages and workspace
+
 ### Example TDD Development Workflow
 
 ```bash

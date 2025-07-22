@@ -90,7 +90,9 @@ mod tests {
     use super::*;
     use axum::{Json, extract::State};
     use migration::{Migrator, MigratorTrait};
+    use std::fs;
     use std::sync::Arc;
+    use tempfile::TempDir;
     use unet_core::{
         datastore::{DataStore, sqlite::SqliteStore},
         models::*,
@@ -138,9 +140,10 @@ mod tests {
     #[tokio::test]
     async fn test_evaluate_policies_no_nodes() {
         let datastore = setup_test_datastore().await;
+        let temp_dir = TempDir::new().unwrap();
         let app_state = AppState {
             datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
         };
 
         let request = PolicyEvaluationRequest {
@@ -161,9 +164,15 @@ mod tests {
     async fn test_evaluate_policies_with_nodes() {
         let datastore = setup_test_datastore().await;
         let node = create_test_node(&datastore).await;
+        let temp_dir = TempDir::new().unwrap();
+        let policy_content = r#"# Test policy file
+WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
+"#;
+        let policy_file = temp_dir.path().join("test.policy");
+        fs::write(&policy_file, policy_content).unwrap();
         let app_state = AppState {
             datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
         };
 
         let request = PolicyEvaluationRequest {
@@ -183,9 +192,10 @@ mod tests {
     async fn test_evaluate_policies_with_custom_policies() {
         let datastore = setup_test_datastore().await;
         let node = create_test_node(&datastore).await;
+        let temp_dir = TempDir::new().unwrap();
         let app_state = AppState {
             datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
         };
 
         let policies = vec![create_test_policy_rule()];
@@ -207,9 +217,15 @@ mod tests {
     async fn test_evaluate_policies_all_nodes() {
         let datastore = setup_test_datastore().await;
         let _node = create_test_node(&datastore).await;
+        let temp_dir = TempDir::new().unwrap();
+        let policy_content = r#"# Test policy file
+WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
+"#;
+        let policy_file = temp_dir.path().join("test.policy");
+        fs::write(&policy_file, policy_content).unwrap();
         let app_state = AppState {
             datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
         };
 
         let request = PolicyEvaluationRequest {
@@ -251,9 +267,10 @@ mod tests {
     async fn test_evaluate_policies_no_policies_warning() {
         let datastore = setup_test_datastore().await;
         let node = create_test_node(&datastore).await;
+        let temp_dir = TempDir::new().unwrap();
         let app_state = AppState {
             datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
         };
 
         let request = PolicyEvaluationRequest {
@@ -274,9 +291,10 @@ mod tests {
     async fn test_policy_evaluation_timing() {
         let datastore = setup_test_datastore().await;
         let node = create_test_node(&datastore).await;
+        let temp_dir = TempDir::new().unwrap();
         let app_state = AppState {
             datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
         };
 
         let request = PolicyEvaluationRequest {
@@ -289,5 +307,63 @@ mod tests {
         assert!(result.is_ok());
 
         let _response = result.unwrap().0;
+    }
+
+    #[tokio::test]
+    async fn test_evaluate_policies_store_results_default() {
+        let datastore = setup_test_datastore().await;
+        let node = create_test_node(&datastore).await;
+        let temp_dir = TempDir::new().unwrap();
+        let policy_content = r#"# Test policy file
+WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
+"#;
+        let policy_file = temp_dir.path().join("test.policy");
+        fs::write(&policy_file, policy_content).unwrap();
+        let app_state = AppState {
+            datastore: Arc::new(datastore),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
+        };
+
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![node.id]),
+            policies: None,
+            store_results: None, // Should default to true
+        };
+
+        let result = evaluate_policies(State(app_state), Json(request)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap().0;
+        assert_eq!(response.nodes_evaluated, 1);
+    }
+
+    #[tokio::test]
+    async fn test_create_empty_response_timing() {
+        use std::thread;
+        use std::time::Duration;
+
+        let start_time = std::time::Instant::now();
+        thread::sleep(Duration::from_millis(1)); // Small delay to test timing
+        let response = create_empty_response(start_time);
+
+        assert_eq!(response.nodes_evaluated, 0);
+        assert_eq!(response.policies_evaluated, 0);
+        assert!(response.results.is_empty());
+        assert!(response.evaluation_time_ms > 0);
+        assert_eq!(response.summary.total_rules, 0);
+        assert_eq!(response.summary.satisfied_rules, 0);
+        assert_eq!(response.summary.unsatisfied_rules, 0);
+        assert_eq!(response.summary.error_rules, 0);
+        assert_eq!(response.summary.compliance_failures, 0);
+    }
+
+    #[tokio::test]
+    async fn test_log_evaluation_completion_empty() {
+        let nodes = vec![];
+        let policies = vec![];
+        let duration = std::time::Duration::from_millis(0);
+
+        // Should not panic with empty vectors
+        log_evaluation_completion(&nodes, &policies, duration);
     }
 }

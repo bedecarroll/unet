@@ -145,8 +145,114 @@ mod tests {
         let config = create_test_config();
         let snmp_config = SnmpClientConfig::default();
 
+        let (scheduler, _handle) = PollingScheduler::new(config.clone(), snmp_config);
+
+        assert_eq!(scheduler.task_count().await, 0);
+        assert_eq!(scheduler.config.default_interval, config.default_interval);
+        assert_eq!(
+            scheduler.config.max_concurrent_polls,
+            config.max_concurrent_polls
+        );
+        assert_eq!(scheduler.config.poll_timeout, config.poll_timeout);
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_shutdown_flag() {
+        let config = create_test_config();
+        let snmp_config = SnmpClientConfig::default();
+
         let (scheduler, _handle) = PollingScheduler::new(config, snmp_config);
 
+        // Initially shutdown should be false
+        assert!(!*scheduler.shutdown.read().await);
+
+        // Can set shutdown flag
+        {
+            let mut shutdown = scheduler.shutdown.write().await;
+            *shutdown = true;
+        }
+        assert!(*scheduler.shutdown.read().await);
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_configuration_values() {
+        let config = PollingConfig {
+            default_interval: Duration::from_secs(10),
+            max_concurrent_polls: 5,
+            poll_timeout: Duration::from_secs(30),
+            max_retries: 3,
+            retry_backoff_multiplier: 1.5,
+            health_check_interval: Duration::from_secs(60),
+        };
+        let snmp_config = SnmpClientConfig {
+            max_connections: 50,
+            ..Default::default()
+        };
+
+        let (scheduler, _handle) = PollingScheduler::new(config, snmp_config);
+
+        // Verify config values are stored correctly
+        assert_eq!(scheduler.config.default_interval, Duration::from_secs(10));
+        assert_eq!(scheduler.config.max_concurrent_polls, 5);
+        assert_eq!(scheduler.config.poll_timeout, Duration::from_secs(30));
+        assert_eq!(scheduler.config.max_retries, 3);
+        assert!((scheduler.config.retry_backoff_multiplier - 1.5).abs() < f64::EPSILON);
+        assert_eq!(
+            scheduler.config.health_check_interval,
+            Duration::from_secs(60)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_components_initialization() {
+        let config = create_test_config();
+        let snmp_config = SnmpClientConfig::default();
+
+        let (scheduler, handle) = PollingScheduler::new(config, snmp_config);
+
+        // Verify scheduler components are properly initialized
+        assert!(scheduler.tasks.read().await.is_empty());
+        assert!(!*scheduler.shutdown.read().await);
+
+        // Handle should be properly connected
+        drop(handle); // Should not panic
+
+        // SNMP client should be initialized
+        assert_eq!(scheduler.task_count().await, 0);
+    }
+
+    #[test]
+    fn test_polling_config_creation() {
+        let config = PollingConfig {
+            default_interval: Duration::from_millis(500),
+            max_concurrent_polls: 10,
+            poll_timeout: Duration::from_millis(1000),
+            max_retries: 5,
+            retry_backoff_multiplier: 2.5,
+            health_check_interval: Duration::from_millis(2000),
+        };
+
+        assert_eq!(config.default_interval, Duration::from_millis(500));
+        assert_eq!(config.max_concurrent_polls, 10);
+        assert_eq!(config.poll_timeout, Duration::from_millis(1000));
+        assert_eq!(config.max_retries, 5);
+        assert!((config.retry_backoff_multiplier - 2.5).abs() < f64::EPSILON);
+        assert_eq!(config.health_check_interval, Duration::from_millis(2000));
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_with_custom_snmp_config() {
+        let config = create_test_config();
+        let snmp_config = SnmpClientConfig {
+            max_connections: 25,
+            health_check_interval: Duration::from_secs(30),
+            session_timeout: Duration::from_secs(120),
+            ..Default::default()
+        };
+
+        let (scheduler, _handle) = PollingScheduler::new(config, snmp_config);
+
+        // Scheduler should be created successfully with custom SNMP config
         assert_eq!(scheduler.task_count().await, 0);
     }
 }
