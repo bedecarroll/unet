@@ -73,11 +73,29 @@ The heart of μNet, providing all business logic as a reusable library.
 
 #### DataStore Abstraction
 
-```rust
+```rust,ignore
+use sea_orm::DbErr;
+
+// Example types for illustration
+struct Node {
+    id: String,
+    name: String,
+}
+
+struct QueryOptions {
+    limit: Option<u64>,
+    offset: Option<u64>,
+}
+
+struct PagedResult<T> {
+    items: Vec<T>,
+    total: u64,
+}
+
 trait DataStore {
-    async fn get_node(&self, id: &str) -> Result<Option<Node>>;
-    async fn create_node(&self, node: &Node) -> Result<()>;
-    async fn list_nodes(&self, options: QueryOptions) -> Result<PagedResult<Node>>;
+    async fn get_node(&self, id: &str) -> Result<Option<Node>, DbErr>;
+    async fn create_node(&self, node: &Node) -> Result<(), DbErr>;
+    async fn list_nodes(&self, options: QueryOptions) -> Result<PagedResult<Node>, DbErr>;
     // ... comprehensive CRUD operations
 }
 ```

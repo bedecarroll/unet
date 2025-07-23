@@ -35,7 +35,7 @@ grep -r "SnmpSession" crates/unet-core/src/snmp/
 
 ### Adding New Data Fields
 
-```
+```text
 Is this field user-configurable?
 ├─ Yes → Desired state (nodes, locations, links tables)
 │   ├─ Required for basic functionality? → NOT NULL
@@ -49,7 +49,7 @@ Is this field user-configurable?
 
 ### Choosing Error Handling Approach
 
-```
+```text
 Where does the error originate?
 ├─ API endpoint → Use ApiError with appropriate HTTP status
 │   ├─ User input validation → 400 Bad Request
@@ -67,7 +67,7 @@ Where does the error originate?
 
 ### Database Query Optimization
 
-```
+```text
 What type of query?
 ├─ Single record by ID → Use find_by_id() - most efficient
 ├─ List with filters → Use find() with where clauses
@@ -85,7 +85,7 @@ What type of query?
 
 When creating a new entity, follow this pattern:
 
-```rust
+```rust,ignore
 // crates/unet-core/src/entities/example.rs
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -122,7 +122,7 @@ impl ActiveModelBehavior for ActiveModel {}
 
 ### Standard API Endpoint Implementation
 
-```rust
+```rust,ignore
 // crates/unet-server/src/handlers/example/crud.rs
 use axum::{extract::State, http::StatusCode, Json};
 use crate::{ApiError, AppState};
@@ -168,7 +168,7 @@ impl CreateExampleRequest {
 
 ### Standard Test Patterns
 
-```rust
+```rust,ignore
 // Follow TDD - write test first!
 #[tokio::test]
 async fn test_create_example_success() {
@@ -218,7 +218,7 @@ async fn test_create_example_duplicate_name() {
 
 ### SNMP Integration Patterns
 
-```rust
+```rust,ignore
 // crates/unet-core/src/snmp/collectors/example.rs
 use crate::snmp::{SnmpSession, SnmpError};
 use std::time::Duration;
@@ -298,7 +298,7 @@ pub struct ExampleData {
 ### Common Anti-Patterns to Avoid
 
 #### Database Anti-Patterns
-```rust
+```text
 // DON'T: Bypass DataStore trait
 let node = Node::find_by_id(node_id).one(&db).await?;
 
@@ -316,7 +316,7 @@ let locations = datastore.get_locations_by_ids(&location_ids).await?;
 ```
 
 #### SNMP Anti-Patterns
-```rust
+```text
 // DON'T: Blocking calls in async context
 let result = std::thread::spawn(|| snmp_sync_call()).join();
 
@@ -331,7 +331,7 @@ let result = snmp_session.get(oid).timeout(Duration::from_secs(30)).await?;
 ```
 
 #### Error Handling Anti-Patterns
-```rust
+```text
 // DON'T: Generic error messages
 return Err(ApiError::internal_error("Something went wrong"));
 
@@ -407,13 +407,13 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 2. **Add to OID definitions**
-   ```rust
+   ```rust,ignore
    // crates/unet-core/src/snmp/oids/standard.rs
    pub const NEW_METRIC_OID: &str = "1.3.6.1.2.1.x.x.x";
    ```
 
 3. **Update collector**
-   ```rust
+   ```rust,ignore
    // Add to relevant collector in crates/unet-core/src/snmp/collectors/
    let oids = vec![
        // existing OIDs...
@@ -422,13 +422,13 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 4. **Add to data model**
-   ```rust
+   ```rust,ignore
    // Update derived state entity
    pub new_metric: Option<i64>,
    ```
 
 5. **Write tests**
-   ```rust
+   ```rust,ignore
    #[tokio::test]
    async fn test_collect_new_metric() {
        // Test successful collection
@@ -438,15 +438,15 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 6. **Update migration**
-   ```rust
-   // Create new migration file
+   ```bash
+   # Create new migration file
    cargo run --bin migration -- generate add_new_metric_column
    ```
 
 ### Adding a New Policy Rule Type
 
 1. **Define AST node**
-   ```rust
+   ```rust,ignore
    // crates/unet-core/src/policy/ast.rs
    pub enum Condition {
        // existing conditions...
@@ -455,13 +455,13 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 2. **Update parser**
-   ```rust
-   // crates/unet-core/src/policy/grammar.pest
+   ```pest
+   // crates/unet-core/src/policy/grammar.pest  
    new_rule = { "new_rule" ~ "(" ~ field ~ operator ~ value ~ ")" }
    ```
 
 3. **Implement evaluator**
-   ```rust
+   ```rust,ignore
    // crates/unet-core/src/policy/evaluator/conditions.rs
    Condition::NewRuleType { field, operator, value } => {
        let node_value = get_node_field(node, field)?;
@@ -470,13 +470,13 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 4. **Add CLI support**
-   ```rust
+   ```text
    // crates/unet-cli/src/commands/policy/
    // Add new subcommand for rule type
    ```
 
 5. **Write comprehensive tests**
-   ```rust
+   ```rust,ignore
    #[tokio::test]
    async fn test_new_rule_evaluation() {
        // Test various value types
@@ -498,37 +498,37 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 3. **Update entity model**
-   ```rust
+   ```rust,ignore
    // Add field to appropriate entity
    pub new_field: Option<String>,
    ```
 
 4. **Update DataStore trait**
-   ```rust
+   ```rust,ignore
    // Add methods if needed
    async fn update_new_field(&self, id: &str, value: String) -> Result<()>;
    ```
 
 5. **Implement in datastores**
-   ```rust
+   ```text
    // Update the SQLite implementation
    ```
 
 6. **Add API endpoints**
-   ```rust
+   ```text
    // Update request/response types
    // Add validation logic
    // Update handlers
    ```
 
 7. **Update CLI**
-   ```rust
+   ```text
    // Add command line options
    // Update output formatting
    ```
 
 8. **Write tests**
-   ```rust
+   ```text
    // Unit tests for data model
    // Integration tests for API
    // End-to-end tests for CLI
