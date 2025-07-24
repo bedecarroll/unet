@@ -13,7 +13,11 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(ColumnDef::new(Location::Id).text().not_null().primary_key())
                     .col(ColumnDef::new(Location::Name).text().not_null())
-                    .col(ColumnDef::new(Location::Type).text().not_null())
+                    .col(
+                        ColumnDef::new(Alias::new("location_type"))
+                            .text()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Location::Path).text().not_null())
                     .col(ColumnDef::new(Location::ParentId).text())
                     .col(ColumnDef::new(Location::Description).text())
@@ -73,7 +77,6 @@ enum Location {
     Table,
     Id,
     Name,
-    Type,
     Path,
     ParentId,
     Description,

@@ -10,6 +10,9 @@ pub mod network;
 pub mod types;
 pub mod utils;
 
+#[cfg(test)]
+mod core_tests;
+
 // Re-export the main Config struct and commonly used items
 pub use core::Config;
 pub use defaults::*;

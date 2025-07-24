@@ -458,3 +458,14 @@ mod engine_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod basic_evaluation_tests;
+#[cfg(test)]
+mod complex_condition_tests;
+#[cfg(test)]
+mod rule_execution_tests;
+#[cfg(test)]
+mod test_utilities;
+#[cfg(test)]
+mod transaction_tests;

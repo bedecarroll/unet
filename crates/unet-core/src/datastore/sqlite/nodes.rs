@@ -140,12 +140,23 @@ pub async fn update_node(store: &SqliteStore, node: &Node) -> DataStoreResult<No
         updated_at: Set(Utc::now().to_rfc3339()),
     };
 
-    active_node
-        .update(&store.db)
-        .await
-        .map_err(|e| DataStoreError::InternalError {
-            message: format!("Failed to update node: {e}"),
-        })?;
+    let update_result = active_node.update(&store.db).await;
+    match update_result {
+        Ok(_) => {}
+        Err(e) => {
+            // Check if the error indicates no records were updated
+            let error_msg = e.to_string();
+            if error_msg.contains("None of the records are updated") {
+                return Err(DataStoreError::NotFound {
+                    entity_type: "Node".to_string(),
+                    id: node.id.to_string(),
+                });
+            }
+            return Err(DataStoreError::InternalError {
+                message: format!("Failed to update node: {e}"),
+            });
+        }
+    }
 
     // Convert back to Node model
     get_node(store, &node.id)
@@ -196,8 +207,14 @@ pub async fn get_nodes_by_location(
 
 /// Searches nodes by name (case-insensitive partial match)
 pub async fn search_nodes_by_name(store: &SqliteStore, name: &str) -> DataStoreResult<Vec<Node>> {
+    // Escape SQL wildcard characters to treat them as literal characters
+    let escaped_name = name
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_");
+
     let entities = nodes::Entity::find()
-        .filter(nodes::Column::Name.contains(name))
+        .filter(nodes::Column::Name.contains(&escaped_name))
         .all(&store.db)
         .await
         .map_err(|e| DataStoreError::InternalError {

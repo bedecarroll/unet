@@ -84,4 +84,30 @@ mod tests {
             let _rel_def = relation.def();
         }
     }
+
+    #[test]
+    fn test_node_related_implementations() {
+        use sea_orm::entity::Related;
+
+        // Test Related<locations::Entity> implementation
+        let location_relation = <Entity as Related<super::super::super::locations::Entity>>::to();
+        assert_eq!(location_relation.from_tbl, Entity.table_ref());
+
+        // Test Related<node_status::Entity> implementation
+        let node_status_relation =
+            <Entity as Related<super::super::super::node_status::Entity>>::to();
+        assert_eq!(node_status_relation.from_tbl, Entity.table_ref());
+
+        // Test Related<polling_tasks::Entity> implementation
+        let polling_tasks_relation =
+            <Entity as Related<super::super::super::polling_tasks::Entity>>::to();
+        assert_eq!(polling_tasks_relation.from_tbl, Entity.table_ref());
+    }
+
+    #[test]
+    fn test_active_model_behavior() {
+        // Test that ActiveModelBehavior is implemented
+        let _active_model = ActiveModel::new();
+        // ActiveModelBehavior provides default implementations, so we just test it compiles
+    }
 }

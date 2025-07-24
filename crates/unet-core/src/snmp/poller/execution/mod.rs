@@ -1,5 +1,4 @@
-//! Task execution and polling logic for SNMP scheduler
-
+/// Task execution and polling logic for SNMP scheduler
 use super::core::PollingScheduler;
 use super::{PollingResult, PollingTask};
 use crate::snmp::{SnmpClient, SnmpValue};
@@ -102,6 +101,28 @@ pub async fn execute_snmp_poll(
     .await
 }
 
+#[cfg(test)]
+pub async fn execute_snmp_poll_with_mock<T: crate::snmp::testing::SnmpOperations>(
+    task: &PollingTask,
+    snmp_operations: &T,
+    timeout: Duration,
+) -> Result<Result<HashMap<String, SnmpValue>, crate::snmp::SnmpError>, tokio::time::error::Elapsed>
+{
+    tokio::time::timeout(
+        timeout,
+        snmp_operations.get(
+            task.target,
+            &task
+                .oids
+                .iter()
+                .map(std::string::String::as_str)
+                .collect::<Vec<_>>(),
+            Some(task.session_config.clone()),
+        ),
+    )
+    .await
+}
+
 pub fn process_poll_result(
     poll_result: Result<
         Result<HashMap<String, SnmpValue>, crate::snmp::SnmpError>,
@@ -176,3 +197,6 @@ pub fn log_poll_completion(task: &PollingTask, success: bool, duration: Duration
         );
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -607,3 +607,8 @@ async fn test_link_custom_data_serialization() {
     let retrieved_link = get_link(&test_db.store, &link.id).await.unwrap().unwrap();
     assert_eq!(retrieved_link.custom_data, link.custom_data);
 }
+
+pub mod batch_tests;
+pub mod edge_case_tests;
+pub mod list_tests;
+pub mod node_relationship_tests;

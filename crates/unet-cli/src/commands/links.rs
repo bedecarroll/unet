@@ -214,7 +214,7 @@ async fn list_links(
     let options = QueryOptions {
         filters,
         sort: vec![Sort {
-            field: "node_a_interface".to_owned(),
+            field: "interface_a".to_owned(),
             direction: SortDirection::Ascending,
         }],
         pagination: Some(Pagination {

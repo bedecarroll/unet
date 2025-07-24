@@ -221,3 +221,6 @@ impl DataStore for SqliteStore {
         Ok(HashMap::new())
     }
 }
+
+#[cfg(test)]
+mod store_tests;

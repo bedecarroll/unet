@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod policy_parser_tests {
-    use super::super::core::PolicyParser;
+    use crate::policy::PolicyParser;
     use crate::policy::ast::{ComparisonOperator, Condition, Value};
 
     #[test]
