@@ -31,6 +31,7 @@ pub use transaction_helpers::{
 
 /// Main DataStore trait for abstracting data access
 #[async_trait]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait DataStore: Send + Sync {
     /// Returns the name/type of this datastore implementation
     fn name(&self) -> &'static str;

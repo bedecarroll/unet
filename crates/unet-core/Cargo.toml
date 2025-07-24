@@ -15,6 +15,9 @@ readme = "README.md"
 [lints]
 workspace = true
 
+[features]
+test-utils = ["mockall"]
+
 [dependencies]
 # Core async runtime
 tokio = { workspace = true }
@@ -64,9 +67,13 @@ tracing-subscriber = { workspace = true }
 # File system utilities
 walkdir = { workspace = true }
 
+# Optional dependencies for features
+mockall = { workspace = true, optional = true }
+
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 criterion = { workspace = true }
+mockall = { workspace = true }
 migration = { path = "../migrations" }
 

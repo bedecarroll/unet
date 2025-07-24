@@ -460,7 +460,7 @@ Before submitting any code changes, ensure:
 - [ ] **TDD compliance**: All functionality was implemented test-first
 - [ ] **Red phase verified**: Initial tests failed for the expected reasons
 - [ ] All tests pass (`mise run test`)
-- [ ] Code coverage is adequate (`mise run coverage` - maintain 72%+ coverage)
+- [ ] Code coverage is adequate (`mise run coverage` - maintain 80%+ coverage)
 - [ ] Code is properly formatted and lint-free (`mise run lint`)
 - [ ] No dead code, unused variables, or placeholder implementations
 - [ ] All files are under 300 lines (`mise run check-large-files` shows no results)

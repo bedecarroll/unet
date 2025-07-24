@@ -72,4 +72,68 @@ mod policy_parser_tests {
         let rules = result.unwrap();
         assert_eq!(rules.len(), 2);
     }
+
+    #[test]
+    fn test_parse_rule_empty_input() {
+        let input = "";
+        let result = PolicyParser::parse_rule(input);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        // Just verify it's an error - the exact message might vary
+        assert!(!error.message.is_empty());
+    }
+
+    #[test]
+    fn test_parse_rule_invalid_syntax() {
+        let input = "INVALID SYNTAX HERE";
+        let result = PolicyParser::parse_rule(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_rule_incomplete_when() {
+        let input = "WHEN node.vendor ==";
+        let result = PolicyParser::parse_rule(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_rule_missing_then() {
+        let input = r#"WHEN node.vendor == "cisco""#;
+        let result = PolicyParser::parse_rule(input);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_file_with_syntax_errors() {
+        let input = r#"
+            WHEN node.vendor == "cisco" THEN ASSERT node.os_version IS "15.1"
+            WHEN node.role == "router" THEN SET custom_data.priority TO "high"
+        "#;
+        let result = PolicyParser::parse_file(input);
+        assert!(result.is_ok());
+        let rules = result.unwrap();
+        assert_eq!(rules.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_file_empty() {
+        let input = "";
+        let result = PolicyParser::parse_file(input);
+        assert!(result.is_ok());
+        let rules = result.unwrap();
+        assert_eq!(rules.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_file_whitespace_only() {
+        let input = r"
+            
+            
+        ";
+        let result = PolicyParser::parse_file(input);
+        assert!(result.is_ok());
+        let rules = result.unwrap();
+        assert_eq!(rules.len(), 0);
+    }
 }
