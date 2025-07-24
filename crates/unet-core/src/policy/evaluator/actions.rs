@@ -362,3 +362,6 @@ mod tests {
         assert_eq!(result, Some(json!(100)));
     }
 }
+
+#[cfg(test)]
+mod actions_tests;

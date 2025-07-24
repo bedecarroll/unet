@@ -260,7 +260,7 @@ impl Default for Config {
     }
 }
 
-fn collect_env_vars<F>(env_source: &F) -> Vec<(String, String)>
+pub(crate) fn collect_env_vars<F>(env_source: &F) -> Vec<(String, String)>
 where
     F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
 {

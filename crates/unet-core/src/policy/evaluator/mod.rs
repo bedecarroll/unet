@@ -25,6 +25,9 @@ pub use results::{AggregatedResult, PolicyPriority};
 pub use rollback::RollbackResult;
 
 #[cfg(test)]
+mod context_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::policy::ast::{ComparisonOperator, Condition, FieldRef, Value};

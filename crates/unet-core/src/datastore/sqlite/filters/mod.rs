@@ -1,5 +1,12 @@
-//! Filter and sorting helper functions for `SQLite` queries
-
+/// Filter and sorting helper functions for `SQLite` queries
+#[cfg(test)]
+mod integration_tests;
+#[cfg(test)]
+mod link_filter_tests;
+#[cfg(test)]
+mod location_filter_tests;
+#[cfg(test)]
+mod node_filter_tests;
 #[cfg(test)]
 mod tests;
 
@@ -246,6 +253,12 @@ pub fn apply_link_sorting(
                 query = match sort.direction {
                     SortDirection::Ascending => query.order_by_asc(links::Column::Name),
                     SortDirection::Descending => query.order_by_desc(links::Column::Name),
+                };
+            }
+            "interface_a" => {
+                query = match sort.direction {
+                    SortDirection::Ascending => query.order_by_asc(links::Column::InterfaceA),
+                    SortDirection::Descending => query.order_by_desc(links::Column::InterfaceA),
                 };
             }
             "created_at" => {

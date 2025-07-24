@@ -130,12 +130,12 @@ async fn main() -> Result<()> {
 
     let mut opt = ConnectOptions::new(&database_url);
     opt.sqlx_logging(false);
-    let db_for_migration = Database::connect(opt).await.map_err(|e| {
-        error!("Failed to connect to database for migration: {}", e);
-        anyhow::anyhow!("Failed to connect to database for migration: {}", e)
+    let db = Database::connect(opt).await.map_err(|e| {
+        error!("Failed to connect to database: {}", e);
+        anyhow::anyhow!("Failed to connect to database: {}", e)
     })?;
 
-    Migrator::up(&db_for_migration, None).await.map_err(|e| {
+    Migrator::up(&db, None).await.map_err(|e| {
         error!("Failed to run migrations: {}", e);
         anyhow::anyhow!("Failed to run migrations: {}", e)
     })?;
@@ -145,12 +145,7 @@ async fn main() -> Result<()> {
     }
 
     let datastore: Box<dyn unet_core::datastore::DataStore> = Box::new(
-        unet_core::datastore::sqlite::SqliteStore::new(&database_url)
-            .await
-            .map_err(|e| {
-                error!("Failed to initialize SQLite datastore: {}", e);
-                anyhow::anyhow!("Failed to initialize SQLite datastore: {}", e)
-            })?,
+        unet_core::datastore::sqlite::SqliteStore::from_connection(db),
     );
 
     // Execute command

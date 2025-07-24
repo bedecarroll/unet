@@ -1,11 +1,10 @@
-//! Tests for the datastore module
+//! Tests for datastore types - Pagination, `PagedResult`, `QueryOptions`, and helpers
 
 use crate::datastore::helpers::{
     filter_contains, filter_equals_string, filter_equals_uuid, sort_asc, sort_desc,
 };
 use crate::datastore::types::{
-    DataStoreError, FilterOperation, FilterValue, PagedResult, Pagination, QueryOptions,
-    SortDirection,
+    FilterOperation, FilterValue, PagedResult, Pagination, QueryOptions, SortDirection,
 };
 use uuid::Uuid;
 
@@ -105,33 +104,4 @@ fn test_query_options_default() {
     assert!(options.filters.is_empty());
     assert!(options.sort.is_empty());
     assert!(options.pagination.is_none());
-}
-
-#[test]
-fn test_batch_result() {
-    // Test basic batch result functionality - simplified test
-    let error = DataStoreError::NotFound {
-        entity_type: "Node".to_string(),
-        id: "test".to_string(),
-    };
-    assert!(error.to_string().contains("test"));
-}
-
-#[test]
-fn test_datastore_error_display() {
-    let error = DataStoreError::NotFound {
-        entity_type: "Node".to_string(),
-        id: "123".to_string(),
-    };
-    assert!(error.to_string().contains("Node"));
-
-    let error = DataStoreError::ValidationError {
-        message: "Invalid data".to_string(),
-    };
-    assert_eq!(error.to_string(), "Validation error: Invalid data");
-
-    let error = DataStoreError::ConstraintViolation {
-        message: "Unique constraint failed".to_string(),
-    };
-    assert!(error.to_string().contains("Constraint violation"));
 }

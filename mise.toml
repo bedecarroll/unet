@@ -23,7 +23,7 @@ run = ["cargo nextest run"]
 [tasks.coverage]
 description = "Generate code coverage report and enforce minimum threshold"
 run = [
-  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --fail-under-lines 80",
+  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --fail-under-lines 84",
 ]
 
 [tasks.coverage-report]

@@ -23,6 +23,9 @@ pub mod session;
 pub mod types;
 pub mod values;
 
+#[cfg(test)]
+pub mod testing;
+
 // Re-export main types for backward compatibility
 pub use client::{SnmpClient, SnmpClientStats};
 pub use config::{SessionConfig, SnmpClientConfig, SnmpCredentials};
@@ -33,11 +36,14 @@ pub use types::SnmpType;
 pub use values::SnmpValue;
 
 /// SNMP error types
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum SnmpError {
     /// Network connection error
-    #[error("Network error: {0}")]
-    Network(#[from] std::io::Error),
+    #[error("Network error: {message}")]
+    Network {
+        /// The network error message
+        message: String,
+    },
 
     /// SNMP protocol error
     #[error("SNMP protocol error: {message}")]
@@ -77,6 +83,14 @@ pub enum SnmpError {
         /// The maximum number of connections in the pool
         max_connections: usize,
     },
+}
+
+impl From<std::io::Error> for SnmpError {
+    fn from(error: std::io::Error) -> Self {
+        Self::Network {
+            message: error.to_string(),
+        }
+    }
 }
 
 /// SNMP operation result
@@ -186,10 +200,9 @@ mod tests {
 
     #[test]
     fn test_snmp_error_display() {
-        let network_error = SnmpError::Network(std::io::Error::new(
-            std::io::ErrorKind::ConnectionRefused,
-            "Connection refused",
-        ));
+        let network_error = SnmpError::Network {
+            message: "Connection refused".to_string(),
+        };
         assert!(network_error.to_string().contains("Network error"));
         assert!(network_error.to_string().contains("Connection refused"));
 
@@ -233,9 +246,8 @@ mod tests {
         let snmp_error = SnmpError::from(io_error);
 
         match snmp_error {
-            SnmpError::Network(e) => {
-                assert_eq!(e.kind(), std::io::ErrorKind::TimedOut);
-                assert_eq!(e.to_string(), "Timeout");
+            SnmpError::Network { message } => {
+                assert!(message.contains("Timeout"));
             }
             _ => panic!("Expected Network error"),
         }
@@ -269,7 +281,9 @@ mod tests {
     #[test]
     fn test_snmp_error_all_variants() {
         let errors = vec![
-            SnmpError::Network(std::io::Error::other("test")),
+            SnmpError::Network {
+                message: "test".to_string(),
+            },
             SnmpError::Protocol {
                 message: "test".to_string(),
             },
