@@ -7,6 +7,8 @@ pub use crud::{create_node, delete_node, get_node, list_nodes, update_node};
 pub use derived::{get_node_interfaces, get_node_metrics, get_node_status};
 
 mod crud;
+#[cfg(test)]
+mod crud_tests;
 mod derived;
 #[cfg(test)]
 mod tests;

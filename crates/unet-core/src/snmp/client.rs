@@ -447,4 +447,32 @@ mod tests {
         let result = client.get_session_mut(address, None).await;
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_snmp_client_stats_debug_format() {
+        let stats = SnmpClientStats::default();
+        let debug_output = format!("{stats:?}");
+        assert!(debug_output.contains("SnmpClientStats"));
+        assert!(debug_output.contains("active_sessions"));
+        assert!(debug_output.contains("max_connections"));
+    }
+
+    #[tokio::test]
+    async fn test_snmp_client_stats_clone() {
+        let stats = SnmpClientStats {
+            active_sessions: 3,
+            max_connections: 50,
+            available_permits: 47,
+            active_connections: 3,
+            total_requests: 150,
+            failed_requests: 2,
+            avg_response_time: Duration::from_millis(75),
+        };
+
+        let cloned_stats = stats.clone();
+        assert_eq!(stats.active_sessions, cloned_stats.active_sessions);
+        assert_eq!(stats.max_connections, cloned_stats.max_connections);
+        assert_eq!(stats.total_requests, cloned_stats.total_requests);
+        assert_eq!(stats.avg_response_time, cloned_stats.avg_response_time);
+    }
 }

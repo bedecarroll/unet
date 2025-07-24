@@ -3,6 +3,9 @@
 //! Contains the core `PolicyEvaluator` implementation for evaluating
 //! policy rules against network nodes.
 
+#[cfg(test)]
+mod tests;
+
 use super::actions::ActionExecutor;
 use super::context::{
     EvaluationContext, EvaluationResult, PolicyExecutionContext, PolicyExecutionResult,

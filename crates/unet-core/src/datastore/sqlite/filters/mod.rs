@@ -1,5 +1,8 @@
 //! Filter and sorting helper functions for `SQLite` queries
 
+#[cfg(test)]
+mod tests;
+
 use super::super::types::{
     DataStoreError, DataStoreResult, Filter, FilterValue, Sort, SortDirection,
 };

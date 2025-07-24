@@ -366,4 +366,87 @@ WHEN node.role == "router" THEN SET custom_data.managed TO true
         let result3 = loader.load_policy_file(&policy_file).unwrap();
         assert_eq!(result3.rules.len(), 1);
     }
+
+    #[test]
+    fn test_policy_loader_directory_not_found() {
+        let git_config = create_test_git_config();
+        let non_existent_dir = Path::new("/non/existent/directory");
+        let mut loader = PolicyLoader::new(git_config).with_local_dir(non_existent_dir);
+
+        let result = loader.load_policies();
+        assert!(result.is_err());
+
+        if let Err(PolicyError::Io(io_error)) = result {
+            assert_eq!(io_error.kind(), std::io::ErrorKind::NotFound);
+        } else {
+            panic!("Expected IO error for non-existent directory");
+        }
+    }
+
+    #[test]
+    fn test_policy_loader_clear_expired_cache() {
+        let temp_dir = TempDir::new().unwrap();
+        let policy_file = temp_dir.path().join("test.policy");
+
+        let policy_content = r#"WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1""#;
+        fs::write(&policy_file, policy_content).unwrap();
+
+        let git_config = create_test_git_config();
+        let mut loader = PolicyLoader::new(git_config).with_cache_ttl(Duration::from_millis(1));
+
+        // Load file to add to cache
+        let _result = loader.load_policy_file(&policy_file).unwrap();
+
+        // Wait for cache to expire
+        std::thread::sleep(Duration::from_millis(10));
+
+        // Clear expired cache entries
+        let cleared_count = loader.clear_expired_cache();
+        assert_eq!(cleared_count, 1);
+
+        // Check cache is now empty
+        let stats = loader.cache_stats();
+        assert_eq!(stats.total_entries, 0);
+    }
+
+    #[test]
+    fn test_policy_loader_invalid_policy_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let policies_dir = temp_dir.path().join("policies");
+        fs::create_dir_all(&policies_dir).unwrap();
+
+        // Create an invalid policy file
+        let invalid_policy = policies_dir.join("invalid.policy");
+        fs::write(&invalid_policy, "COMPLETELY INVALID SYNTAX").unwrap();
+
+        let git_config = create_test_git_config();
+        let mut loader = PolicyLoader::new(git_config).with_local_dir(policies_dir);
+
+        let result = loader.load_policies().unwrap();
+        assert_eq!(result.loaded.len(), 0);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.total_files, 1);
+    }
+
+    #[test]
+    fn test_policy_loader_mixed_valid_invalid_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let policies_dir = temp_dir.path().join("policies");
+        fs::create_dir_all(&policies_dir).unwrap();
+
+        // Create valid policy file
+        let valid_policy = r#"WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1""#;
+        fs::write(policies_dir.join("valid.policy"), valid_policy).unwrap();
+
+        // Create invalid policy file
+        fs::write(policies_dir.join("invalid.policy"), "INVALID SYNTAX").unwrap();
+
+        let git_config = create_test_git_config();
+        let mut loader = PolicyLoader::new(git_config).with_local_dir(policies_dir);
+
+        let result = loader.load_policies().unwrap();
+        assert_eq!(result.loaded.len(), 1);
+        assert_eq!(result.errors.len(), 1);
+        assert_eq!(result.total_files, 2);
+    }
 }

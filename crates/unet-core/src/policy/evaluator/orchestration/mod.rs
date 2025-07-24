@@ -7,6 +7,9 @@ pub mod config;
 pub mod core;
 pub mod orchestrator;
 
+#[cfg(test)]
+mod orchestrator_tests;
+
 // Re-export commonly used types
 pub use config::OrchestrationConfig;
 pub use core::{EvaluationBatch, OrchestrationRule};

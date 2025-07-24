@@ -81,7 +81,7 @@ async fn poll_task(
     log_poll_completion(&task, success, duration);
 }
 
-async fn execute_snmp_poll(
+pub async fn execute_snmp_poll(
     task: &PollingTask,
     snmp_client: &SnmpClient,
     timeout: Duration,
@@ -102,7 +102,7 @@ async fn execute_snmp_poll(
     .await
 }
 
-fn process_poll_result(
+pub fn process_poll_result(
     poll_result: Result<
         Result<HashMap<String, SnmpValue>, crate::snmp::SnmpError>,
         tokio::time::error::Elapsed,
@@ -131,7 +131,7 @@ fn process_poll_result(
     }
 }
 
-const fn create_polling_result(
+pub const fn create_polling_result(
     task: &PollingTask,
     poll_start: SystemTime,
     success: bool,
@@ -151,13 +151,13 @@ const fn create_polling_result(
     }
 }
 
-fn send_result(result: PollingResult, result_tx: &mpsc::UnboundedSender<PollingResult>) {
+pub fn send_result(result: PollingResult, result_tx: &mpsc::UnboundedSender<PollingResult>) {
     if let Err(e) = result_tx.send(result) {
         error!(error = %e, "Failed to send polling result");
     }
 }
 
-fn log_poll_completion(task: &PollingTask, success: bool, duration: Duration) {
+pub fn log_poll_completion(task: &PollingTask, success: bool, duration: Duration) {
     if success {
         debug!(
             task_id = %task.id,
@@ -174,51 +174,5 @@ fn log_poll_completion(task: &PollingTask, success: bool, duration: Duration) {
             error = task.last_error.as_deref().unwrap_or("unknown"),
             "SNMP poll failed"
         );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::snmp::SessionConfig;
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-    use std::time::Duration;
-    use uuid::Uuid;
-
-    fn create_test_task() -> PollingTask {
-        PollingTask::new(
-            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
-            Uuid::new_v4(),
-            vec!["1.3.6.1.2.1.1.1.0".to_string()],
-            Duration::from_millis(100),
-            SessionConfig::default(),
-        )
-    }
-
-    #[tokio::test]
-    async fn test_create_polling_result() {
-        let task = create_test_task();
-        let poll_start = SystemTime::now();
-        let values = HashMap::new();
-        let duration = Duration::from_millis(50);
-
-        let result = create_polling_result(&task, poll_start, true, values, None, duration);
-
-        assert_eq!(result.task_id, task.id);
-        assert_eq!(result.node_id, task.node_id);
-        assert_eq!(result.target, task.target);
-        assert!(result.success);
-        assert!(result.error.is_none());
-        assert_eq!(result.duration, duration);
-    }
-
-    #[tokio::test]
-    async fn test_log_poll_completion() {
-        let task = create_test_task();
-        let duration = Duration::from_millis(50);
-
-        // This should not panic
-        log_poll_completion(&task, true, duration);
-        log_poll_completion(&task, false, duration);
     }
 }

@@ -363,4 +363,64 @@ mod tests {
         task.store_evaluation_results(&policy_service, &node, &results)
             .await;
     }
+
+    #[tokio::test]
+    async fn test_evaluate_all_policies_with_datastore_error() {
+        use unet_core::datastore::{DataStoreError, MockDataStore};
+
+        let mut mock_datastore = MockDataStore::new();
+        mock_datastore
+            .expect_get_nodes_for_policy_evaluation()
+            .returning(|| {
+                Box::pin(async move {
+                    Err(DataStoreError::ConnectionError {
+                        message: "Database connection failed".to_string(),
+                    })
+                })
+            });
+
+        let policy_service = PolicyService::with_local_dir("/tmp");
+        let mut task = PolicyEvaluationTask::new(Arc::new(mock_datastore), policy_service, 1);
+
+        let result = task.evaluate_all_policies().await;
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("Database connection failed"));
+    }
+
+    #[tokio::test]
+    async fn test_get_nodes_for_evaluation_error() {
+        use unet_core::datastore::{DataStoreError, MockDataStore};
+
+        let mut mock_datastore = MockDataStore::new();
+        mock_datastore
+            .expect_get_nodes_for_policy_evaluation()
+            .returning(|| {
+                Box::pin(async move {
+                    Err(DataStoreError::InternalError {
+                        message: "Internal error".to_string(),
+                    })
+                })
+            });
+
+        let policy_service = PolicyService::with_local_dir("/tmp");
+        let task = PolicyEvaluationTask::new(Arc::new(mock_datastore), policy_service, 1);
+
+        let result = task.get_nodes_for_evaluation().await;
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("Internal error"));
+    }
+
+    #[tokio::test]
+    async fn test_load_policies_for_evaluation_error() {
+        let datastore = setup_test_datastore().await;
+        // Use a non-existent directory to trigger an error
+        let policy_service = PolicyService::with_local_dir("/non/existent/directory");
+
+        let mut task = PolicyEvaluationTask::new(Arc::new(datastore), policy_service, 1);
+
+        let result = task.load_policies_for_evaluation();
+        assert!(result.is_err());
+    }
 }

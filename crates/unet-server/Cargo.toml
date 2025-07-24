@@ -60,4 +60,6 @@ chrono = { workspace = true }
 tokio-test = { workspace = true }
 # reqwest = { workspace = true } # Will be added when HTTP client is needed
 tempfile = { workspace = true }
+mockall = { workspace = true }
+unet-core = { path = "../unet-core", features = ["test-utils"] }
 migration = { path = "../migrations" }
