@@ -32,6 +32,9 @@ thiserror = { workspace = true }
 # CLI parsing
 clap = { workspace = true }
 
+# Regex matching
+regex = { workspace = true }
+
 # Configuration diffing
 similar = { workspace = true }
 
