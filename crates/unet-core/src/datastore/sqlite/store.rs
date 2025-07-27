@@ -224,3 +224,6 @@ impl DataStore for SqliteStore {
 
 #[cfg(test)]
 mod store_tests;
+
+#[cfg(test)]
+mod comprehensive_store_tests;

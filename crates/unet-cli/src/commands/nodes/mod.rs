@@ -1,17 +1,37 @@
-//! Node management CLI commands
-//!
-//! This module provides comprehensive CLI commands for managing network nodes,
-//! including CRUD operations, status monitoring, and derived state operations.
-
+/// Node management CLI commands
+///
+/// This module provides comprehensive CLI commands for managing network nodes,
+/// including CRUD operations, status monitoring, and derived state operations.
 use anyhow::Result;
 use unet_core::datastore::DataStore;
 
 pub use types::NodeCommands;
 
+mod add;
 mod advanced;
+mod compare;
 mod crud;
+mod delete;
+mod history;
+mod list;
 mod monitoring;
+mod polling;
+mod show;
 mod types;
+mod update;
+
+#[cfg(test)]
+mod advanced_tests;
+#[cfg(test)]
+mod compare_tests;
+#[cfg(test)]
+mod history_tests;
+#[cfg(test)]
+mod polling_tests;
+#[cfg(test)]
+mod show_tests;
+#[cfg(test)]
+mod update_tests;
 
 /// Execute a node command
 pub async fn execute(

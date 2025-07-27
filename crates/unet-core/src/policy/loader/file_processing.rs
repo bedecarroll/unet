@@ -77,6 +77,37 @@ impl FileProcessor {
         Ok(load_result)
     }
 
+    /// Load policies from a specific directory (async version)
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The directory does not exist
+    /// - Directory cannot be accessed
+    /// - Policy files cannot be read or parsed
+    pub async fn load_policies_from_directory_async(
+        &self,
+        dir: &Path,
+        policy_cache: &mut HashMap<PathBuf, CachedPolicy>,
+    ) -> PolicyResult<LoadResult> {
+        Self::validate_directory(dir)?;
+        debug!("Loading policies from directory (async): {}", dir.display());
+
+        let policy_files = Self::collect_policy_files(dir);
+        let load_result = self
+            .process_policy_files_async(policy_files, policy_cache)
+            .await;
+
+        info!(
+            "Policy loading complete (async): {} loaded, {} errors, {} total files",
+            load_result.loaded.len(),
+            load_result.errors.len(),
+            load_result.total_files
+        );
+
+        Ok(load_result)
+    }
+
     /// Validate that the policies directory exists
     fn validate_directory(dir: &Path) -> PolicyResult<()> {
         if !dir.exists() {
@@ -129,6 +160,40 @@ impl FileProcessor {
         }
     }
 
+    /// Process all collected policy files (async version)
+    async fn process_policy_files_async(
+        &self,
+        policy_files: Vec<PathBuf>,
+        policy_cache: &mut HashMap<PathBuf, CachedPolicy>,
+    ) -> LoadResult {
+        let mut loaded = Vec::new();
+        let mut errors = Vec::new();
+        let total_files = policy_files.len();
+
+        for file_path in &policy_files {
+            match self.load_policy_file_async(file_path, policy_cache).await {
+                Ok(policy_file) => {
+                    debug!("Loaded policy file (async): {}", file_path.display());
+                    loaded.push(policy_file);
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to load policy file {} (async): {}",
+                        file_path.display(),
+                        e
+                    );
+                    errors.push((file_path.clone(), e));
+                }
+            }
+        }
+
+        LoadResult {
+            loaded,
+            errors,
+            total_files,
+        }
+    }
+
     /// Load a single policy file with caching
     ///
     /// # Errors
@@ -161,6 +226,57 @@ impl FileProcessor {
         // Cache miss or expired - load from file
         debug!("Loading policy file from disk: {}", path.display());
         let content = std::fs::read_to_string(path).map_err(PolicyError::Io)?;
+
+        // Validate and parse policy content
+        let rules = PolicyValidator::validate_and_parse(&content)?;
+
+        // Cache the parsed policy
+        let cached_policy = CachedPolicy::new(rules.clone(), mtime);
+        policy_cache.insert(path.to_path_buf(), cached_policy);
+
+        Ok(PolicyFile {
+            path: path.to_path_buf(),
+            rules,
+            modified: mtime,
+            size: metadata.len(),
+        })
+    }
+
+    /// Load a single policy file with caching (async version)
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The file cannot be read
+    /// - The file contains invalid policy syntax
+    /// - File metadata cannot be accessed  
+    pub async fn load_policy_file_async(
+        &self,
+        path: &Path,
+        policy_cache: &mut HashMap<PathBuf, CachedPolicy>,
+    ) -> PolicyResult<PolicyFile> {
+        // Use tokio::fs for async file operations to avoid blocking
+        let metadata = tokio::fs::metadata(path).await.map_err(PolicyError::Io)?;
+        let mtime = metadata.modified().map_err(PolicyError::Io)?;
+
+        // Check cache first
+        if let Some(cached) = policy_cache.get(path) {
+            if cached.is_valid(self.cache_ttl, mtime) {
+                debug!("Using cached policy (async): {}", path.display());
+                return Ok(PolicyFile {
+                    path: path.to_path_buf(),
+                    rules: cached.rules.clone(),
+                    modified: mtime,
+                    size: metadata.len(),
+                });
+            }
+        }
+
+        // Cache miss or expired - load from file
+        debug!("Loading policy file from disk (async): {}", path.display());
+        let content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(PolicyError::Io)?;
 
         // Validate and parse policy content
         let rules = PolicyValidator::validate_and_parse(&content)?;

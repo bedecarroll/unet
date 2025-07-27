@@ -8,7 +8,7 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_empty_mock_datastore_name() {
     let store = EmptyMockDataStore;
-    assert_eq!(store.name(), "EmptyMockDataStore");
+    assert_eq!(store.name(), "empty_mock");
 }
 
 #[tokio::test]

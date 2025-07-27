@@ -8,6 +8,8 @@ mod location_filter_tests;
 #[cfg(test)]
 mod node_filter_tests;
 #[cfg(test)]
+mod test_helpers;
+#[cfg(test)]
 mod tests;
 
 use super::super::types::{

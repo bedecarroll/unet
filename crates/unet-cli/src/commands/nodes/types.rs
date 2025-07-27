@@ -1,5 +1,4 @@
-//! Command types and argument structures for node management
-
+/// Command types and argument structures for node management
 use clap::{Args, Subcommand};
 use uuid::Uuid;
 

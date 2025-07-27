@@ -2,17 +2,11 @@
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_helpers::create_location_query;
     use crate::datastore::sqlite::filters::{apply_location_filters, apply_location_sorting};
     use crate::datastore::types::{
         DataStoreError, Filter, FilterOperation, FilterValue, Sort, SortDirection,
     };
-    use crate::entities::locations;
-    use sea_orm::{EntityTrait, Select};
-
-    /// Create a base location query for testing
-    fn create_location_query() -> Select<locations::Entity> {
-        locations::Entity::find()
-    }
 
     // Location Filter Tests
 

@@ -73,13 +73,17 @@ impl ActionExecutor {
         value: &Value,
         exec_ctx: &PolicyExecutionContext<'_>,
     ) -> Result<ActionExecutionResult, PolicyError> {
+        // Validate field path is not empty
+        if field.path.is_empty() {
+            return Err(PolicyError::ValidationError {
+                message: "Field path cannot be empty".to_string(),
+            });
+        }
+
         // For SET actions, we only support setting values in custom_data
-        if field.path.is_empty() || field.path[0] != "custom_data" {
-            return Ok(ActionExecutionResult {
-                result: ActionResult::Error {
-                    message: format!("SET action only supports custom_data fields, got: {field}"),
-                },
-                rollback_data: None,
+        if field.path[0] != "custom_data" {
+            return Err(PolicyError::ValidationError {
+                message: "Only custom_data fields can be modified".to_string(),
             });
         }
 
@@ -146,56 +150,50 @@ impl ActionExecutor {
                 node_id: exec_ctx.node_id.to_string(),
             })?;
 
-        // Add template assignment to custom_data
-        let mut custom_data = node.custom_data.clone();
-        if !custom_data.is_object() {
-            custom_data = JsonValue::Object(serde_json::Map::new());
+        // Validate that custom_data is an object
+        if !node.custom_data.is_object() {
+            return Err(PolicyError::ValidationError {
+                message: "custom_data must be an object".to_string(),
+            });
         }
 
-        let mut template_was_already_assigned = false;
+        // Check if template is already assigned to the node
+        let mut custom_data = node.custom_data.clone();
 
-        if let JsonValue::Object(map) = &mut custom_data {
-            // Add or update the assigned templates array
-            let templates = map
-                .entry("assigned_templates".to_string())
-                .or_insert_with(|| JsonValue::Array(vec![]));
-
-            if let JsonValue::Array(templates_array) = templates {
-                let template_value = JsonValue::String(template_path.to_string());
-                if templates_array.contains(&template_value) {
-                    template_was_already_assigned = true;
-                } else {
-                    templates_array.push(template_value);
-                }
+        if let JsonValue::Object(map) = &custom_data {
+            if map.contains_key("template") {
+                return Err(PolicyError::ValidationError {
+                    message: format!("Template already assigned to node {}", exec_ctx.node_id),
+                });
             }
         }
 
-        if !template_was_already_assigned {
-            node.custom_data = custom_data;
-
-            // Save the updated node
-            exec_ctx.datastore.update_node(&node).await.map_err(|e| {
-                PolicyError::DataStoreError {
-                    message: e.to_string(),
-                }
-            })?;
+        // Add template assignment to custom_data
+        if let JsonValue::Object(map) = &mut custom_data {
+            map.insert(
+                "template".to_string(),
+                JsonValue::String(template_path.to_string()),
+            );
         }
+
+        node.custom_data = custom_data;
+
+        // Save the updated node
+        exec_ctx
+            .datastore
+            .update_node(&node)
+            .await
+            .map_err(|e| PolicyError::DataStoreError {
+                message: e.to_string(),
+            })?;
 
         Ok(ActionExecutionResult {
             result: ActionResult::Success {
-                message: if template_was_already_assigned {
-                    format!("Template '{template_path}' was already assigned to node")
-                } else {
-                    format!("Successfully applied template '{template_path}' to node")
-                },
+                message: format!("Successfully applied template '{template_path}' to node"),
             },
-            rollback_data: if template_was_already_assigned {
-                None // No rollback needed if template was already assigned
-            } else {
-                Some(RollbackData::ApplyRollback {
-                    template_path: template_path.to_string(),
-                })
-            },
+            rollback_data: Some(RollbackData::ApplyRollback {
+                template_path: template_path.to_string(),
+            }),
         })
     }
 
@@ -207,7 +205,7 @@ impl ActionExecutor {
     ) -> Result<(), PolicyError> {
         if path.is_empty() {
             return Err(PolicyError::ValidationError {
-                message: "Cannot set empty path".to_string(),
+                message: "Field path cannot be empty".to_string(),
             });
         }
 
@@ -262,9 +260,17 @@ impl ActionExecutor {
     fn resolve_value(value: &Value, context: &EvaluationContext) -> Result<JsonValue, PolicyError> {
         match value {
             Value::String(s) => Ok(JsonValue::String(s.clone())),
-            Value::Number(n) => Ok(JsonValue::Number(
-                serde_json::Number::from_f64(*n).unwrap_or_else(|| serde_json::Number::from(0)),
-            )),
+            Value::Number(n) => {
+                // Validate that the number is finite
+                if n.is_infinite() || n.is_nan() {
+                    return Err(PolicyError::ValidationError {
+                        message: "Number values cannot be infinite or NaN".to_string(),
+                    });
+                }
+                Ok(JsonValue::Number(
+                    serde_json::Number::from_f64(*n).unwrap_or_else(|| serde_json::Number::from(0)),
+                ))
+            }
             Value::Boolean(b) => Ok(JsonValue::Bool(*b)),
             Value::Null => Ok(JsonValue::Null),
             Value::Array(arr) => {
@@ -282,7 +288,15 @@ impl ActionExecutor {
                 Ok(JsonValue::Object(resolved_obj))
             }
             Value::FieldRef(field_ref) => Self::resolve_field(field_ref, context),
-            Value::Regex(pattern) => Ok(JsonValue::String(pattern.clone())),
+            Value::Regex(pattern) => {
+                // Validate regex pattern
+                if let Err(e) = regex::Regex::new(pattern) {
+                    return Err(PolicyError::ValidationError {
+                        message: format!("Invalid regex pattern: {e}"),
+                    });
+                }
+                Ok(JsonValue::String(pattern.clone()))
+            }
         }
     }
 
@@ -292,7 +306,12 @@ impl ActionExecutor {
             (JsonValue::Number(n1), JsonValue::Number(n2)) => {
                 // Handle floating point comparison with some tolerance
                 if let (Some(f1), Some(f2)) = (n1.as_f64(), n2.as_f64()) {
-                    (f1 - f2).abs() < 1e-10
+                    // NaN is never equal to anything, including itself
+                    if f1.is_nan() || f2.is_nan() {
+                        false
+                    } else {
+                        (f1 - f2).abs() < 1e-10
+                    }
                 } else {
                     n1 == n2
                 }

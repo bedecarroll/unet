@@ -2,17 +2,11 @@
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_helpers::create_node_query;
     use crate::datastore::sqlite::filters::{apply_node_filters, apply_node_sorting};
     use crate::datastore::types::{
         DataStoreError, Filter, FilterOperation, FilterValue, Sort, SortDirection,
     };
-    use crate::entities::nodes;
-    use sea_orm::{EntityTrait, Select};
-
-    /// Create a base node query for testing
-    fn create_node_query() -> Select<nodes::Entity> {
-        nodes::Entity::find()
-    }
 
     // Node Filter Tests
 

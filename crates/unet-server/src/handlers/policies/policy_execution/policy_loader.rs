@@ -14,10 +14,21 @@ pub fn load_policies_for_request(
 ) -> Result<Vec<PolicyRule>, ServerError> {
     request.policies.as_ref().map_or_else(
         || {
-            policy_service.load_policies().map_err(|e| {
-                error!("Failed to load policies: {}", e);
-                ServerError::Internal(format!("Failed to load policies: {e}"))
-            })
+            match policy_service.load_policies() {
+                Ok(policies) => Ok(policies),
+                Err(e) => {
+                    let error_msg = e.to_string();
+                    // If no policies source is configured, return empty list instead of error
+                    if error_msg.contains("No policies source configured") {
+                        Ok(vec![])
+                    } else {
+                        error!("Failed to load policies: {}", e);
+                        Err(ServerError::Internal(format!(
+                            "Failed to load policies: {e}"
+                        )))
+                    }
+                }
+            }
         },
         |policies| Ok(policies.clone()),
     )
