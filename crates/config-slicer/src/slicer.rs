@@ -6,6 +6,10 @@ use crate::{
 };
 
 /// Slice configuration text using the provided [`MatchSpec`].
+///
+/// # Errors
+///
+/// This function currently never returns an error.
 pub fn slice_config(text: &str, spec: &MatchSpec) -> Result<Vec<String>> {
     let tokens = tokenize_flat(text);
     let mut result = Vec::new();
