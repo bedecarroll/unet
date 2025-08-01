@@ -23,6 +23,9 @@ mod file_processing;
 mod git;
 mod validation;
 
+#[cfg(test)]
+mod async_file_tests;
+
 /// Policy file loader with Git integration and caching
 #[derive(Debug, Clone)]
 pub struct PolicyLoader {
@@ -78,6 +81,23 @@ impl PolicyLoader {
         let policies_dir = self.directory_handler.get_policies_directory()?;
         self.file_processor
             .load_policies_from_directory(&policies_dir, &mut self.policy_cache)
+    }
+
+    /// Load all policy files from configured source (async version)
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if:
+    /// - The policies directory cannot be accessed
+    /// - Policy files cannot be read or parsed
+    /// - Invalid policy syntax is encountered
+    pub async fn load_policies_async(&mut self) -> PolicyResult<LoadResult> {
+        info!("Loading policy files (async)");
+
+        let policies_dir = self.directory_handler.get_policies_directory()?;
+        self.file_processor
+            .load_policies_from_directory_async(&policies_dir, &mut self.policy_cache)
+            .await
     }
 
     /// Load policies from a specific directory

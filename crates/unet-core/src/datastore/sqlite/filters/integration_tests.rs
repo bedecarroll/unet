@@ -2,28 +2,12 @@
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_helpers::{create_link_query, create_location_query, create_node_query};
     use crate::datastore::sqlite::filters::{
         apply_link_filters, apply_link_sorting, apply_location_filters, apply_location_sorting,
         apply_node_filters, apply_node_sorting,
     };
     use crate::datastore::types::{Filter, FilterOperation, FilterValue, Sort, SortDirection};
-    use crate::entities::{links, locations, nodes};
-    use sea_orm::{EntityTrait, Select};
-
-    /// Create a base node query for testing
-    fn create_node_query() -> Select<nodes::Entity> {
-        nodes::Entity::find()
-    }
-
-    /// Create a base location query for testing
-    fn create_location_query() -> Select<locations::Entity> {
-        locations::Entity::find()
-    }
-
-    /// Create a base link query for testing
-    fn create_link_query() -> Select<links::Entity> {
-        links::Entity::find()
-    }
 
     #[test]
     fn test_combined_filtering_and_sorting_nodes() {

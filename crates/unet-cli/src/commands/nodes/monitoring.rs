@@ -1,5 +1,4 @@
-//! Monitoring and status operations for nodes
-
+/// Monitoring and status operations for nodes
 use anyhow::Result;
 use unet_core::datastore::DataStore;
 
@@ -137,4 +136,171 @@ pub async fn metrics_node(
     crate::commands::print_output(&output, output_format)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::commands::nodes::types::*;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn test_status_node_args_creation() {
+        let node_id = Uuid::new_v4();
+
+        let args = StatusNodeArgs {
+            id: node_id,
+            status_type: vec![StatusType::Basic],
+        };
+
+        assert_eq!(args.id, node_id);
+        assert_eq!(args.status_type, vec![StatusType::Basic]);
+    }
+
+    #[tokio::test]
+    async fn test_status_node_args_multiple_types() {
+        let node_id = Uuid::new_v4();
+
+        let args = StatusNodeArgs {
+            id: node_id,
+            status_type: vec![
+                StatusType::Basic,
+                StatusType::Interfaces,
+                StatusType::System,
+            ],
+        };
+
+        assert_eq!(args.id, node_id);
+        assert_eq!(args.status_type.len(), 3);
+        assert!(args.status_type.contains(&StatusType::Basic));
+        assert!(args.status_type.contains(&StatusType::Interfaces));
+        assert!(args.status_type.contains(&StatusType::System));
+    }
+
+    #[tokio::test]
+    async fn test_status_node_args_all_type() {
+        let node_id = Uuid::new_v4();
+
+        let args = StatusNodeArgs {
+            id: node_id,
+            status_type: vec![StatusType::All],
+        };
+
+        assert_eq!(args.id, node_id);
+        assert_eq!(args.status_type, vec![StatusType::All]);
+    }
+
+    #[tokio::test]
+    async fn test_metrics_node_args_creation() {
+        let node_id = Uuid::new_v4();
+
+        let args = MetricsNodeArgs {
+            id: node_id,
+            detailed: false,
+            history: false,
+        };
+
+        assert_eq!(args.id, node_id);
+        assert!(!args.detailed);
+        assert!(!args.history);
+    }
+
+    #[tokio::test]
+    async fn test_metrics_node_args_detailed() {
+        let node_id = Uuid::new_v4();
+
+        let args = MetricsNodeArgs {
+            id: node_id,
+            detailed: true,
+            history: false,
+        };
+
+        assert_eq!(args.id, node_id);
+        assert!(args.detailed);
+        assert!(!args.history);
+    }
+
+    #[tokio::test]
+    async fn test_metrics_node_args_history() {
+        let node_id = Uuid::new_v4();
+
+        let args = MetricsNodeArgs {
+            id: node_id,
+            detailed: false,
+            history: true,
+        };
+
+        assert_eq!(args.id, node_id);
+        assert!(!args.detailed);
+        assert!(args.history);
+    }
+
+    #[tokio::test]
+    async fn test_metrics_node_args_detailed_and_history() {
+        let node_id = Uuid::new_v4();
+
+        let args = MetricsNodeArgs {
+            id: node_id,
+            detailed: true,
+            history: true,
+        };
+
+        assert_eq!(args.id, node_id);
+        assert!(args.detailed);
+        assert!(args.history);
+    }
+
+    #[tokio::test]
+    async fn test_status_type_basic() {
+        let status_type = StatusType::Basic;
+        assert!(matches!(status_type, StatusType::Basic));
+    }
+
+    #[tokio::test]
+    async fn test_status_type_all() {
+        let status_type = StatusType::All;
+        assert!(matches!(status_type, StatusType::All));
+    }
+
+    #[tokio::test]
+    async fn test_status_type_interfaces() {
+        let status_type = StatusType::Interfaces;
+        assert!(matches!(status_type, StatusType::Interfaces));
+    }
+
+    #[tokio::test]
+    async fn test_status_type_system() {
+        let status_type = StatusType::System;
+        assert!(matches!(status_type, StatusType::System));
+    }
+
+    #[tokio::test]
+    async fn test_status_type_polling() {
+        let status_type = StatusType::Polling;
+        assert!(matches!(status_type, StatusType::Polling));
+    }
+
+    #[tokio::test]
+    async fn test_status_type_equality() {
+        assert_eq!(StatusType::Basic, StatusType::Basic);
+        assert_eq!(StatusType::All, StatusType::All);
+        assert_eq!(StatusType::Interfaces, StatusType::Interfaces);
+        assert_eq!(StatusType::System, StatusType::System);
+        assert_eq!(StatusType::Polling, StatusType::Polling);
+
+        assert_ne!(StatusType::Basic, StatusType::All);
+        assert_ne!(StatusType::Interfaces, StatusType::System);
+        assert_ne!(StatusType::Polling, StatusType::Basic);
+    }
+
+    #[tokio::test]
+    async fn test_status_type_clone() {
+        let original = StatusType::Basic;
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+
+        let original_all = StatusType::All;
+        let cloned_all = original_all.clone();
+        assert_eq!(original_all, cloned_all);
+    }
 }

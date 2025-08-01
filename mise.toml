@@ -23,12 +23,12 @@ run = ["cargo nextest run"]
 [tasks.coverage]
 description = "Generate code coverage report and enforce minimum threshold"
 run = [
-  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --fail-under-lines 84",
+  "cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex '(tests?\\.rs|_tests?\\.rs|comprehensive_tests\\.rs)$' --fail-under-lines 84",
 ]
 
 [tasks.coverage-report]
 description = "Generate code coverage report without enforcement (for development)"
-run = ["cargo llvm-cov --all-features --show-missing-lines report"]
+run = ["cargo llvm-cov --all-features --show-missing-lines --ignore-filename-regex '(tests?\\.rs|_tests?\\.rs|comprehensive_tests\\.rs)$' report"]
 
 [tasks.check-large-files]
 description = "Find files exceeding size guidelines (>400 lines)"

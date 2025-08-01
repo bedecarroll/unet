@@ -2,17 +2,11 @@
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_helpers::create_link_query;
     use crate::datastore::sqlite::filters::{apply_link_filters, apply_link_sorting};
     use crate::datastore::types::{
         DataStoreError, Filter, FilterOperation, FilterValue, Sort, SortDirection,
     };
-    use crate::entities::links;
-    use sea_orm::{EntityTrait, Select};
-
-    /// Create a base link query for testing
-    fn create_link_query() -> Select<links::Entity> {
-        links::Entity::find()
-    }
 
     // Link Filter Tests
 

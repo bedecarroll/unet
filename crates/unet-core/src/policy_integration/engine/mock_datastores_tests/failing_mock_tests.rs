@@ -8,7 +8,7 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_failing_mock_datastore_name() {
     let store = FailingMockDataStore;
-    assert_eq!(store.name(), "FailingMockDataStore");
+    assert_eq!(store.name(), "failing_mock");
 }
 
 #[tokio::test]

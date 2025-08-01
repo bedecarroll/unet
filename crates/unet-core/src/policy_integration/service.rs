@@ -87,6 +87,21 @@ impl PolicyService {
             .collect())
     }
 
+    /// Loads policies from the configured directory (async version)
+    ///
+    /// # Errors
+    ///
+    /// Returns `PolicyError` if policies cannot be loaded or parsed
+    pub async fn load_policies_async(&mut self) -> PolicyResult<Vec<PolicyRule>> {
+        let result = self.loader.load_policies_async().await?;
+        // Flatten all rules from all loaded files
+        Ok(result
+            .loaded
+            .into_iter()
+            .flat_map(|file| file.rules)
+            .collect())
+    }
+
     /// Evaluates policies against a single node
     ///
     /// # Errors
@@ -97,7 +112,7 @@ impl PolicyService {
         datastore: &dyn DataStore,
         node: &Node,
     ) -> PolicyResult<Vec<PolicyExecutionResult>> {
-        let policies = self.load_policies()?;
+        let policies = self.load_policies_async().await?;
         self.engine
             .evaluate_node_policies(datastore, node, &policies)
             .await
@@ -112,7 +127,7 @@ impl PolicyService {
         &mut self,
         datastore: &dyn DataStore,
     ) -> PolicyResult<HashMap<Uuid, Vec<PolicyExecutionResult>>> {
-        let policies = self.load_policies()?;
+        let policies = self.load_policies_async().await?;
         self.engine
             .evaluate_all_policies(datastore, &policies)
             .await

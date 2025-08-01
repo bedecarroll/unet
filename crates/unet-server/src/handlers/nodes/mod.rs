@@ -10,12 +10,14 @@ pub use derived::{get_node_interfaces, get_node_metrics, get_node_status};
 mod create_tests;
 mod crud;
 #[cfg(test)]
-mod crud_tests;
+mod crud_tests; // Contains organized test modules by operation type
 #[cfg(test)]
 mod delete_tests;
 mod derived;
 #[cfg(test)]
 mod read_tests;
+#[cfg(test)]
+mod test_helpers;
 #[cfg(test)]
 mod tests;
 mod types;

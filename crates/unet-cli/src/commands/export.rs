@@ -256,3 +256,118 @@ async fn export_links(args: &ExportArgs, datastore: &dyn DataStore) -> Result<us
 
     Ok(links_result.items.len())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_export_stats_new() {
+        let stats = ExportStats::new();
+        assert_eq!(stats.exported_count, 0);
+        assert!(stats.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_export_stats_record_success() {
+        let mut stats = ExportStats::new();
+        stats.record_success(5, "locations");
+        assert_eq!(stats.exported_count, 5);
+        assert!(stats.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_export_stats_record_error() {
+        let mut stats = ExportStats::new();
+        stats.record_error("Test error message");
+        assert_eq!(stats.exported_count, 0);
+        assert_eq!(stats.errors.len(), 1);
+        assert_eq!(stats.errors[0], "Test error message");
+    }
+
+    #[tokio::test]
+    async fn test_prepare_export_directory_creates_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let export_path = temp_dir.path().join("export");
+
+        assert!(!export_path.exists());
+
+        let result = prepare_export_directory(&export_path).await;
+        assert!(result.is_ok());
+        assert!(export_path.exists());
+        assert!(export_path.is_dir());
+    }
+
+    #[tokio::test]
+    async fn test_prepare_export_directory_existing_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let export_path = temp_dir.path();
+
+        // Directory already exists
+        assert!(export_path.exists());
+
+        let result = prepare_export_directory(export_path).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_determine_export_types_with_only() {
+        let only = Some(vec!["nodes".to_string(), "links".to_string()]);
+        let types = determine_export_types(only.as_ref());
+
+        assert_eq!(types.len(), 2);
+        assert!(types.contains(&"nodes".to_string()));
+        assert!(types.contains(&"links".to_string()));
+        assert!(!types.contains(&"locations".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_determine_export_types_without_only() {
+        let types = determine_export_types(None);
+
+        assert_eq!(types.len(), 3);
+        assert!(types.contains(&"locations".to_string()));
+        assert!(types.contains(&"nodes".to_string()));
+        assert!(types.contains(&"links".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_finalize_export_success() {
+        let temp_dir = TempDir::new().unwrap();
+        let stats = ExportStats {
+            exported_count: 10,
+            errors: Vec::new(),
+        };
+
+        let args = ExportArgs {
+            to: temp_dir.path().to_path_buf(),
+            format: "json".to_string(),
+            force: false,
+            only: None,
+        };
+
+        let result = finalize_export(&stats, args, crate::OutputFormat::Json);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_finalize_export_with_errors() {
+        let temp_dir = TempDir::new().unwrap();
+        let stats = ExportStats {
+            exported_count: 5,
+            errors: vec!["Error 1".to_string(), "Error 2".to_string()],
+        };
+
+        let args = ExportArgs {
+            to: temp_dir.path().to_path_buf(),
+            format: "json".to_string(),
+            force: false,
+            only: None,
+        };
+
+        let result = finalize_export(&stats, args, crate::OutputFormat::Json);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("2 errors"));
+    }
+}
