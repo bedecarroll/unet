@@ -34,3 +34,7 @@ features = [
   "runtime-tokio-rustls",
   "macros",
 ]
+
+[dev-dependencies]
+unet-core = { path = "../unet-core" }
+tokio = { workspace = true }

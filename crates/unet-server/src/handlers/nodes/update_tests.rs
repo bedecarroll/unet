@@ -109,15 +109,17 @@ mod tests {
     async fn test_update_node_with_location_id() {
         let app_state = setup_test_app_state().await;
         let node = create_test_node(&app_state).await;
-        let location_id = Uuid::new_v4();
+
+        // Create a valid location first
+        let location = create_test_location(&app_state).await;
         let mut request = create_test_update_request();
-        request.location_id = Some(location_id);
+        request.location_id = Some(location.id);
 
         let result = update_node(State(app_state), Path(node.id), Json(request)).await;
 
         assert!(result.is_ok());
         let Json(ApiResponse { data, success, .. }) = result.unwrap();
         assert!(success);
-        assert_eq!(data.node.location_id, Some(location_id));
+        assert_eq!(data.node.location_id, Some(location.id));
     }
 }

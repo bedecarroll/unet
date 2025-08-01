@@ -6,6 +6,9 @@ mod m20241221_000003_create_links_table;
 mod m20241221_000004_create_derived_state_tables;
 mod m20241221_000005_create_vendor_table;
 
+#[cfg(test)]
+mod schema_parity_tests;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]

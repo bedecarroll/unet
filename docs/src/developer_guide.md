@@ -279,18 +279,21 @@ pub struct ExampleData {
 ### Network Automation Best Practices
 
 #### SNMP Polling Strategy
+
 - **Bulk operations**: Always use `bulk_get` for multiple OIDs
 - **Timeout handling**: Set reasonable timeouts (30s for system info, 60s for large tables)
 - **Error recovery**: Distinguish between temporary (network) and permanent (auth) failures
 - **Rate limiting**: Respect device capabilities - don't overwhelm network equipment
 
 #### Policy Evaluation Performance
+
 - **Cache policy ASTs**: Parse policies once, evaluate many times
 - **Batch evaluations**: Process multiple nodes/policies in single transaction
 - **Lazy loading**: Only load data that policies actually reference
 - **Early termination**: Stop evaluation as soon as decision is clear
 
 #### State Management
+
 - **Desired State**: User configurations, topology definitions, policy rules
 - **Derived State**: SNMP data, calculated metrics, policy evaluation results
 - **Never mix**: Keep clear separation between what users configure vs. what system discovers
@@ -298,6 +301,7 @@ pub struct ExampleData {
 ### Common Anti-Patterns to Avoid
 
 #### Database Anti-Patterns
+
 ```text
 // DON'T: Bypass DataStore trait
 let node = Node::find_by_id(node_id).one(&db).await?;
@@ -316,6 +320,7 @@ let locations = datastore.get_locations_by_ids(&location_ids).await?;
 ```
 
 #### SNMP Anti-Patterns
+
 ```text
 // DON'T: Blocking calls in async context
 let result = std::thread::spawn(|| snmp_sync_call()).join();
@@ -331,6 +336,7 @@ let result = snmp_session.get(oid).timeout(Duration::from_secs(30)).await?;
 ```
 
 #### Error Handling Anti-Patterns
+
 ```text
 // DON'T: Generic error messages
 return Err(ApiError::internal_error("Something went wrong"));
@@ -351,18 +357,21 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### SNMP Issues
 
 #### Connection Problems
+
 1. **Check network connectivity**: `ping <device_ip>`
 2. **Verify SNMP credentials**: Test with `snmpwalk` command
 3. **Check firewall rules**: Ensure UDP 161 is accessible
 4. **Validate community strings**: Ensure they match device configuration
 
 #### Query Failures
+
 1. **OID validation**: Verify OIDs exist on target device
 2. **Permission checking**: Ensure community has read access to OIDs
 3. **MIB loading**: Check if custom MIBs are needed
 4. **Timeout tuning**: Increase timeouts for slow devices
 
 #### Performance Issues
+
 1. **Bulk query optimization**: Group related OIDs together
 2. **Polling frequency**: Reduce frequency for non-critical metrics
 3. **Device capability**: Some devices can't handle high query rates
@@ -371,12 +380,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### Database Performance
 
 #### Slow Queries
+
 1. **Check indexes**: Ensure proper indexes on filtered columns
 2. **Query analysis**: Use EXPLAIN QUERY PLAN for complex queries
 3. **Pagination**: Add LIMIT/OFFSET for large result sets
 4. **Connection pooling**: Monitor connection pool utilization
 
 #### Lock Contention
+
 1. **Transaction scope**: Keep transactions as short as possible
 2. **Retry logic**: Implement exponential backoff for lock timeouts
 3. **Read replicas**: Use read-only queries where possible
@@ -385,12 +396,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### API Performance
 
 #### Slow Endpoints
+
 1. **Database queries**: Profile database access patterns
 2. **Serialization**: Large JSON responses can be slow
 3. **External dependencies**: SNMP calls, file I/O
 4. **Memory allocation**: Check for unnecessary clones/allocations
 
 #### Memory Issues
+
 1. **Large datasets**: Implement streaming for large responses
 2. **Connection leaks**: Monitor database connection usage
 3. **Background tasks**: Check for memory leaks in polling tasks
@@ -401,18 +414,21 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### Adding a New SNMP OID
 
 1. **Research the OID**
+
    ```bash
    # Test with snmpwalk first
    snmpwalk -v2c -c public <device_ip> <new_oid>
    ```
 
 2. **Add to OID definitions**
+
    ```rust,ignore
    // crates/unet-core/src/snmp/oids/standard.rs
    pub const NEW_METRIC_OID: &str = "1.3.6.1.2.1.x.x.x";
    ```
 
 3. **Update collector**
+
    ```rust,ignore
    // Add to relevant collector in crates/unet-core/src/snmp/collectors/
    let oids = vec![
@@ -422,12 +438,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 4. **Add to data model**
+
    ```rust,ignore
    // Update derived state entity
    pub new_metric: Option<i64>,
    ```
 
 5. **Write tests**
+
    ```rust,ignore
    #[tokio::test]
    async fn test_collect_new_metric() {
@@ -438,6 +456,7 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 6. **Update migration**
+
    ```bash
    # Create new migration file
    cargo run --bin migration -- generate add_new_metric_column
@@ -446,6 +465,7 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### Adding a New Policy Rule Type
 
 1. **Define AST node**
+
    ```rust,ignore
    // crates/unet-core/src/policy/ast.rs
    pub enum Condition {
@@ -455,12 +475,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 2. **Update parser**
+
    ```pest
    // crates/unet-core/src/policy/grammar.pest  
    new_rule = { "new_rule" ~ "(" ~ field ~ operator ~ value ~ ")" }
    ```
 
 3. **Implement evaluator**
+
    ```rust,ignore
    // crates/unet-core/src/policy/evaluator/conditions.rs
    Condition::NewRuleType { field, operator, value } => {
@@ -470,12 +492,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 4. **Add CLI support**
+
    ```text
    // crates/unet-cli/src/commands/policy/
    // Add new subcommand for rule type
    ```
 
 5. **Write comprehensive tests**
+
    ```rust,ignore
    #[tokio::test]
    async fn test_new_rule_evaluation() {
@@ -493,28 +517,33 @@ return Err(ApiError::conflict("A node with this name already exists"));
    - Index requirements?
 
 2. **Create migration**
+
    ```bash
    cargo run --bin migration -- generate add_new_field_to_table
    ```
 
 3. **Update entity model**
+
    ```rust,ignore
    // Add field to appropriate entity
    pub new_field: Option<String>,
    ```
 
 4. **Update DataStore trait**
+
    ```rust,ignore
    // Add methods if needed
    async fn update_new_field(&self, id: &str, value: String) -> Result<()>;
    ```
 
 5. **Implement in datastores**
+
    ```text
    // Update the SQLite implementation
    ```
 
 6. **Add API endpoints**
+
    ```text
    // Update request/response types
    // Add validation logic
@@ -522,12 +551,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
    ```
 
 7. **Update CLI**
+
    ```text
    // Add command line options
    // Update output formatting
    ```
 
 8. **Write tests**
+
    ```text
    // Unit tests for data model
    // Integration tests for API
@@ -539,18 +570,21 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### Database Optimization
 
 #### Query Patterns
+
 - **Single record**: Use `find_by_id()` with primary key
 - **Filtered lists**: Use `find().filter()` with indexed columns
 - **Counts**: Use `count()` instead of loading all records
 - **Exists checks**: Use `count() > 0` for existence tests
 
 #### Index Strategy
+
 - **Primary keys**: Automatic unique index
 - **Foreign keys**: Add index for join performance
 - **Filter columns**: Index frequently filtered columns
 - **Composite indexes**: For multi-column filters
 
 #### Transaction Management
+
 - **Read operations**: No transaction needed for single queries
 - **Write operations**: Use transactions for multi-table updates
 - **Long operations**: Break into smaller transactions
@@ -559,12 +593,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### Memory Management
 
 #### Large Datasets
+
 - **Streaming**: Process records in batches
 - **Pagination**: Limit result set sizes
 - **Lazy loading**: Load related data on demand
 - **Connection pooling**: Reuse database connections
 
 #### Background Tasks
+
 - **Resource cleanup**: Properly close connections and files
 - **Memory monitoring**: Check for gradual memory leaks
 - **Graceful shutdown**: Handle termination signals properly
@@ -573,12 +609,14 @@ return Err(ApiError::conflict("A node with this name already exists"));
 ### Network Optimization
 
 #### SNMP Efficiency
+
 - **Bulk operations**: Query multiple OIDs together
 - **Connection reuse**: Maintain persistent SNMP sessions
 - **Timeout tuning**: Balance responsiveness vs. reliability
 - **Error handling**: Distinguish temporary vs. permanent failures
 
 #### API Performance
+
 - **Response size**: Minimize JSON payload size
 - **Caching**: Cache expensive computations
 - **Compression**: Use gzip for large responses

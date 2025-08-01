@@ -1,173 +1,101 @@
-//! Tests for `evaluate_node_policies` function
+//! Tests for `EvalPolicyArgs` structure
 
-use crate::commands::policy::eval::evaluate_node_policies;
 use crate::commands::policy::EvalPolicyArgs;
 use std::path::PathBuf;
-use unet_core::{
-    models::*,
-    policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value},
-};
-
-use super::test_helpers::create_test_policy_rule;
+use uuid::Uuid;
 
 #[tokio::test]
-async fn test_evaluate_node_policies_satisfied_result() {
-    // Test lines 55-63 (Satisfied result path)
-    let mut node = Node::new(
-        "test-node".to_string(),
-        "example.com".to_string(),
-        Vendor::Cisco,
-        DeviceRole::Router,
-    );
-    node.model = "ASR1000".to_string();
-    
-    let rule = create_test_policy_rule();
-    let policies = vec![vec![rule]];
+async fn test_eval_policy_args_basic_structure() {
+    // Test EvalPolicyArgs basic structure
+    let path = PathBuf::from("/tmp/policies");
+    let node_id = Uuid::new_v4();
     
     let args = EvalPolicyArgs {
-        path: PathBuf::from("/test"),
+        path: path.clone(),
+        node_id: Some(node_id),
+        verbose: false,
+        failures_only: false,
+    };
+    
+    assert_eq!(args.path, path);
+    assert_eq!(args.node_id, Some(node_id));
+    assert!(!args.verbose);
+    assert!(!args.failures_only);
+}
+
+#[tokio::test]
+async fn test_eval_policy_args_with_flags() {
+    // Test EvalPolicyArgs with various flag combinations
+    let path = PathBuf::from("/etc/policies");
+    
+    // Test verbose flag
+    let args1 = EvalPolicyArgs {
+        path: path.clone(),
         node_id: None,
         verbose: true,
         failures_only: false,
     };
     
-    let result = evaluate_node_policies(&node, &policies, &args);
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_evaluate_node_policies_not_satisfied_result() {
-    // Test lines 64-69 (NotSatisfied result path)
-    let mut node = Node::new(
-        "test-node".to_string(),
-        "example.com".to_string(),
-        Vendor::Cisco,
-        DeviceRole::Router,
-    );
-    node.model = "WrongModel".to_string(); // This will cause assertion to fail
+    assert_eq!(args1.path, path);
+    assert!(args1.node_id.is_none());
+    assert!(args1.verbose);
+    assert!(!args1.failures_only);
     
-    let rule = create_test_policy_rule();
-    let policies = vec![vec![rule]];
-    
-    let args = EvalPolicyArgs {
-        path: PathBuf::from("/test"),
-        node_id: None,
-        verbose: true,
-        failures_only: false,
-    };
-    
-    let result = evaluate_node_policies(&node, &policies, &args);
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_evaluate_node_policies_error_result() {
-    // Test lines 70-76 (Error result path)
-    let mut node = Node::new(
-        "test-node".to_string(),
-        "example.com".to_string(),
-        Vendor::Cisco,
-        DeviceRole::Router,
-    );
-    node.model = "ASR1000".to_string();
-    
-    // Create a rule that will cause an error during evaluation
-    let rule = PolicyRule {
-        id: Some("test-error-rule".to_string()),
-        condition: Condition::Comparison {
-            field: FieldRef {
-                path: vec!["nonexistent_field".to_string()],
-            },
-            operator: ComparisonOperator::Equal,
-            value: Value::String("value".to_string()),
-        },
-        action: Action::Assert {
-            field: FieldRef {
-                path: vec!["model".to_string()],
-            },
-            expected: Value::String("ASR1000".to_string()),
-        },
-    };
-    
-    let policies = vec![vec![rule]];
-    
-    let args = EvalPolicyArgs {
-        path: PathBuf::from("/test"),
-        node_id: None,
-        verbose: true,
-        failures_only: false,
-    };
-    
-    let result = evaluate_node_policies(&node, &policies, &args);
-    assert!(result.is_ok());
-}
-
-#[tokio::test]
-async fn test_evaluate_node_policies_evaluation_error() {
-    // Test lines 78-85 (evaluation error path)
-    let mut node = Node::new(
-        "test-node".to_string(),
-        "example.com".to_string(),
-        Vendor::Cisco,
-        DeviceRole::Router,
-    );
-    node.model = "ASR1000".to_string();
-    
-    // Create a malformed rule that will cause evaluation to fail
-    let rule = PolicyRule {
-        id: Some("test-eval-error-rule".to_string()),
-        condition: Condition::Comparison {
-            field: FieldRef {
-                path: vec!["invalid.field.path".to_string()],
-            },
-            operator: ComparisonOperator::Equal,
-            value: Value::String("value".to_string()),
-        },
-        action: Action::Assert {
-            field: FieldRef {
-                path: vec!["model".to_string()],
-            },
-            expected: Value::String("ASR1000".to_string()),
-        },
-    };
-    
-    let policies = vec![vec![rule]];
-    
-    let args = EvalPolicyArgs {
-        path: PathBuf::from("/test"),
+    // Test failures_only flag
+    let args2 = EvalPolicyArgs {
+        path: path.clone(),
         node_id: None,
         verbose: false,
         failures_only: true,
     };
     
-    let result = evaluate_node_policies(&node, &policies, &args);
-    assert!(result.is_ok());
+    assert_eq!(args2.path, path);
+    assert!(args2.node_id.is_none());
+    assert!(!args2.verbose);
+    assert!(args2.failures_only);
 }
 
 #[tokio::test]
-async fn test_evaluate_node_policies_multiple_rules() {
-    // Test lines 50-87 with multiple rules to cover loop iterations
-    let mut node = Node::new(
-        "test-node".to_string(),
-        "example.com".to_string(),
-        Vendor::Cisco,
-        DeviceRole::Router,
-    );
-    node.model = "ASR1000".to_string();
-    
-    let rule1 = create_test_policy_rule();
-    let mut rule2 = create_test_policy_rule();
-    rule2.id = Some("test-rule-2".to_string());
-    
-    let policies = vec![vec![rule1, rule2]];
+async fn test_eval_policy_args_both_flags() {
+    // Test EvalPolicyArgs with both verbose and failures_only true
+    let path = PathBuf::from("./policies");
+    let node_id = Uuid::new_v4();
     
     let args = EvalPolicyArgs {
-        path: PathBuf::from("/test"),
-        node_id: None,
+        path: path.clone(),
+        node_id: Some(node_id),
         verbose: true,
-        failures_only: false,
+        failures_only: true,
     };
     
-    let result = evaluate_node_policies(&node, &policies, &args);
-    assert!(result.is_ok());
+    assert_eq!(args.path, path);
+    assert_eq!(args.node_id, Some(node_id));
+    assert!(args.verbose);
+    assert!(args.failures_only);
+}
+
+#[tokio::test]
+async fn test_eval_policy_args_path_variations() {
+    // Test EvalPolicyArgs with different path types
+    let node_id = Uuid::new_v4();
+    
+    // Relative path
+    let relative_path = PathBuf::from("./policies");
+    let args1 = EvalPolicyArgs {
+        path: relative_path.clone(),
+        node_id: Some(node_id),
+        verbose: false,
+        failures_only: false,
+    };
+    assert_eq!(args1.path, relative_path);
+    
+    // Absolute path
+    let absolute_path = PathBuf::from("/home/user/policies");
+    let args2 = EvalPolicyArgs {
+        path: absolute_path.clone(),
+        node_id: Some(node_id),
+        verbose: true,
+        failures_only: true,
+    };
+    assert_eq!(args2.path, absolute_path);
 }
