@@ -20,6 +20,8 @@ jobs:
         with:
           experimental: true
       - run: mise install
+      - name: Ensure rustfmt is available
+        run: rustup component add rustfmt
       - run: mise run lint
       - run: mise run test
       - run: mise run coverage
