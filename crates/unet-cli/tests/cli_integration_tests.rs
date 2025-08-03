@@ -133,6 +133,59 @@ fn test_verbose_flag() {
 }
 
 #[test]
+fn test_verbose_with_config_file() {
+    use tempfile::NamedTempFile;
+
+    let (mut cmd, _temp_dir) = create_test_command();
+
+    // Create a temporary config file
+    let temp_config =
+        NamedTempFile::with_suffix(".toml").expect("Failed to create temp config file");
+    let toml_content = r#"
+[database]
+url = "sqlite://test.db"
+
+[logging]
+level = "debug"
+format = "text"
+
+[server]
+host = "127.0.0.1"
+port = 8080
+max_request_size = 1048576
+
+[snmp]
+community = "public"
+timeout = 10
+retries = 3
+
+[git]
+branch = "main"
+sync_interval = 300
+
+[domain]
+search_domains = []
+
+[auth]
+enabled = false
+token_expiry = 3600
+"#;
+    std::fs::write(temp_config.path(), toml_content).expect("Failed to write to temp config");
+
+    // Test CLI with both --verbose and --config flags
+    // This should exercise line 115: info!("Using configuration from: {}", config_path.display());
+    cmd.args([
+        "--verbose",
+        "--config",
+        &temp_config.path().to_string_lossy(),
+        "nodes",
+        "list",
+    ])
+    .assert()
+    .success();
+}
+
+#[test]
 fn test_unknown_subcommand() {
     let (mut cmd, _temp_dir) = create_test_command();
 
