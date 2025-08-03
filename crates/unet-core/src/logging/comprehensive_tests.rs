@@ -86,19 +86,19 @@ fn test_init_tracing_with_file_json_format() {
 }
 
 #[test]
-fn test_init_tracing_with_file_permission_error() {
+fn test_init_tracing_fails_when_directory_cannot_be_created() {
     let config = LoggingConfig {
         level: "info".to_string(),
         format: "pretty".to_string(),
-        file: Some("/root/protected/cannot_create.log".to_string()),
+        file: Some("/proc/protected/cannot_create.log".to_string()),
     };
 
-    // Test validation passes but directory creation would fail
+    // Test validation passes but directory creation will fail on read-only paths
     assert!(validate_log_level(&config.level).is_ok());
     assert!(validate_log_format(&config.format).is_ok());
 
-    // Test that attempting to create the directory fails due to permissions
-    let result = std::fs::create_dir_all("/root/protected");
+    // Attempt to create a directory in `/proc`, which is read-only even for root
+    let result = std::fs::create_dir_all("/proc/protected");
     assert!(result.is_err());
 }
 

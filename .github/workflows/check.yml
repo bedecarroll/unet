@@ -19,12 +19,10 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           experimental: true
+          cache: true
       - run: mise install
-      - name: Ensure Rust components are available
-        run: |
-          rustup component add rustfmt
-          rustup component add clippy
-          rustup component add llvm-tools-preview
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
       - run: mise run lint
       - run: mise run test
       - name: Generate coverage report and enforce threshold
@@ -47,6 +45,7 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           experimental: true
+          cache: true
 
       - run: mise install
 
