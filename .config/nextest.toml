@@ -12,3 +12,13 @@ slow-timeout = { period = "500ms", terminate-after = 4 }
 [[profile.default.overrides]]
 filter = "test(test_retry_transaction_all_failures) | test(test_retry_transaction_success_after_failures)"
 slow-timeout = { period = "1000ms", terminate-after = 4 }
+
+# CI profile with JUnit XML generation for Codecov Test Analytics
+[profile.ci]
+# Inherit from default profile
+# Only generate JUnit XML in CI to avoid cluttering local development
+
+[profile.ci.junit]
+path = "junit.xml"
+store-success-output = true
+store-failure-output = true

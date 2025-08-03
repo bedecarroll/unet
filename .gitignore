@@ -61,6 +61,11 @@ target/tarpaulin/
 coverage/
 lcov.info
 
+# Test reports (JUnit XML from nextest)
+junit.xml
+**/junit.xml
+target/nextest/*/junit.xml
+
 # Package manager files
 node_modules/
 package-lock.json
