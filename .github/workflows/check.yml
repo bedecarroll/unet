@@ -27,7 +27,14 @@ jobs:
           rustup component add llvm-tools-preview
       - run: mise run lint
       - run: mise run test
-      - run: mise run coverage
+      - name: Generate coverage report and enforce threshold
+        run: cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex '(tests?\\.rs|_tests?\\.rs|comprehensive_tests\\.rs)$' --fail-under-lines 84 --lcov --output-path lcov.info
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./lcov.info
+          fail_ci_if_error: true
       - run: mise run check-large-files
 
   security:
@@ -37,14 +44,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
 
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
+      - run: mise install
 
       - name: Run security audit
         run: cargo audit
