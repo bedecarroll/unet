@@ -1,5 +1,4 @@
-//! Policy evaluation and compliance checking functionality
-
+/// Policy evaluation and compliance checking functionality
 use anyhow::Result;
 use unet_core::datastore::DataStore;
 use unet_core::policy::{EvaluationContext, PolicyEvaluator};
@@ -173,4 +172,29 @@ pub async fn diff_policy(args: DiffPolicyArgs, datastore: &dyn DataStore) -> Res
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    //! Tests are organized into focused modules by functionality.
+
+    #[cfg(test)]
+    mod args_tests {
+        include!("eval/args_tests.rs");
+    }
+
+    #[cfg(test)]
+    mod evaluation_tests {
+        include!("eval/evaluation_tests.rs");
+    }
+
+    #[cfg(test)]
+    mod utility_tests {
+        include!("eval/utility_tests.rs");
+    }
+
+    #[cfg(test)]
+    mod comprehensive_tests {
+        include!("eval/comprehensive_tests.rs");
+    }
 }

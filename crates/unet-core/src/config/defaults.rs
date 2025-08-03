@@ -85,3 +85,17 @@ pub mod logging {
     /// Default log format
     pub const DEFAULT_LOG_FORMAT: &str = "text";
 }
+
+/// Git configuration constants
+pub mod git {
+    /// Default Git branch
+    pub const DEFAULT_GIT_BRANCH: &str = "main";
+    /// Default sync interval in seconds (5 minutes)
+    pub const DEFAULT_SYNC_INTERVAL_SECONDS: u64 = 300;
+}
+
+/// Authentication configuration constants
+pub mod auth {
+    /// Default token expiry in seconds (1 hour)
+    pub const DEFAULT_TOKEN_EXPIRY_SECONDS: u64 = 3600;
+}

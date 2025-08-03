@@ -11,35 +11,32 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Link::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Link::Id).text().not_null().primary_key())
-                    .col(ColumnDef::new(Link::Name).text().not_null())
-                    .col(ColumnDef::new(Link::NodeAId).text().not_null())
-                    .col(ColumnDef::new(Link::InterfaceA).text().not_null())
-                    .col(ColumnDef::new(Link::NodeBId).text())
-                    .col(ColumnDef::new(Link::InterfaceB).text())
+                    .col(ColumnDef::new(Link::Id).string().not_null().primary_key())
+                    .col(ColumnDef::new(Link::Name).string().not_null())
+                    .col(ColumnDef::new(Link::NodeAId).string().not_null())
+                    .col(ColumnDef::new(Link::InterfaceA).string().not_null())
+                    .col(ColumnDef::new(Link::NodeBId).string())
+                    .col(ColumnDef::new(Link::InterfaceB).string())
                     .col(ColumnDef::new(Link::Capacity).big_integer())
                     .col(ColumnDef::new(Link::Utilization).double())
-                    .col(
-                        ColumnDef::new(Link::IsInternetCircuit)
-                            .integer()
-                            .not_null()
-                            .default(0),
+                    .col(ColumnDef::new(Link::IsInternetCircuit).integer().not_null())
+                    .col(ColumnDef::new(Link::CircuitId).string())
+                    .col(ColumnDef::new(Link::Provider).string())
+                    .col(ColumnDef::new(Link::Description).string())
+                    .col(ColumnDef::new(Link::CustomData).string())
+                    .col(ColumnDef::new(Link::CreatedAt).string().not_null())
+                    .col(ColumnDef::new(Link::UpdatedAt).string().not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_link_node_a")
+                            .from(Link::Table, Link::NodeAId)
+                            .to(Alias::new("node"), Alias::new("id")),
                     )
-                    .col(ColumnDef::new(Link::CircuitId).text())
-                    .col(ColumnDef::new(Link::Provider).text())
-                    .col(ColumnDef::new(Link::Description).text())
-                    .col(ColumnDef::new(Link::CustomData).text())
-                    .col(
-                        ColumnDef::new(Link::CreatedAt)
-                            .text()
-                            .not_null()
-                            .default("CURRENT_TIMESTAMP"),
-                    )
-                    .col(
-                        ColumnDef::new(Link::UpdatedAt)
-                            .text()
-                            .not_null()
-                            .default("CURRENT_TIMESTAMP"),
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_link_node_b")
+                            .from(Link::Table, Link::NodeBId)
+                            .to(Alias::new("node"), Alias::new("id")),
                     )
                     .to_owned(),
             )

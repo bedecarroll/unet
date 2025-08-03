@@ -1,6 +1,7 @@
 # μNet (Micro Net)
 
 [![Build Status](https://github.com/bedecarroll/unet/workflows/CI/badge.svg)](https://github.com/bedecarroll/unet/actions)
+[![codecov](https://codecov.io/github/bedecarroll/unet/graph/badge.svg?token=CWBFW1UUEV)](https://codecov.io/github/bedecarroll/unet)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
 

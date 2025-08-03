@@ -6,7 +6,7 @@ use unet_core::policy::{PolicyExecutionResult, PolicyRule};
 use uuid::Uuid;
 
 /// Request to evaluate policies against a node
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct PolicyEvaluationRequest {
     /// Optional node IDs to evaluate (if empty, evaluates all nodes)
     pub node_ids: Option<Vec<Uuid>>,

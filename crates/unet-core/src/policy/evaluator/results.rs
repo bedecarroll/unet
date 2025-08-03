@@ -304,6 +304,9 @@ impl Default for BatchStatistics {
 }
 
 #[cfg(test)]
+mod results_comprehensive_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

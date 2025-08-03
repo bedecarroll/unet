@@ -71,7 +71,7 @@ mod tests {
         }));
 
         let rule = PolicyRule {
-            name: Some("test-rule".to_string()),
+            id: Some("test-rule".to_string()),
             condition: Condition::Comparison {
                 field: FieldRef {
                     path: vec!["node".to_string(), "vendor".to_string()],
@@ -158,7 +158,7 @@ mod tests {
         let bandwidth_field = FieldRef {
             path: vec!["interface".to_string(), "bandwidth".to_string()],
         };
-        let threshold = Value::Number(serde_json::Number::from(100));
+        let threshold = Value::Number(100.0);
 
         let result = PolicyEvaluator::evaluate_comparison(
             &bandwidth_field,
@@ -172,7 +172,7 @@ mod tests {
         let utilization_field = FieldRef {
             path: vec!["interface".to_string(), "utilization".to_string()],
         };
-        let max_util = Value::Number(serde_json::Number::from(90));
+        let max_util = Value::Number(90.0);
 
         let result = PolicyEvaluator::evaluate_comparison(
             &utilization_field,
@@ -197,7 +197,7 @@ mod tests {
         let vlan_field = FieldRef {
             path: vec!["config".to_string(), "vlans".to_string()],
         };
-        let target_vlan = Value::Number(serde_json::Number::from(20));
+        let target_vlan = Value::Number(20.0);
 
         let result = PolicyEvaluator::evaluate_comparison(
             &vlan_field,
@@ -246,7 +246,7 @@ mod tests {
         let derived_field = FieldRef {
             path: vec!["derived".to_string(), "snmp".to_string(), "sysUpTime".to_string()],
         };
-        let expected_uptime = Value::Number(serde_json::Number::from(12345));
+        let expected_uptime = Value::Number(12345.0);
 
         let result = PolicyEvaluator::evaluate_comparison(
             &derived_field,

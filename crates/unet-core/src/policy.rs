@@ -36,6 +36,9 @@ mod parser;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod ast_comprehensive_tests;
+
 pub use ast::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value};
 pub use evaluator::{
     ActionExecutionResult, ActionResult, AggregatedResult, EvaluationBatch, EvaluationContext,

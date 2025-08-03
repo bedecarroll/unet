@@ -1,0 +1,14 @@
+[profile.default]
+slow-timeout = { period = "250ms", terminate-after = 4 }
+status-level = "all"
+
+# Integration tests get a higher slow timeout since they spawn processes and do full system setup
+[[profile.default.overrides]]
+filter = "test(~integration) | test(~cli_integration)"
+slow-timeout = { period = "500ms", terminate-after = 4 }
+
+# Transaction retry tests have intentional delays for testing exponential backoff behavior
+# These tests SHOULD be slow as they test retry logic with deliberate 100ms+ delays per attempt
+[[profile.default.overrides]]
+filter = "test(test_retry_transaction_all_failures) | test(test_retry_transaction_success_after_failures)"
+slow-timeout = { period = "1000ms", terminate-after = 4 }

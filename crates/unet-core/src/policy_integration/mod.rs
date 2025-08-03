@@ -8,3 +8,6 @@ pub use service::PolicyService;
 
 mod engine;
 mod service;
+
+#[cfg(test)]
+mod service_tests;

@@ -1,8 +1,7 @@
-//! Policy management commands for μNet CLI
-//!
-//! This module provides commands for managing and testing policy rules,
-//! including validation, evaluation, and compliance checking.
-
+/// Policy management commands for μNet CLI
+///
+/// This module provides commands for managing and testing policy rules,
+/// including validation, evaluation, and compliance checking.
 use anyhow::Result;
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
@@ -14,7 +13,7 @@ pub mod helpers;
 pub mod list;
 pub mod validate;
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum PolicyCommands {
     /// Validate policy file syntax
     Validate(ValidatePolicyArgs),
@@ -28,7 +27,7 @@ pub enum PolicyCommands {
     Show(ShowPolicyArgs),
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct ValidatePolicyArgs {
     /// Path to policy file or directory
     #[arg(short, long)]
@@ -39,7 +38,7 @@ pub struct ValidatePolicyArgs {
     pub verbose: bool,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct EvalPolicyArgs {
     /// Path to policy file or directory
     #[arg(short, long)]
@@ -58,7 +57,7 @@ pub struct EvalPolicyArgs {
     pub failures_only: bool,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct DiffPolicyArgs {
     /// Path to policy file or directory
     #[arg(short, long)]
@@ -73,7 +72,7 @@ pub struct DiffPolicyArgs {
     pub verbose: bool,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct ListPolicyArgs {
     /// Path to policy directory
     #[arg(short, long)]
@@ -84,7 +83,7 @@ pub struct ListPolicyArgs {
     pub verbose: bool,
 }
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 pub struct ShowPolicyArgs {
     /// Path to policy file
     #[arg(short, long)]
@@ -105,3 +104,6 @@ pub async fn execute(command: PolicyCommands, datastore: &dyn DataStore) -> Resu
         PolicyCommands::Show(args) => list::show_policy(&args),
     }
 }
+
+#[cfg(test)]
+mod tests;

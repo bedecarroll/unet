@@ -11,27 +11,26 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Location::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Location::Id).text().not_null().primary_key())
-                    .col(ColumnDef::new(Location::Name).text().not_null())
-                    .col(ColumnDef::new(Location::Type).text().not_null())
-                    .col(ColumnDef::new(Location::Path).text().not_null())
-                    .col(ColumnDef::new(Location::ParentId).text())
-                    .col(ColumnDef::new(Location::Description).text())
-                    .col(ColumnDef::new(Location::Address).text())
-                    .col(ColumnDef::new(Location::Coordinates).text())
-                    .col(ColumnDef::new(Location::CustomData).text())
                     .col(
-                        ColumnDef::new(Location::CreatedAt)
-                            .text()
+                        ColumnDef::new(Location::Id)
+                            .string()
                             .not_null()
-                            .default("CURRENT_TIMESTAMP"),
+                            .primary_key(),
                     )
+                    .col(ColumnDef::new(Location::Name).string().not_null())
                     .col(
-                        ColumnDef::new(Location::UpdatedAt)
-                            .text()
-                            .not_null()
-                            .default("CURRENT_TIMESTAMP"),
+                        ColumnDef::new(Alias::new("location_type"))
+                            .string()
+                            .not_null(),
                     )
+                    .col(ColumnDef::new(Location::Path).string().not_null())
+                    .col(ColumnDef::new(Location::ParentId).string())
+                    .col(ColumnDef::new(Location::Description).string())
+                    .col(ColumnDef::new(Location::Address).string())
+                    .col(ColumnDef::new(Location::Coordinates).string())
+                    .col(ColumnDef::new(Location::CustomData).string())
+                    .col(ColumnDef::new(Location::CreatedAt).string().not_null())
+                    .col(ColumnDef::new(Location::UpdatedAt).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -73,7 +72,6 @@ enum Location {
     Table,
     Id,
     Name,
-    Type,
     Path,
     ParentId,
     Description,

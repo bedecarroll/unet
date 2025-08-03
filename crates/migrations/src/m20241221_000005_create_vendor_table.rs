@@ -12,7 +12,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Vendor::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Vendor::Name).text().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Vendor::Name)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .to_owned(),
             )
             .await?;

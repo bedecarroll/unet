@@ -7,7 +7,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         Self::create_node_status_table(manager).await?;
-        Self::create_interface_status_table(manager).await?;
+        Box::pin(Self::create_interface_status_table(manager)).await?;
         Self::create_polling_tasks_table(manager).await?;
         Ok(())
     }
@@ -40,30 +40,30 @@ impl Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(NodeStatus::Id)
-                            .text()
+                            .string()
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(NodeStatus::NodeId).text().not_null())
-                    .col(ColumnDef::new(NodeStatus::LastUpdated).text().not_null())
-                    .col(
-                        ColumnDef::new(NodeStatus::Reachable)
-                            .boolean()
-                            .not_null()
-                            .default(false),
-                    )
-                    .col(ColumnDef::new(NodeStatus::SystemInfo).text())
-                    .col(ColumnDef::new(NodeStatus::Performance).text())
-                    .col(ColumnDef::new(NodeStatus::Environmental).text())
-                    .col(ColumnDef::new(NodeStatus::VendorMetrics).text())
-                    .col(ColumnDef::new(NodeStatus::RawSnmpData).text())
-                    .col(ColumnDef::new(NodeStatus::LastSnmpSuccess).text())
-                    .col(ColumnDef::new(NodeStatus::LastError).text())
+                    .col(ColumnDef::new(NodeStatus::NodeId).string().not_null())
+                    .col(ColumnDef::new(NodeStatus::LastUpdated).string().not_null())
+                    .col(ColumnDef::new(NodeStatus::Reachable).boolean().not_null())
+                    .col(ColumnDef::new(NodeStatus::SystemInfo).string())
+                    .col(ColumnDef::new(NodeStatus::Performance).string())
+                    .col(ColumnDef::new(NodeStatus::Environmental).string())
+                    .col(ColumnDef::new(NodeStatus::VendorMetrics).string())
+                    .col(ColumnDef::new(NodeStatus::RawSnmpData).string())
+                    .col(ColumnDef::new(NodeStatus::LastSnmpSuccess).string())
+                    .col(ColumnDef::new(NodeStatus::LastError).string())
                     .col(
                         ColumnDef::new(NodeStatus::ConsecutiveFailures)
                             .integer()
-                            .not_null()
-                            .default(0),
+                            .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_node_status_node")
+                            .from(NodeStatus::Table, NodeStatus::NodeId)
+                            .to(Alias::new("node"), Alias::new("id")),
                     )
                     .to_owned(),
             )
@@ -103,43 +103,51 @@ impl Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(InterfaceStatus::Id)
-                            .text()
+                            .string()
                             .not_null()
                             .primary_key(),
                     )
                     .col(
                         ColumnDef::new(InterfaceStatus::NodeStatusId)
-                            .text()
+                            .string()
                             .not_null(),
                     )
                     .col(ColumnDef::new(InterfaceStatus::Index).integer().not_null())
-                    .col(ColumnDef::new(InterfaceStatus::Name).text().not_null())
-                    .col(ColumnDef::new(InterfaceStatus::Type).integer().not_null())
+                    .col(ColumnDef::new(InterfaceStatus::Name).string().not_null())
+                    .col(
+                        ColumnDef::new(InterfaceStatus::InterfaceType)
+                            .integer()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(InterfaceStatus::Mtu).integer())
                     .col(ColumnDef::new(InterfaceStatus::Speed).big_integer())
-                    .col(ColumnDef::new(InterfaceStatus::PhysicalAddress).text())
+                    .col(ColumnDef::new(InterfaceStatus::PhysicalAddress).string())
                     .col(
                         ColumnDef::new(InterfaceStatus::AdminStatus)
-                            .text()
-                            .not_null()
-                            .default("unknown"),
+                            .string()
+                            .not_null(),
                     )
                     .col(
                         ColumnDef::new(InterfaceStatus::OperStatus)
-                            .text()
-                            .not_null()
-                            .default("unknown"),
+                            .string()
+                            .not_null(),
                     )
                     .col(ColumnDef::new(InterfaceStatus::LastChange).integer())
                     .col(
                         ColumnDef::new(InterfaceStatus::InputStats)
-                            .text()
+                            .string()
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(InterfaceStatus::OutputStats)
-                            .text()
+                            .string()
                             .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_interface_status_node_status")
+                            .from(InterfaceStatus::Table, InterfaceStatus::NodeStatusId)
+                            .to(Alias::new("node_status"), Alias::new("id")),
                     )
                     .to_owned(),
             )
@@ -180,13 +188,13 @@ impl Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(PollingTasks::Id)
-                            .text()
+                            .string()
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(PollingTasks::NodeId).text().not_null())
-                    .col(ColumnDef::new(PollingTasks::Target).text().not_null())
-                    .col(ColumnDef::new(PollingTasks::Oids).text().not_null())
+                    .col(ColumnDef::new(PollingTasks::NodeId).string().not_null())
+                    .col(ColumnDef::new(PollingTasks::Target).string().not_null())
+                    .col(ColumnDef::new(PollingTasks::Oids).string().not_null())
                     .col(
                         ColumnDef::new(PollingTasks::IntervalSeconds)
                             .big_integer()
@@ -194,29 +202,28 @@ impl Migration {
                     )
                     .col(
                         ColumnDef::new(PollingTasks::SessionConfig)
-                            .text()
+                            .string()
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(PollingTasks::Priority)
                             .small_integer()
-                            .not_null()
-                            .default(128),
+                            .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(PollingTasks::Enabled)
-                            .boolean()
-                            .not_null()
-                            .default(true),
-                    )
-                    .col(ColumnDef::new(PollingTasks::CreatedAt).text().not_null())
-                    .col(ColumnDef::new(PollingTasks::LastSuccess).text())
-                    .col(ColumnDef::new(PollingTasks::LastError).text())
+                    .col(ColumnDef::new(PollingTasks::Enabled).boolean().not_null())
+                    .col(ColumnDef::new(PollingTasks::CreatedAt).string().not_null())
+                    .col(ColumnDef::new(PollingTasks::LastSuccess).string())
+                    .col(ColumnDef::new(PollingTasks::LastError).string())
                     .col(
                         ColumnDef::new(PollingTasks::ConsecutiveFailures)
                             .integer()
-                            .not_null()
-                            .default(0),
+                            .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_polling_tasks_node")
+                            .from(PollingTasks::Table, PollingTasks::NodeId)
+                            .to(Alias::new("node"), Alias::new("id")),
                     )
                     .to_owned(),
             )
@@ -271,7 +278,7 @@ enum InterfaceStatus {
     NodeStatusId,
     Index,
     Name,
-    Type,
+    InterfaceType,
     Mtu,
     Speed,
     PhysicalAddress,

@@ -221,3 +221,9 @@ impl DataStore for SqliteStore {
         Ok(HashMap::new())
     }
 }
+
+#[cfg(test)]
+mod store_tests;
+
+#[cfg(test)]
+mod comprehensive_store_tests;
