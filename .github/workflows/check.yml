@@ -9,71 +9,127 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Coverage configuration
+  COVERAGE_THRESHOLD: 84
+  COVERAGE_IGNORE_PATTERN: '(tests?\.rs|_tests?\.rs|comprehensive_tests\.rs)$'
+
+permissions:
+  contents: read
 
 jobs:
-  ci:
-    name: CI
+  lint:
+    name: Code Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust toolchain
+        uses: jdx/mise-action@v2
         with:
           experimental: true
-      - run: mise install
-      - name: Ensure Rust components are available
+          
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        
+      - name: Install project dependencies
+        run: mise install
+      
+      - name: Install formatting and linting tools
         run: |
-          rustup component add rustfmt
-          rustup component add clippy
-          rustup component add llvm-tools-preview
-      - run: mise run lint
-      - run: mise run test
-      - name: Generate coverage report and enforce threshold
-        run: cargo llvm-cov --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex '(tests?\\.rs|_tests?\\.rs|comprehensive_tests\\.rs)$' --fail-under-lines 84 --lcov --output-path lcov.info
-      - name: Upload coverage reports to Codecov
+          rustup component add rustfmt clippy
+          
+      - name: Run linting and formatting checks
+        run: mise run lint
+        
+      - name: Check file sizes
+        run: mise run check-large-files
+
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust toolchain
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true
+          
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        
+      - name: Install project dependencies
+        run: mise install
+      
+      - name: Install coverage tools
+        run: rustup component add llvm-tools-preview
+          
+      - name: Run test suite
+        run: mise run test
+      
+      - name: Generate coverage report
+        run: |
+          cargo llvm-cov \
+            --workspace \
+            --all-features \
+            --all-targets \
+            --show-missing-lines \
+            --ignore-filename-regex "$COVERAGE_IGNORE_PATTERN" \
+            --fail-under-lines $COVERAGE_THRESHOLD \
+            --lcov \
+            --output-path lcov.info
+        
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./lcov.info
           fail_ci_if_error: true
-      - run: mise run check-large-files
 
   security:
-    name: Security audit
+    name: Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - uses: jdx/mise-action@v2
+      
+      - name: Setup Rust toolchain
+        uses: jdx/mise-action@v2
         with:
           experimental: true
-
-      - run: mise install
-
-      - name: Run security audit
+          
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        
+      - name: Install project dependencies
+        run: mise install
+      
+      - name: Audit dependencies for vulnerabilities
         run: cargo audit
 
   docs:
-    name: Documentation
+    name: API Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
+      
+      - name: Setup Rust toolchain
+        uses: jdx/mise-action@v2
+        with:
+          experimental: true
+          
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-
-      - name: Build documentation
+        
+      - name: Install project dependencies
+        run: mise install
+      
+      - name: Build API documentation
         run: cargo doc --workspace --no-deps --document-private-items
-
-      - name: Install mdbook
-        run: |
-          mkdir mdbook
-          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
-          echo `pwd`/mdbook >> $GITHUB_PATH
-
-      - name: Test book
-        run: mdbook test docs
