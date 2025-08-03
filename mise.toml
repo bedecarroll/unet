@@ -8,7 +8,6 @@ cargo-binstall = "latest"
 "cargo:cargo-audit" = "latest"
 "cargo:cargo-llvm-cov" = "latest"
 "cargo:cargo-nextest" = "latest"
-"cargo:cargo-tarpaulin" = "latest"
 typos = "latest"
 "npm:markdownlint-cli2" = "latest"
 
