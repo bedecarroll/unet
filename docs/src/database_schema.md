@@ -32,6 +32,7 @@ Physical or logical locations for organizing network devices in a hierarchical s
 | `updated_at` | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Indexes:**
+
 - `idx_location_path` (unique on `path`)
 - `idx_location_parent` (on `parent_id`)
 
@@ -59,6 +60,7 @@ Network devices and their static configuration attributes.
 | `updated_at` | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Indexes:**
+
 - `idx_node_name` (on `name`)
 - `idx_node_fqdn` (on `fqdn`)
 - `idx_node_location` (on `location_id`)
@@ -88,6 +90,7 @@ Network connections between devices, including both internal links and internet 
 | `updated_at` | TEXT | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Last update timestamp |
 
 **Indexes:**
+
 - `idx_link_name` (on `name`)
 - `idx_link_node_a` (on `node_a_id`)
 - `idx_link_node_b` (on `node_b_id`)
@@ -134,6 +137,7 @@ Real-time operational status and metrics for network nodes, populated by SNMP po
 | `consecutive_failures` | INTEGER | NOT NULL, DEFAULT 0 | Number of consecutive failed polling attempts |
 
 **Indexes:**
+
 - `idx_node_status_node_id` (unique on `node_id`)
 - `idx_node_status_last_updated` (on `last_updated`)
 
@@ -158,6 +162,7 @@ Per-interface operational data and statistics from SNMP interface tables.
 | `output_stats` | TEXT | NOT NULL | JSON containing output statistics (packets, bytes, errors) |
 
 **Indexes:**
+
 - `idx_interface_status_node_status_id` (on `node_status_id`)
 - `idx_interface_status_index` (unique on `node_status_id`, `index`)
 
@@ -181,6 +186,7 @@ Configuration for SNMP polling tasks that collect operational data.
 | `consecutive_failures` | INTEGER | NOT NULL, DEFAULT 0 | Number of consecutive failed polls |
 
 **Indexes:**
+
 - `idx_polling_tasks_node_id` (on `node_id`)
 - `idx_polling_tasks_enabled` (on `enabled`)
 
@@ -229,16 +235,21 @@ Supported network equipment vendors:
 ## Schema Design Patterns
 
 ### Primary Keys
+
 All tables use text-based UUIDs as primary keys to ensure global uniqueness and enable distributed scenarios.
 
 ### JSON Storage
+
 Complex or flexible data is stored as JSON strings in columns like `custom_data`, `system_info`, and statistics fields. This allows for extensibility without schema changes.
 
 ### Timestamps
+
 All timestamps are stored as text in ISO 8601 format for consistency and readability.
 
 ### Foreign Key Relationships
+
 The schema maintains referential integrity through foreign key relationships:
+
 - Nodes → Locations (optional)
 - Links → Nodes (A-side required, B-side optional)
 - Node Status → Nodes (one-to-one)
@@ -246,7 +257,9 @@ The schema maintains referential integrity through foreign key relationships:
 - Polling Tasks → Nodes (one-to-many)
 
 ### Indexing Strategy
+
 Indexes are created on:
+
 - Foreign key columns for efficient joins
 - Frequently queried columns (names, roles, status)
 - Unique constraints where needed
@@ -254,17 +267,22 @@ Indexes are created on:
 ## Usage Considerations
 
 ### Data Separation
+
 The schema enforces separation between:
+
 - **Configuration data** (locations, nodes, links) - changes infrequently
 - **Operational data** (status tables) - updated frequently via SNMP
 
 ### Extensibility
+
 Custom fields can be added via:
+
 - `custom_data` JSON columns on core entities
 - Additional OIDs in polling tasks
 - Vendor-specific metrics in status tables
 
 ### Performance
+
 - Derived state tables are optimized for frequent updates
 - Indexes support common query patterns
 - JSON storage provides flexibility without normalization overhead

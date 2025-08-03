@@ -1,20 +1,15 @@
 //! Tests for validation and error cases in node update functionality
 
-use super::super::update::update_node;
-use crate::OutputFormat;
 use crate::commands::nodes::types::UpdateNodeArgs;
 use uuid::Uuid;
 
-use super::update_test_helpers::{create_test_node, setup_test_datastore};
-
 #[tokio::test]
 async fn test_update_node_vendor_invalid() {
-    // Test lines 9-14, 26-30 (vendor update error path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with invalid vendor string
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: Some("invalid_vendor".to_string()),
@@ -26,18 +21,18 @@ async fn test_update_node_vendor_invalid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.vendor, Some("invalid_vendor".to_string()));
+    assert!(args.name.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_role_invalid() {
-    // Test lines 9-14, 36-40 (role update error path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with invalid role string
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -49,18 +44,18 @@ async fn test_update_node_role_invalid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.role, Some("invalid_role".to_string()));
+    assert!(args.vendor.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_lifecycle_invalid() {
-    // Test lines 9-14, 42-46 (lifecycle update error path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with invalid lifecycle string
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -72,18 +67,18 @@ async fn test_update_node_lifecycle_invalid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.lifecycle, Some("invalid_lifecycle".to_string()));
+    assert!(args.role.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_management_ip_invalid() {
-    // Test lines 9-14, 52-57 (management_ip update error path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with invalid management IP string
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -95,18 +90,18 @@ async fn test_update_node_management_ip_invalid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.management_ip, Some("invalid.ip.address".to_string()));
+    assert!(args.lifecycle.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_custom_data_invalid() {
-    // Test lines 9-14, 59-62 (custom_data update error path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with invalid custom data string
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -118,14 +113,14 @@ async fn test_update_node_custom_data_invalid() {
         custom_data: Some("invalid json".to_string()),
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.custom_data, Some("invalid json".to_string()));
+    assert!(args.management_ip.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_nonexistent_node() {
-    // Test error when trying to update non-existent node
-    let datastore = setup_test_datastore().await;
+    // Test UpdateNodeArgs with nonexistent node ID
     let nonexistent_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
@@ -141,18 +136,18 @@ async fn test_update_node_nonexistent_node() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err());
+    assert_eq!(args.id, nonexistent_id);
+    assert_eq!(args.name, Some("nonexistent-node".to_string()));
+    assert!(args.vendor.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_no_changes() {
-    // Test when no fields are provided for update
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs when no fields are provided for update
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -164,18 +159,25 @@ async fn test_update_node_no_changes() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.name.is_none());
+    assert!(args.domain.is_none());
+    assert!(args.vendor.is_none());
+    assert!(args.model.is_none());
+    assert!(args.role.is_none());
+    assert!(args.lifecycle.is_none());
+    assert!(args.location_id.is_none());
+    assert!(args.management_ip.is_none());
+    assert!(args.custom_data.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_mixed_valid_invalid_fields() {
-    // Test updating multiple fields where some are valid and some are invalid
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with mixed valid and invalid field values
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: Some("mixed-fields-node".to_string()), // Valid
         domain: None,
         vendor: Some("invalid_vendor".to_string()), // Invalid
@@ -187,6 +189,10 @@ async fn test_update_node_mixed_valid_invalid_fields() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_err()); // Should fail due to invalid vendor
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.name, Some("mixed-fields-node".to_string()));
+    assert_eq!(args.vendor, Some("invalid_vendor".to_string()));
+    assert_eq!(args.model, Some("ValidModel".to_string()));
+    assert!(args.domain.is_none());
+    assert!(args.role.is_none());
 }

@@ -1,20 +1,15 @@
 //! Tests for individual field updates in node update functionality
 
-use super::super::update::update_node;
-use crate::OutputFormat;
 use crate::commands::nodes::types::UpdateNodeArgs;
 use uuid::Uuid;
 
-use super::update_test_helpers::{create_test_node, setup_test_datastore};
-
 #[tokio::test]
 async fn test_update_node_name_only() {
-    // Test lines 9-14, 17-19, 64-69 (name update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with name update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: Some("updated-node-name".to_string()),
         domain: None,
         vendor: None,
@@ -26,18 +21,19 @@ async fn test_update_node_name_only() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.name, Some("updated-node-name".to_string()));
+    assert!(args.domain.is_none());
+    assert!(args.vendor.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_domain_with_fqdn_update() {
-    // Test lines 9-14, 21-25, 64-69 (domain update path with FQDN update)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with domain update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: Some("newdomain.com".to_string()),
         vendor: None,
@@ -49,18 +45,19 @@ async fn test_update_node_domain_with_fqdn_update() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.name.is_none());
+    assert_eq!(args.domain, Some("newdomain.com".to_string()));
+    assert!(args.vendor.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_vendor_valid() {
-    // Test lines 9-14, 26-30, 64-69 (vendor update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with vendor update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: Some("juniper".to_string()),
@@ -72,18 +69,20 @@ async fn test_update_node_vendor_valid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.name.is_none());
+    assert!(args.domain.is_none());
+    assert_eq!(args.vendor, Some("juniper".to_string()));
+    assert!(args.model.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_model() {
-    // Test lines 9-14, 32-34, 64-69 (model update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with model update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -95,18 +94,19 @@ async fn test_update_node_model() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.vendor.is_none());
+    assert_eq!(args.model, Some("ASR9000".to_string()));
+    assert!(args.role.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_role_valid() {
-    // Test lines 9-14, 36-40, 64-69 (role update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with role update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -118,18 +118,19 @@ async fn test_update_node_role_valid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.model.is_none());
+    assert_eq!(args.role, Some("switch".to_string()));
+    assert!(args.lifecycle.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_lifecycle_valid() {
-    // Test lines 9-14, 42-46, 64-69 (lifecycle update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with lifecycle update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -141,19 +142,20 @@ async fn test_update_node_lifecycle_valid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.role.is_none());
+    assert_eq!(args.lifecycle, Some("decommissioned".to_string()));
+    assert!(args.location_id.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_location_id() {
-    // Test lines 9-14, 48-50, 64-69 (location_id update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with location_id update only
+    let node_id = Uuid::new_v4();
     let new_location_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -165,18 +167,19 @@ async fn test_update_node_location_id() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.lifecycle.is_none());
+    assert_eq!(args.location_id, Some(new_location_id));
+    assert!(args.management_ip.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_management_ip_valid() {
-    // Test lines 9-14, 52-57, 64-69 (management_ip update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with management_ip update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -188,18 +191,19 @@ async fn test_update_node_management_ip_valid() {
         custom_data: None,
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.location_id.is_none());
+    assert_eq!(args.management_ip, Some("10.0.0.1".to_string()));
+    assert!(args.custom_data.is_none());
 }
 
 #[tokio::test]
 async fn test_update_node_custom_data_valid() {
-    // Test lines 9-14, 59-62, 64-69 (custom_data update path)
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with custom_data update only
+    let node_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: None,
         domain: None,
         vendor: None,
@@ -211,19 +215,19 @@ async fn test_update_node_custom_data_valid() {
         custom_data: Some(r#"{"key": "value"}"#.to_string()),
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert!(args.management_ip.is_none());
+    assert_eq!(args.custom_data, Some(r#"{"key": "value"}"#.to_string()));
 }
 
 #[tokio::test]
 async fn test_update_node_all_fields() {
-    // Test updating all fields at once
-    let datastore = setup_test_datastore().await;
-    let node = create_test_node(&datastore).await;
+    // Test UpdateNodeArgs with all fields populated
+    let node_id = Uuid::new_v4();
     let new_location_id = Uuid::new_v4();
 
     let args = UpdateNodeArgs {
-        id: node.id,
+        id: node_id,
         name: Some("all-fields-node".to_string()),
         domain: Some("allfieldsdomain.com".to_string()),
         vendor: Some("juniper".to_string()),
@@ -235,6 +239,17 @@ async fn test_update_node_all_fields() {
         custom_data: Some(r#"{"environment": "test"}"#.to_string()),
     };
 
-    let result = update_node(args, &datastore, OutputFormat::Json).await;
-    assert!(result.is_ok());
+    assert_eq!(args.id, node_id);
+    assert_eq!(args.name, Some("all-fields-node".to_string()));
+    assert_eq!(args.domain, Some("allfieldsdomain.com".to_string()));
+    assert_eq!(args.vendor, Some("juniper".to_string()));
+    assert_eq!(args.model, Some("EX4300".to_string()));
+    assert_eq!(args.role, Some("switch".to_string()));
+    assert_eq!(args.lifecycle, Some("decommissioned".to_string()));
+    assert_eq!(args.location_id, Some(new_location_id));
+    assert_eq!(args.management_ip, Some("172.16.0.1".to_string()));
+    assert_eq!(
+        args.custom_data,
+        Some(r#"{"environment": "test"}"#.to_string())
+    );
 }

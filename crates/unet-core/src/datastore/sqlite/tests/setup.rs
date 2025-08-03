@@ -3,30 +3,27 @@
 use crate::datastore::sqlite::SqliteStore;
 use crate::models::{DeviceRole, Lifecycle, Node, Vendor};
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ConnectionTrait, Database, DatabaseBackend, Schema, Set};
+use sea_orm::{ActiveModelTrait, Set};
 use serde_json::json;
 use std::net::IpAddr;
-use tempfile::NamedTempFile;
 use uuid::Uuid;
 
 /// Test database wrapper that ensures cleanup
 pub struct TestDb {
     pub store: SqliteStore,
-    _temp_file: NamedTempFile,
 }
 
 impl TestDb {
     /// Create a new test database instance
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        // Create a temporary SQLite file
-        let temp_file = NamedTempFile::new()?;
-        let db_url = format!("sqlite://{}?mode=rwc", temp_file.path().display());
+        // Use in-memory SQLite database with entity-based schema creation
+        // NOTE: Migrations have schema issues - need to fix before using them
+        use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
 
-        // Connect to the database and run migrations to set up schema
-        let connection = Database::connect(&db_url).await?;
+        let connection = Database::connect("sqlite::memory:").await?;
         let schema = Schema::new(DatabaseBackend::Sqlite);
 
-        // Create tables for entities
+        // Create tables for entities using entity definitions (working approach)
         let stmt = schema.create_table_from_entity(crate::entities::links::Entity);
         connection
             .execute(connection.get_database_backend().build(&stmt))
@@ -44,10 +41,14 @@ impl TestDb {
 
         let store = SqliteStore::from_connection(connection);
 
-        Ok(Self {
-            store,
-            _temp_file: temp_file,
-        })
+        Ok(Self { store })
+    }
+}
+
+impl Drop for TestDb {
+    fn drop(&mut self) {
+        // Cleanup is automatic for in-memory SQLite databases
+        // when the connection is dropped
     }
 }
 

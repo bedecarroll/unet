@@ -35,7 +35,7 @@ pub mod test_utils {
     use unet_core::{
         config::Config,
         datastore::{DataStore, sqlite::SqliteStore},
-        models::{DeviceRole, Lifecycle, Node, Vendor},
+        models::{DeviceRole, Lifecycle, Location, Node, Vendor, location::LocationBuilder},
         policy_integration::PolicyService,
     };
 
@@ -84,6 +84,21 @@ pub mod test_utils {
             management_ip: Some("192.168.1.1".to_string()),
             custom_data: Some(serde_json::json!({"rack": "R1"})),
         }
+    }
+
+    /// Create a test location in the datastore
+    pub async fn create_test_location(app_state: &AppState) -> Location {
+        let location = LocationBuilder::new()
+            .name("Test Datacenter".to_string())
+            .location_type("datacenter".to_string())
+            .build()
+            .unwrap();
+
+        app_state
+            .datastore
+            .create_location(&location)
+            .await
+            .unwrap()
     }
 
     /// Create a test `UpdateNodeRequest`
