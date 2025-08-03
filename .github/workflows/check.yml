@@ -20,6 +20,11 @@ jobs:
         with:
           experimental: true
       - run: mise install
+      - name: Ensure Rust components are available
+        run: |
+          rustup component add rustfmt
+          rustup component add clippy
+          rustup component add llvm-tools-preview
       - run: mise run lint
       - run: mise run test
       - run: mise run coverage
