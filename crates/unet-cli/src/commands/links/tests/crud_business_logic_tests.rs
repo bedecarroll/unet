@@ -225,7 +225,6 @@ async fn test_pagination_calculation_overflow_risk() {
     }
 }
 
-
 // BANDWIDTH VALIDATION TESTS
 
 #[tokio::test]
@@ -337,7 +336,6 @@ async fn test_link_builder_validation_failures() {
         .build();
     assert!(result.is_err());
 }
-
 
 // FILTER AND SORT CONSTRUCTION TESTS
 
