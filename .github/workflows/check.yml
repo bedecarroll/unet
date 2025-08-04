@@ -91,12 +91,16 @@ jobs:
         with:
           files: ./lcov.info
           fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
         uses: codecov/test-results-action@v1
         with:
           files: ./target/nextest/ci/junit.xml
         if: always()
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   security:
     name: Security Audit
@@ -141,4 +145,3 @@ jobs:
 
       - name: Build API documentation
         run: cargo doc --workspace --no-deps --document-private-items
-
