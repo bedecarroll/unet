@@ -20,3 +20,7 @@ mod query_operations_tests;
 #[cfg(test)]
 #[path = "command_structure_tests.rs"]
 mod command_structure_tests;
+
+#[cfg(test)]
+#[path = "crud_business_logic_tests.rs"]
+mod crud_business_logic_tests;
