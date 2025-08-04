@@ -20,37 +20,37 @@ component_management:
       name: Core Library
       paths:
         - crates/unet-core/**
-      
+
     - component_id: server
       name: Server API
       paths:
         - crates/unet-server/**
-        
+
     - component_id: cli
       name: CLI Interface
       paths:
         - crates/unet-cli/**
-        
+
     - component_id: migrations
       name: Database Migrations
       paths:
         - crates/migrations/**
-        
+
     - component_id: config-slicer
       name: Config Utilities
       paths:
         - crates/config-slicer/**
 
-  ignore:
-    # Test files (already ignored by llvm-cov regex, but explicit here)
-    - "**/*test*.rs"
-    - "**/tests/"
-    - "tests/"
-    # Examples and benchmarks
-    - "**/examples/"
-    - "**/benches/"
-    # Generated migration files
-    - "crates/migrations/src/m*.rs"
+ignore:
+  # Test files (already ignored by llvm-cov regex, but explicit here)
+  - "**/*test*.rs"
+  - "**/tests/"
+  - "tests/"
+  # Examples and benchmarks
+  - "**/examples/"
+  - "**/benches/"
+  # Generated migration files
+  - "crates/migrations/src/m*.rs"
 
 comment:
   layout: "reach,diff,flags,tree,reach"
@@ -59,3 +59,4 @@ comment:
 
 github_checks:
   annotations: true
+
