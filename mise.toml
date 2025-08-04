@@ -21,13 +21,36 @@ run = ["cargo nextest run"]
 
 [tasks.coverage]
 description = "Generate code coverage report and enforce minimum threshold"
+env = { COVERAGE_THRESHOLD = "84", COVERAGE_IGNORE_PATTERN = '(tests?\.rs|_tests?\.rs|comprehensive_tests\.rs)$' }
 run = [
-  "cargo llvm-cov nextest --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex '(tests?\\.rs|_tests?\\.rs|comprehensive_tests\\.rs)$' --fail-under-lines 84",
+  "cargo llvm-cov nextest --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex \"$COVERAGE_IGNORE_PATTERN\"",
 ]
 
-[tasks.coverage-report]
-description = "Generate code coverage report without enforcement (for development)"
-run = ["cargo llvm-cov nextest --all-features --show-missing-lines --ignore-filename-regex '(tests?\\.rs|_tests?\\.rs|comprehensive_tests\\.rs)$' report"]
+[tasks.ci-coverage]
+description = "Generate coverage report with LCOV output for CI"
+env = { COVERAGE_THRESHOLD = "84", COVERAGE_IGNORE_PATTERN = '(tests?\.rs|_tests?\.rs|comprehensive_tests\.rs)$' }
+run = [
+  "cargo llvm-cov nextest --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex \"$COVERAGE_IGNORE_PATTERN\" --lcov --output-path lcov.info",
+]
+
+[tasks.ci-lint]
+description = "Run linting and formatting checks for CI"
+run = ["typos -w", "cargo fmt", "cargo clippy --workspace --allow-dirty --fix"]
+
+[tasks.ci-test]
+description = "Run unit tests for CI"
+run = ["cargo nextest run --profile ci"]
+
+[tasks.ci-coverage-enforce]
+description = "Enforce coverage threshold for CI"
+env = { COVERAGE_THRESHOLD = "84" }
+run = ["cargo llvm-cov report --fail-under-lines $COVERAGE_THRESHOLD"]
+
+[tasks.ci-check-large-files]
+description = "Find files exceeding size guidelines (>400 lines)"
+run = [
+  "find crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print $0}' | sort -nr",
+]
 
 [tasks.check-large-files]
 description = "Find files exceeding size guidelines (>400 lines)"
@@ -35,11 +58,14 @@ run = [
   "find crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print $0}' | sort -nr",
 ]
 
-[tasks.clean]
-description = "Clean build artifacts"
-run = "cargo clean"
+[tasks.ci-audit]
+description = "Security audit for dependencies"
+run = ["cargo audit"]
 
-# Pre-commit hook - reuses existing CI tasks
+[tasks.ci-docs]
+description = "Build API documentation"
+run = ["cargo doc --workspace --no-deps --document-private-items"]
+
 [tasks.pre-commit]
-description = "Pre-commit checks (same as CI lint task)"
+description = "Pre-commit checks"
 depends = ["lint"]

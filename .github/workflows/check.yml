@@ -41,10 +41,10 @@ jobs:
           rustup component add rustfmt clippy
 
       - name: Run linting and formatting checks
-        run: mise run lint
+        run: mise run ci-lint
 
       - name: Check file sizes
-        run: mise run check-large-files
+        run: mise run ci-check-large-files
 
   test:
     name: Tests & Coverage
@@ -69,21 +69,13 @@ jobs:
         run: rustup component add llvm-tools-preview
 
       - name: Run test suite
-        run: mise run test -- --profile ci
+        run: mise run ci-test
 
       - name: Generate coverage report
-        run: |
-          cargo llvm-cov \
-            --workspace \
-            --all-features \
-            --all-targets \
-            --show-missing-lines \
-            --ignore-filename-regex "$COVERAGE_IGNORE_PATTERN" \
-            --lcov \
-            --output-path lcov.info
+        run: mise run ci-coverage
 
       - name: Enforce coverage threshold (optional)
-        run: cargo llvm-cov report --fail-under-lines $COVERAGE_THRESHOLD
+        run: mise run ci-coverage-enforce
         continue-on-error: true # keep pipeline going even if threshold fails
 
       - name: Upload coverage to Codecov
@@ -124,7 +116,7 @@ jobs:
         run: mise install
 
       - name: Audit dependencies for vulnerabilities
-        run: cargo audit
+        run: mise run ci-audit
 
   docs:
     name: API Documentation
@@ -146,4 +138,4 @@ jobs:
         run: mise install
 
       - name: Build API documentation
-        run: cargo doc --workspace --no-deps --document-private-items
+        run: mise run ci-docs
