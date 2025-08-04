@@ -91,6 +91,7 @@ jobs:
         with:
           files: ./lcov.info
           fail_ci_if_error: true
+          verbose: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -98,6 +99,7 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           files: ./target/nextest/ci/junit.xml
+          verbose: true
         if: always()
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
