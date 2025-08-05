@@ -24,4 +24,9 @@ mod tests {
     mod query_operations_tests {
         include!("crud/query_operations_tests.rs");
     }
+
+    #[cfg(test)]
+    mod crud_business_logic_tests {
+        include!("crud_business_logic_tests.rs");
+    }
 }
