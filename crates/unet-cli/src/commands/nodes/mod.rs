@@ -21,15 +21,25 @@ mod types;
 mod update;
 
 #[cfg(test)]
+mod add_tests;
+#[cfg(test)]
 mod advanced_tests;
 #[cfg(test)]
 mod compare_tests;
 #[cfg(test)]
+mod delete_exec_tests;
+#[cfg(test)]
 mod history_tests;
+#[cfg(test)]
+mod list_tests;
+#[cfg(test)]
+mod polling_exec_tests;
 #[cfg(test)]
 mod polling_tests;
 #[cfg(test)]
 mod show_tests;
+#[cfg(test)]
+mod update_exec_tests;
 #[cfg(test)]
 mod update_tests;
 

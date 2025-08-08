@@ -148,3 +148,5 @@ mod tests {
         assert!(result.is_ok());
     }
 }
+#[cfg(test)]
+mod processors_tests;

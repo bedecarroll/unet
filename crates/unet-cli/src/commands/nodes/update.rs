@@ -13,14 +13,19 @@ pub async fn update_node(
 ) -> Result<()> {
     let mut node = datastore.get_node_required(&args.id).await?;
 
+    // Track if fields affecting FQDN changed
+    let mut name_changed = false;
+    let mut domain_changed = false;
+
     // Update fields that were provided
     if let Some(name) = args.name {
         node.name = name;
+        name_changed = true;
     }
 
     if let Some(domain) = args.domain {
         node.domain = domain;
-        node.fqdn = format!("{}.{}", node.name, node.domain);
+        domain_changed = true;
     }
 
     if let Some(vendor_str) = args.vendor {
@@ -59,6 +64,15 @@ pub async fn update_node(
     if let Some(custom_data_str) = args.custom_data {
         let custom_data = serde_json::from_str::<JsonValue>(&custom_data_str)?;
         node.custom_data = custom_data;
+    }
+
+    // Recompute FQDN if name or domain changed
+    if name_changed || domain_changed {
+        node.fqdn = if node.domain.is_empty() {
+            node.name.clone()
+        } else {
+            format!("{}.{}", node.name, node.domain)
+        };
     }
 
     let updated_node = datastore.update_node(&node).await?;
