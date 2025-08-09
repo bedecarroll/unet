@@ -33,15 +33,21 @@ mod history_tests;
 #[cfg(test)]
 mod list_tests;
 #[cfg(test)]
+mod monitoring_exec_tests;
+#[cfg(test)]
 mod polling_exec_tests;
 #[cfg(test)]
 mod polling_tests;
+#[cfg(test)]
+mod show_exec_more_tests;
 #[cfg(test)]
 mod show_tests;
 #[cfg(test)]
 mod update_exec_tests;
 #[cfg(test)]
 mod update_tests;
+#[cfg(test)]
+mod dispatch_tests;
 
 /// Execute a node command
 pub async fn execute(

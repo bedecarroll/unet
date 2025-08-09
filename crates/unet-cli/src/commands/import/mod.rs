@@ -150,3 +150,41 @@ mod tests {
 }
 #[cfg(test)]
 mod processors_tests;
+
+#[cfg(test)]
+mod exec_tests {
+    use super::*;
+    use tempfile::TempDir;
+    use unet_core::datastore::MockDataStore;
+    use unet_core::models::{DeviceRole, Location, Node, Vendor};
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn test_execute_import_no_files_ok() {
+        let temp = TempDir::new().unwrap();
+        let mock = MockDataStore::new();
+        let args = ImportArgs { from: temp.path().to_path_buf(), format: None, dry_run: true, continue_on_error: false };
+        let res = execute(args, &mock, crate::OutputFormat::Json).await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_execute_import_dry_run_with_files_ok() {
+        let temp = TempDir::new().unwrap();
+        // Write minimal valid JSON files for locations, nodes, links
+        let loc = Location::new_root("HQ".into(), "building".into());
+        let mut node = Node::new("n1".into(), "example.com".into(), Vendor::Cisco, DeviceRole::Router);
+        node.model = "ISR".into();
+        let link = unet_core::models::Link::new("L1".into(), Uuid::new_v4(), "Gi0/0".into(), Uuid::new_v4(), "Gi0/1".into());
+
+        tokio::fs::write(temp.path().join("locations.json"), serde_json::to_string_pretty(&vec![loc]).unwrap()).await.unwrap();
+        tokio::fs::write(temp.path().join("nodes.json"), serde_json::to_string_pretty(&vec![node]).unwrap()).await.unwrap();
+        tokio::fs::write(temp.path().join("links.json"), serde_json::to_string_pretty(&vec![link]).unwrap()).await.unwrap();
+
+        // dry_run means no datastore calls are performed, so mock without expectations
+        let mock = MockDataStore::new();
+        let args = ImportArgs { from: temp.path().to_path_buf(), format: None, dry_run: true, continue_on_error: false };
+        let res = execute(args, &mock, crate::OutputFormat::Json).await;
+        assert!(res.is_ok());
+    }
+}

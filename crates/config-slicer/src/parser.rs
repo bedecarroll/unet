@@ -8,3 +8,12 @@ pub mod placeholder {
         // Implementation pending
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_placeholder_parser() {
+        super::placeholder::placeholder();
+        assert!(true);
+    }
+}

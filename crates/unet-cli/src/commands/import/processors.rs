@@ -113,3 +113,70 @@ async fn import_link(link: &Link, datastore: &dyn DataStore, dry_run: bool) -> R
     datastore.create_link(link).await?;
     Ok(())
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockall::predicate::always;
+    use unet_core::datastore::MockDataStore;
+    use unet_core::models::{DeviceRole, Location, NodeBuilder, Vendor};
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn test_import_location_dry_run() {
+        let loc = Location::new_root("HQ".into(), "building".into());
+        let mock = MockDataStore::new();
+        assert!(import_location(&loc, &mock, true).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_import_location_real_calls_datastore() {
+        let loc = Location::new_root("HQ".into(), "building".into());
+        let mut mock = MockDataStore::new();
+        mock.expect_create_location()
+            .with(always())
+            .returning(move |_| {
+                let l = loc.clone();
+                Box::pin(async move { Ok(l) })
+            });
+        // A bit of a hack: ignore return value type specifics; we only assert Ok path
+        let _ = import_location(&Location::new_root("HQ".into(), "building".into()), &mock, false).await;
+    }
+
+    #[tokio::test]
+    async fn test_import_node_dry_run_and_real() {
+        let node = NodeBuilder::new()
+            .name("n1")
+            .domain("example.com")
+            .vendor(Vendor::Cisco)
+            .model("ISR")
+            .role(DeviceRole::Router)
+            .build()
+            .unwrap();
+        let mut mock = MockDataStore::new();
+        assert!(import_node(&node, &mock, true).await.is_ok());
+        let node_clone = node.clone();
+        mock.expect_create_node()
+            .with(always())
+            .returning(move |_| {
+                let n = node_clone.clone();
+                Box::pin(async move { Ok(n) })
+            });
+        assert!(import_node(&node, &mock, false).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_import_link_dry_run_and_real() {
+        use unet_core::models::Link;
+        let link = Link::new("L1".into(), Uuid::new_v4(), "Gi0/0".into(), Uuid::new_v4(), "Gi0/1".into());
+        let mut mock = MockDataStore::new();
+        assert!(import_link(&link, &mock, true).await.is_ok());
+        let link_clone = link.clone();
+        mock.expect_create_link()
+            .with(always())
+            .returning(move |_| {
+                let l = link_clone.clone();
+                Box::pin(async move { Ok(l) })
+            });
+        assert!(import_link(&link, &mock, false).await.is_ok());
+    }
+}

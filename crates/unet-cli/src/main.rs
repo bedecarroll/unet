@@ -11,6 +11,8 @@ use tracing::{error, info};
 use unet_core::{config::Config, prelude::*};
 
 mod commands;
+mod runtime;
+mod dry_run;
 
 #[derive(Parser)]
 #[command(name = "unet")]
@@ -43,6 +45,10 @@ struct Cli {
 
     #[command(subcommand)]
     command: Commands,
+
+    /// Global dry-run mode (no changes are persisted)
+    #[arg(long)]
+    dry_run: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -91,6 +97,10 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+    run_with(runtime::AppContext::default(), cli).await
+}
+
+async fn run_with(ctx: runtime::AppContext, cli: Cli) -> Result<()> {
 
     // Load configuration
     let mut config = if let Some(config_path) = &cli.config {
@@ -116,26 +126,20 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Initialize SQLite datastore
+    // Initialize SQLite datastore via injected runtime
     let database_url = cli.database_url.clone();
     if cli.verbose {
         info!("Initializing SQLite datastore with URL: {}", database_url);
-    }
-
-    // Ensure database is initialized by running migrations
-
-    if cli.verbose {
         info!("Running database migrations...");
     }
 
-    let mut opt = ConnectOptions::new(&database_url);
-    opt.sqlx_logging(false);
-    let db = Database::connect(opt).await.map_err(|e| {
-        error!("Failed to connect to database: {}", e);
-        anyhow::anyhow!("Failed to connect to database: {}", e)
-    })?;
+    let db = (ctx.connect)(&database_url).await
+        .map_err(|e| {
+            error!("Failed to connect to database: {}", e);
+            anyhow::anyhow!("Failed to connect to database: {}", e)
+        })?;
 
-    Migrator::up(&db, None).await.map_err(|e| {
+    (ctx.migrate)(&db).await.map_err(|e| {
         error!("Failed to run migrations: {}", e);
         anyhow::anyhow!("Failed to run migrations: {}", e)
     })?;
@@ -144,9 +148,14 @@ async fn main() -> Result<()> {
         info!("Database migrations completed successfully");
     }
 
-    let datastore: Box<dyn unet_core::datastore::DataStore> = Box::new(
-        unet_core::datastore::sqlite::SqliteStore::from_connection(db),
-    );
+    use std::sync::Arc;
+    let mut datastore: Box<dyn unet_core::datastore::DataStore> =
+        Box::new(unet_core::datastore::sqlite::SqliteStore::from_connection(db.0));
+    if cli.dry_run {
+        info!("Dry-run mode enabled: no changes will be persisted");
+        let arc = Arc::from(datastore);
+        datastore = Box::new(crate::dry_run::DryRunStore::new(arc));
+    }
 
     // Execute command
     match cli.command {
@@ -180,6 +189,10 @@ mod tests {
     use sea_orm::Database;
     use std::str::FromStr;
     use tempfile::NamedTempFile;
+    use crate::runtime::{AppContext, Db};
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_migration_failure_error_handling() {
@@ -274,5 +287,95 @@ mod tests {
             Ok(OutputFormat::Table)
         ));
         assert!(OutputFormat::from_str("invalid").is_err());
+    }
+
+    #[test]
+    fn test_cli_parses_vendors_add_subcommand() {
+        // Parse without executing: just ensure clap maps to the right subcommand variant
+        let cli = Cli::parse_from(["unet", "vendors", "add", "cisco"]);
+        match cli.command {
+            Commands::Vendors(crate::commands::vendors::VendorCommands::Add(args)) => {
+                assert_eq!(args.name, "cisco");
+            }
+            _ => panic!("wrong variant parsed"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parses_nodes_list_subcommand() {
+        let cli = Cli::parse_from(["unet", "nodes", "list", "--page", "2", "--per-page", "5"]);
+        match cli.command {
+            Commands::Nodes(crate::commands::nodes::NodeCommands::List(args)) => {
+                assert_eq!(args.page, 2);
+                assert_eq!(args.per_page, 5);
+            }
+            _ => panic!("wrong variant parsed"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parses_policy_validate() {
+        let cli = Cli::parse_from(["unet", "policy", "validate", "--path", "/tmp/policies"]);
+        match cli.command {
+            Commands::Policy(crate::commands::policy::PolicyCommands::Validate(args)) => {
+                assert_eq!(args.path, std::path::PathBuf::from("/tmp/policies"));
+            }
+            _ => panic!("wrong variant parsed"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parses_import_dry_run() {
+        let cli = Cli::parse_from(["unet", "import", "--from", "/tmp/data", "--dry-run", "--continue-on-error"]);
+        match cli.command {
+            Commands::Import(args) => {
+                assert!(args.dry_run);
+                assert!(args.continue_on_error);
+                assert_eq!(args.from, std::path::PathBuf::from("/tmp/data"));
+            }
+            _ => panic!("wrong variant parsed"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parses_export_only_filters() {
+        // Ensure clap maps subcommand correctly; field checks are omitted (private fields)
+        let cli = Cli::parse_from(["unet", "export", "--to", "/tmp/out", "--only", "nodes,links"]);
+        match cli.command {
+            Commands::Export(_) => {}
+            _ => panic!("wrong variant parsed"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_run_with_policy_validate_uses_noop_runtime() {
+        // Build CLI for a cheap subcommand that doesn't hit DB
+        // Create a valid temp policy file
+        let mut tf = tempfile::NamedTempFile::new().unwrap();
+        use std::io::Write as _;
+        writeln!(
+            tf,
+            "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\""
+        )
+        .unwrap();
+        let path_str = tf.path().to_string_lossy().to_string();
+        let cli = Cli::parse_from(["unet", "policy", "validate", "--path", &path_str]);
+
+        let connect = Box::new(|_url: &str| {
+            Box::pin(async {
+                let mut opt = ConnectOptions::new("sqlite::memory:");
+                opt.sqlx_logging(false);
+                let conn = Database::connect(opt).await?;
+                Ok::<Db, anyhow::Error>(Db(conn))
+            }) as Pin<Box<dyn Future<Output = Result<Db>> + Send>>
+        });
+        let migrate = Box::new(|_db: &Db| {
+            Box::pin(async { Ok::<(), anyhow::Error>(()) }) as Pin<Box<dyn Future<Output = Result<()>> + Send>>
+        });
+        let ctx = AppContext { connect, migrate };
+
+        // Should not attempt real migrations or tables, just parse+return Ok
+        let res = run_with(ctx, cli).await;
+        assert!(res.is_ok());
     }
 }
