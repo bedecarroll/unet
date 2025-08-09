@@ -1,111 +1,22 @@
-/// Tests for node show functionality
+/// Execution tests for node polling command
 #[cfg(test)]
 mod tests {
-    use crate::commands::nodes::types::ShowNodeArgs;
-    use uuid::Uuid;
-
-    // Tests for ShowNodeArgs argument structure
-
-    #[tokio::test]
-    async fn test_show_node_args_structure() {
-        // Test ShowNodeArgs structure and field access
-        let node_id = Uuid::new_v4();
-
-        let args = ShowNodeArgs {
-            id: node_id,
-            include_status: true,
-            show_interfaces: true,
-            show_system_info: true,
-        };
-
-        assert_eq!(args.id, node_id);
-        assert!(args.include_status);
-        assert!(args.show_interfaces);
-        assert!(args.show_system_info);
-    }
-
-    #[tokio::test]
-    async fn test_show_node_args_all_false() {
-        // Test ShowNodeArgs with all flags false
-        let node_id = Uuid::new_v4();
-
-        let args = ShowNodeArgs {
-            id: node_id,
-            include_status: false,
-            show_interfaces: false,
-            show_system_info: false,
-        };
-
-        assert_eq!(args.id, node_id);
-        assert!(!args.include_status);
-        assert!(!args.show_interfaces);
-        assert!(!args.show_system_info);
-    }
-
-    #[tokio::test]
-    async fn test_show_node_mixed_flags() {
-        // Test various combinations of flags to ensure all code paths
-        let node_id = Uuid::new_v4();
-
-        // Test include_status + show_interfaces
-        let args1 = ShowNodeArgs {
-            id: node_id,
-            include_status: true,
-            show_interfaces: true,
-            show_system_info: false,
-        };
-
-        assert_eq!(args1.id, node_id);
-        assert!(args1.include_status);
-        assert!(args1.show_interfaces);
-        assert!(!args1.show_system_info);
-
-        // Test include_status + show_system_info
-        let args2 = ShowNodeArgs {
-            id: node_id,
-            include_status: true,
-            show_interfaces: false,
-            show_system_info: true,
-        };
-
-        assert_eq!(args2.id, node_id);
-        assert!(args2.include_status);
-        assert!(!args2.show_interfaces);
-        assert!(args2.show_system_info);
-
-        // Test show_interfaces + show_system_info
-        let args3 = ShowNodeArgs {
-            id: node_id,
-            include_status: false,
-            show_interfaces: true,
-            show_system_info: true,
-        };
-
-        assert_eq!(args3.id, node_id);
-        assert!(!args3.include_status);
-        assert!(args3.show_interfaces);
-        assert!(args3.show_system_info);
-    }
-}
-#[cfg(test)]
-mod exec_tests {
-    use super::super::show::show_node;
-    use super::super::types::ShowNodeArgs;
+    use super::super::polling::polling_node;
+    use super::super::types::{PollingAction, PollingNodeArgs};
     use async_trait::async_trait;
     use std::collections::HashMap;
     use unet_core::datastore::DataStore;
     use uuid::Uuid;
 
     #[derive(Clone)]
-    struct NodeOnlyStore {
+    struct Store {
         node: unet_core::models::Node,
-        fail_status: bool,
     }
 
     #[async_trait]
-    impl DataStore for NodeOnlyStore {
+    impl DataStore for Store {
         fn name(&self) -> &'static str {
-            "node-only"
+            "store"
         }
         async fn health_check(&self) -> unet_core::datastore::DataStoreResult<()> {
             Ok(())
@@ -134,11 +45,7 @@ mod exec_tests {
         ) -> unet_core::datastore::DataStoreResult<
             unet_core::datastore::types::PagedResult<unet_core::models::Node>,
         > {
-            Ok(unet_core::datastore::types::PagedResult::new(
-                vec![],
-                0,
-                None,
-            ))
+            unimplemented!("not needed")
         }
         async fn update_node(
             &self,
@@ -272,27 +179,6 @@ mod exec_tests {
         ) -> unet_core::datastore::DataStoreResult<HashMap<String, serde_json::Value>> {
             unimplemented!("not needed")
         }
-        async fn get_node_status(
-            &self,
-            _node_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Option<unet_core::models::derived::NodeStatus>>
-        {
-            if self.fail_status {
-                return Err(unet_core::datastore::types::DataStoreError::InternalError {
-                    message: "status failed".to_string(),
-                });
-            }
-            Ok(Some(unet_core::models::derived::NodeStatus::new(
-                self.node.id,
-            )))
-        }
-        async fn get_node_interfaces(
-            &self,
-            _node_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Vec<unet_core::models::derived::InterfaceStatus>>
-        {
-            Ok(Vec::new())
-        }
     }
 
     fn make_node() -> unet_core::models::Node {
@@ -311,53 +197,23 @@ mod exec_tests {
     }
 
     #[tokio::test]
-    async fn test_show_node_basic_exec() {
+    async fn test_polling_actions_all_variants() {
         let node = make_node();
-        let store = NodeOnlyStore {
-            node: node.clone(),
-            fail_status: false,
-        };
-        let args = ShowNodeArgs {
-            id: node.id,
-            include_status: false,
-            show_interfaces: false,
-            show_system_info: false,
-        };
-        let result = show_node(args, &store, crate::OutputFormat::Json).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_show_node_with_status_and_interfaces_exec() {
-        let node = make_node();
-        let store = NodeOnlyStore {
-            node: node.clone(),
-            fail_status: false,
-        };
-        let args = ShowNodeArgs {
-            id: node.id,
-            include_status: true,
-            show_interfaces: true,
-            show_system_info: true,
-        };
-        let result = show_node(args, &store, crate::OutputFormat::Json).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_show_node_status_error_branch_exec() {
-        let node = make_node();
-        let store = NodeOnlyStore {
-            node: node.clone(),
-            fail_status: true,
-        };
-        let args = ShowNodeArgs {
-            id: node.id,
-            include_status: true,
-            show_interfaces: false,
-            show_system_info: false,
-        };
-        let result = show_node(args, &store, crate::OutputFormat::Json).await;
-        assert!(result.is_ok());
+        let store = Store { node };
+        for action in [
+            PollingAction::Status,
+            PollingAction::Start,
+            PollingAction::Stop,
+            PollingAction::Restart,
+            PollingAction::History,
+        ] {
+            let args = PollingNodeArgs {
+                id: store.node.id,
+                action: action.clone(),
+                detailed: true,
+            };
+            let result = polling_node(args, &store, crate::OutputFormat::Json).await;
+            assert!(result.is_ok());
+        }
     }
 }

@@ -106,4 +106,6 @@ pub async fn execute(command: PolicyCommands, datastore: &dyn DataStore) -> Resu
 }
 
 #[cfg(test)]
+mod eval_tests;
+#[cfg(test)]
 mod tests;
