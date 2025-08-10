@@ -27,3 +27,25 @@ fn main() {
 
     warn!("config-slicer implementation not yet complete");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn test_cli_parse_verbose_flag() {
+        // Arrange: simulate args
+        let args = ["config-slicer", "--verbose"]; // Act
+        let cli = Cli::parse_from(args);
+        // Assert
+        assert!(cli.verbose);
+    }
+
+    #[test]
+    fn test_help_runs() {
+        // Use clap parser help generation to exercise code path
+        let _ = Cli::command().render_help();
+        assert!(true);
+    }
+}

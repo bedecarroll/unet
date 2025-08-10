@@ -13,15 +13,10 @@ pub async fn delete_node(
     let node = datastore.get_node_required(&args.id).await?;
 
     if !args.yes {
-        eprintln!(
-            "Are you sure you want to delete node '{}'? [y/N]",
-            node.name
-        );
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-        let input = input.trim().to_lowercase();
-        if input != "y" && input != "yes" {
-            eprintln!("Cancelled");
+        let stdin = std::io::stdin();
+        let mut lock = stdin.lock();
+        let mut reader = std::io::BufReader::new(&mut lock);
+        if !confirm_deletion(false, &node.name, &mut reader)? {
             return Ok(());
         }
     }
@@ -37,4 +32,24 @@ pub async fn delete_node(
     crate::commands::print_output(&output, output_format)?;
 
     Ok(())
+}
+
+// Extracted for testability
+pub(crate) fn confirm_deletion(
+    yes: bool,
+    node_name: &str,
+    reader: &mut impl std::io::BufRead,
+) -> Result<bool> {
+    if yes {
+        return Ok(true);
+    }
+    eprintln!("Are you sure you want to delete node '{node_name}'? [y/N]");
+    let mut input = String::new();
+    reader.read_line(&mut input)?;
+    let input = input.trim().to_lowercase();
+    if input != "y" && input != "yes" {
+        eprintln!("Cancelled");
+        return Ok(false);
+    }
+    Ok(true)
 }

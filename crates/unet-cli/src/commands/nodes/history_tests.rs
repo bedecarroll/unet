@@ -94,3 +94,55 @@ mod tests {
         assert_eq!(args.last_hours, Some(8760));
     }
 }
+
+#[cfg(test)]
+mod exec_tests {
+    use crate::commands::nodes::history::history_node;
+    use crate::commands::nodes::types::{HistoryNodeArgs, HistoryType};
+    use mockall::predicate::eq;
+    use unet_core::datastore::MockDataStore;
+    use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn test_history_node_all_variants_execute() {
+        // Arrange: a single node setup
+        let node_id = Uuid::new_v4();
+        let node = NodeBuilder::new()
+            .id(node_id)
+            .name("node-hist")
+            .domain("example.com")
+            .vendor(Vendor::Juniper)
+            .model("MX")
+            .role(DeviceRole::Router)
+            .build()
+            .unwrap();
+
+        let mut mock = MockDataStore::new();
+        mock.expect_get_node_required()
+            .with(eq(node_id))
+            .returning(move |_| {
+                let node = node.clone();
+                Box::pin(async move { Ok(node) })
+            });
+
+        // Exercise each HistoryType arm
+        for history_type in [
+            HistoryType::Status,
+            HistoryType::Interfaces,
+            HistoryType::Metrics,
+            HistoryType::System,
+            HistoryType::All,
+        ] {
+            let args = HistoryNodeArgs {
+                id: node_id,
+                history_type: history_type.clone(),
+                limit: 5,
+                last_hours: Some(1),
+                detailed: true,
+            };
+            let res = history_node(args, &mock, crate::OutputFormat::Json).await;
+            assert!(res.is_ok());
+        }
+    }
+}

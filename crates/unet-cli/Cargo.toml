@@ -20,8 +20,9 @@ name = "unet"
 path = "src/main.rs"
 
 [dependencies]
-# Core library
-unet-core = { path = "../unet-core" }
+# Core library (enable test-utils to allow MockDataStore in tests)
+unet-core = { path = "../unet-core", features = ["test-utils"] }
+async-trait = { workspace = true }
 
 # Database migrations
 migration = { path = "../../crates/migrations" }
@@ -63,3 +64,4 @@ assert_cmd = { workspace = true }
 predicates = { workspace = true }
 tempfile = { workspace = true }
 async-trait = { workspace = true }
+mockall = { workspace = true }

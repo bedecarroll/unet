@@ -30,6 +30,78 @@ pub async fn eval_policy(args: EvalPolicyArgs, datastore: &dyn DataStore) -> Res
     Ok(())
 }
 
+#[cfg(test)]
+mod e2e_light_tests {
+    use super::*;
+    use mockall::predicate::eq;
+    use tempfile::NamedTempFile;
+    use unet_core::datastore::{types::PagedResult, MockDataStore};
+    use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
+    use std::io::Write;
+
+    fn make_node_with_version(ver: &str) -> unet_core::models::Node {
+        NodeBuilder::new()
+            .name("node-pol")
+            .domain("example.com")
+            .vendor(Vendor::Cisco)
+            .model("CSR")
+            .role(DeviceRole::Router)
+            .version(ver.to_string())
+            .build()
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_eval_policy_no_nodes_branch() {
+        // Write a minimal valid policy file
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"").unwrap();
+
+        let mut mock = MockDataStore::new();
+        // Return empty nodes set
+        mock.expect_list_nodes()
+            .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
+
+        let args = super::EvalPolicyArgs { path: f.path().into(), node_id: None, verbose: false, failures_only: false };
+        let res = super::eval_policy(args, &mock).await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_eval_and_diff_policy_with_nodes() {
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"").unwrap();
+
+        let node = make_node_with_version("15.1");
+        let node_id = node.id;
+
+        let mut mock = MockDataStore::new();
+        let node_for_list = node.clone();
+        mock.expect_list_nodes()
+            .returning(move |_| {
+                let n = node_for_list.clone();
+                Box::pin(async move { Ok(PagedResult::new(vec![n], 1, None)) })
+            });
+
+        let args = super::EvalPolicyArgs { path: f.path().into(), node_id: None, verbose: true, failures_only: false };
+        let res = super::eval_policy(args, &mock).await;
+        assert!(res.is_ok());
+
+        // diff_policy: pass case
+        let mut mock2 = MockDataStore::new();
+        let node_for_get = node.clone();
+        mock2.expect_get_node()
+            .with(eq(node_id))
+            .returning(move |_| {
+                let n = node_for_get.clone();
+                Box::pin(async move { Ok(Some(n)) })
+            });
+        let args2 = super::DiffPolicyArgs { path: f.path().into(), node_id, verbose: true };
+        let res2 = super::diff_policy(args2, &mock2).await;
+        assert!(res2.is_ok());
+    }
+}
+
 /// Evaluate policies against a specific node and show the results
 fn evaluate_node_policies(
     node: &unet_core::models::Node,
@@ -196,5 +268,64 @@ mod tests {
     #[cfg(test)]
     mod comprehensive_tests {
         include!("eval/comprehensive_tests.rs");
+    }
+
+    #[cfg(test)]
+    mod branch_tests {
+        use crate::commands::policy::eval::evaluate_node_policies;
+        use crate::commands::policy::EvalPolicyArgs;
+        use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
+        use unet_core::policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value};
+
+        fn make_node() -> unet_core::models::Node {
+            NodeBuilder::new()
+                .name("pol-node")
+                .domain("example.com")
+                .vendor(Vendor::Cisco)
+                .model("CSR")
+                .role(DeviceRole::Router)
+                .build()
+                .unwrap()
+        }
+
+        fn assert_rule_true() -> PolicyRule {
+            PolicyRule { id: None, condition: Condition::True, action: Action::Assert { field: FieldRef { path: vec!["node".into(), "vendor".into()] }, expected: Value::String("cisco".into()) } }
+        }
+
+        fn assert_rule_false() -> PolicyRule {
+            PolicyRule { id: None, condition: Condition::False, action: Action::Assert { field: FieldRef { path: vec!["node".into(), "vendor".into()] }, expected: Value::String("cisco".into()) } }
+        }
+
+        fn error_rule() -> PolicyRule {
+            // Reference a non-existent field to trigger an evaluation error
+            PolicyRule { id: None, condition: Condition::Comparison { field: FieldRef { path: vec!["node".into(), "does_not_exist".into()] }, operator: ComparisonOperator::Equal, value: Value::String("x".into()) }, action: Action::Assert { field: FieldRef { path: vec!["node".into(), "vendor".into()] }, expected: Value::String("cisco".into()) } }
+        }
+
+        #[test]
+        fn test_evaluate_node_policies_satisfied_verbose() {
+            let node = make_node();
+            let policies = vec![vec![assert_rule_true()]];
+            let args = EvalPolicyArgs { path: std::path::PathBuf::from("."), node_id: None, verbose: true, failures_only: false };
+            let res = evaluate_node_policies(&node, &policies, &args);
+            assert!(res.is_ok());
+        }
+
+        #[test]
+        fn test_evaluate_node_policies_not_satisfied_failures_only() {
+            let node = make_node();
+            let policies = vec![vec![assert_rule_false()]];
+            let args = EvalPolicyArgs { path: std::path::PathBuf::from("."), node_id: None, verbose: false, failures_only: true };
+            let res = evaluate_node_policies(&node, &policies, &args);
+            assert!(res.is_ok());
+        }
+
+        #[test]
+        fn test_evaluate_node_policies_error_branch() {
+            let node = make_node();
+            let policies = vec![vec![error_rule()]];
+            let args = EvalPolicyArgs { path: std::path::PathBuf::from("."), node_id: None, verbose: true, failures_only: true };
+            let res = evaluate_node_policies(&node, &policies, &args);
+            assert!(res.is_ok());
+        }
     }
 }

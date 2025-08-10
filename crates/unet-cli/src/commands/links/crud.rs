@@ -163,19 +163,10 @@ pub async fn delete_link(
     let link = datastore.get_link_required(&args.id).await?;
 
     if !args.yes {
-        // Ask for confirmation
-        println!(
-            "Are you sure you want to delete link {} <-> {} (ID: {})? [y/N]",
-            link.node_a_interface,
-            link.node_z_interface.as_deref().unwrap_or("internet"),
-            link.id
-        );
-
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-
-        if !input.trim().to_lowercase().starts_with('y') {
-            println!("Cancelled.");
+        let stdin = std::io::stdin();
+        let mut lock = stdin.lock();
+        let mut reader = std::io::BufReader::new(&mut lock);
+        if !confirm_link_deletion(false, &link, &mut reader)? {
             return Ok(());
         }
     }
@@ -190,4 +181,58 @@ pub async fn delete_link(
     crate::commands::print_output(&output, output_format)?;
 
     Ok(())
+}
+
+// Testable confirmation helper for link deletion
+pub(crate) fn confirm_link_deletion(
+    yes: bool,
+    link: &Link,
+    reader: &mut impl std::io::BufRead,
+) -> Result<bool> {
+    if yes {
+        return Ok(true);
+    }
+    println!(
+        "Are you sure you want to delete link {} <-> {} (ID: {})? [y/N]",
+        link.node_a_interface,
+        link
+            .node_z_interface
+            .as_deref()
+            .unwrap_or("internet"),
+        link.id
+    );
+    let mut input = String::new();
+    reader.read_line(&mut input)?;
+    if !input.trim().to_lowercase().starts_with('y') {
+        println!("Cancelled.");
+        return Ok(false);
+    }
+    Ok(true)
+}
+
+#[cfg(test)]
+mod confirm_tests {
+    use super::*;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_confirm_link_deletion_yes_and_no() {
+        let link = Link::new(
+            "L1".into(),
+            Uuid::new_v4(),
+            "Gi0/0".into(),
+            Uuid::new_v4(),
+            "Gi0/1".into(),
+        );
+
+        // No
+        let mut cur = std::io::Cursor::new(b"no\n".to_vec());
+        let res = confirm_link_deletion(false, &link, &mut cur).unwrap();
+        assert!(!res);
+
+        // Yes
+        let mut cur2 = std::io::Cursor::new(b"y\n".to_vec());
+        let res2 = confirm_link_deletion(false, &link, &mut cur2).unwrap();
+        assert!(res2);
+    }
 }

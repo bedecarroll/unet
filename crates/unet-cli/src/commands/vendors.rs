@@ -62,14 +62,10 @@ async fn delete_vendor(
     output_format: crate::OutputFormat,
 ) -> Result<()> {
     if !args.yes {
-        println!(
-            "Are you sure you want to delete vendor '{}' ? [y/N]",
-            args.name
-        );
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-        if !input.trim().to_lowercase().starts_with('y') {
-            println!("Cancelled.");
+        let stdin = std::io::stdin();
+        let mut lock = stdin.lock();
+        let mut reader = std::io::BufReader::new(&mut lock);
+        if !confirm_deletion(args.yes, &args.name, &mut reader)? {
             return Ok(());
         }
     }
@@ -79,9 +75,30 @@ async fn delete_vendor(
     Ok(())
 }
 
+// Small helper to make interactive confirmation testable
+pub(crate) fn confirm_deletion(
+    yes: bool,
+    name: &str,
+    reader: &mut impl std::io::BufRead,
+) -> Result<bool> {
+    if yes {
+        return Ok(true);
+    }
+    println!("Are you sure you want to delete vendor '{name}' ? [y/N]");
+    let mut input = String::new();
+    reader.read_line(&mut input)?;
+    if !input.trim().to_lowercase().starts_with('y') {
+        println!("Cancelled.");
+        return Ok(false);
+    }
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockall::predicate::eq;
+    use unet_core::datastore::MockDataStore;
 
     #[tokio::test]
     async fn test_add_vendor_args_creation() {
@@ -370,5 +387,64 @@ mod tests {
         assert!(delete_debug_string.contains("delete-debug"));
         assert!(delete_debug_string.contains("DeleteVendorArgs"));
         assert!(delete_debug_string.contains("true"));
+    }
+}
+
+#[cfg(test)]
+mod exec_tests {
+    use super::*;
+    use mockall::predicate::eq;
+    use unet_core::datastore::MockDataStore;
+
+    #[tokio::test]
+    async fn test_execute_add_list_delete() {
+        // Add
+        let mut mock = MockDataStore::new();
+        mock.expect_create_vendor()
+            .with(eq("cisco"))
+            .returning(|_| Box::pin(async { Ok(()) }));
+        assert!(execute(
+            VendorCommands::Add(AddVendorArgs { name: "cisco".into() }),
+            &mock,
+            crate::OutputFormat::Json
+        )
+        .await
+        .is_ok());
+
+        // List
+        let mut mock_list = MockDataStore::new();
+        mock_list
+            .expect_list_vendors()
+            .returning(|| Box::pin(async { Ok(vec!["cisco".into(), "juniper".into()]) }));
+        assert!(execute(VendorCommands::List, &mock_list, crate::OutputFormat::Json)
+            .await
+            .is_ok());
+
+        // Delete with yes flag skips stdin
+        let mut mock_del = MockDataStore::new();
+        mock_del
+            .expect_delete_vendor()
+            .with(eq("cisco"))
+            .returning(|_| Box::pin(async { Ok(()) }));
+        assert!(execute(
+            VendorCommands::Delete(DeleteVendorArgs { name: "cisco".into(), yes: true }),
+            &mock_del,
+            crate::OutputFormat::Json
+        )
+        .await
+        .is_ok());
+    }
+
+    #[test]
+    fn test_confirm_deletion_reader_variants() {
+        // Negative
+        let mut cur = std::io::Cursor::new(b"n\n".to_vec());
+        let res = confirm_deletion(false, "cisco", &mut cur).unwrap();
+        assert!(!res);
+
+        // Positive
+        let mut cur2 = std::io::Cursor::new(b"yes\n".to_vec());
+        let res2 = confirm_deletion(false, "cisco", &mut cur2).unwrap();
+        assert!(res2);
     }
 }
