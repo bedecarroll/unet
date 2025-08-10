@@ -19,12 +19,16 @@ run = ["typos -w", "cargo fmt", "cargo clippy --workspace --allow-dirty --fix"]
 description = "Run unit tests"
 run = ["cargo nextest run"]
 
+## Removed quiet test task in favor of single 'status' task.
+
 [tasks.coverage]
 description = "Generate code coverage report and enforce minimum threshold"
 env = { COVERAGE_THRESHOLD = "84", COVERAGE_IGNORE_PATTERN = '(tests?\.rs|_tests?\.rs|comprehensive_tests\.rs)$' }
 run = [
   "cargo llvm-cov nextest --workspace --all-features --all-targets --show-missing-lines --ignore-filename-regex \"$COVERAGE_IGNORE_PATTERN\"",
 ]
+
+## Removed quiet coverage task in favor of single 'status' task.
 
 [tasks.ci-coverage]
 description = "Generate coverage report with LCOV output for CI"
@@ -35,7 +39,7 @@ run = [
 
 [tasks.ci-lint]
 description = "Run linting and formatting checks for CI"
-run = ["typos -w", "cargo fmt", "cargo clippy --workspace --allow-dirty --fix"]
+depends = ["lint"]
 
 [tasks.ci-test]
 description = "Run unit tests for CI"
@@ -48,9 +52,7 @@ run = ["cargo llvm-cov report --fail-under-lines $COVERAGE_THRESHOLD"]
 
 [tasks.ci-check-large-files]
 description = "Find files exceeding size guidelines (>400 lines)"
-run = [
-  "find crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print $0}' | sort -nr",
-]
+depends = ["check-large-files"]
 
 [tasks.check-large-files]
 description = "Find files exceeding size guidelines (>400 lines)"
@@ -69,3 +71,11 @@ run = ["cargo doc --workspace --no-deps --document-private-items"]
 [tasks.pre-commit]
 description = "Pre-commit checks"
 depends = ["lint"]
+
+[tasks.status]
+description = "LLM-friendly project status overview (clippy + coverage tests + summaries)"
+run = [
+  "bash scripts/status-llm.sh",
+]
+
+## Removed 'overview' alias to reduce task duplication. Use 'status'.

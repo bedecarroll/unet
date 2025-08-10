@@ -212,12 +212,32 @@ unet/
 
 - **linting:** `mise run lint` - lints and auto-fixes linting issues (typos, clippy, formatting)
 - **testing:** `mise run test` - runs unit tests with nextest
-- **coverage:** `mise run coverage` - generates code coverage reports with llvm-cov
+- **coverage:** `mise run coverage` - generates code coverage reports with `llvm-cov`
 - **file size check:** `mise run check-large-files` - identifies files exceeding size guidelines
+- **LLM status (recommended):** `mise run status` - runs `clippy` and `coverage+tests`, writes full logs to `target/mise-logs/latest/` (overwrites on each run), and prints a concise summary with:
+  - clippy error count (and first few error lines)
+  - test summary (and top failing tests if any)
+  - coverage TOTAL line
+
+Deprecated tasks removed: `test-quiet`, `coverage-quiet`, and the `overview` alias — use `status`.
+
+Notes:
+- `status` uses the coverage run which executes the full test suite under instrumentation; you usually do not need to run `test` afterwards.
+- All detailed stdout/stderr for clippy and coverage are saved under `target/mise-logs/latest/` and overwrite on each run to avoid disk growth.
+ - The `status` header prints quick LLM tips with common `rg`/`grep` commands to extract failures, summaries, and coverage lines from the logs.
+
+Note: `mise run test` and `mise run coverage` can be long-running and produce large amounts of output. For LLM workflows, prefer `mise run status`, which captures raw logs and prints a concise overview suitable for model contexts.
+
+### Preferred Workflow
+
+- **LLM overview:** Run `mise run status` to check clippy, run tests with coverage, and get a concise summary. Inspect `target/mise-logs/latest/` for full logs.
+- **TDD loops:** Use `mise run test -- <filters>` (package and/or name patterns) to iterate quickly; confirm failures first, then implement minimal code.
+- **Before commit:** Run `mise run lint` to auto-fix formatting/typos and surface clippy issues; run `mise run check-large-files` to enforce size guidelines.
+- **CI-only tasks:** `ci-*` tasks are invoked by GitHub Actions; do not modify without coordinating with CI config.
 
 ### Nextest Usage Patterns
 
-μNet uses `cargo-nextest` for faster test execution. **ALWAYS** use `mise run test` (which runs `cargo nextest run`) instead of `cargo test`.
+μNet uses `cargo-nextest` for faster test execution. **ALWAYS** use `mise run test` (which runs `cargo nextest run`) instead of `cargo test`. For LLM usage, prefer `mise run status` which executes coverage+tests once and summarizes output.
 
 #### Nextest Syntax Differences
 
@@ -232,6 +252,9 @@ unet/
 # Run all tests
 mise run test
 
+# LLM-friendly project status overview (concise console output)
+mise run status
+
 # Run tests for specific package
 mise run test -- -p unet-server
 
@@ -243,6 +266,11 @@ mise run test -- policy_execution
 
 # Run tests with verbose output
 mise run test -- -v test_pattern
+
+# Grepping logs from the latest status run
+rg -n "^TOTAL" target/mise-logs/latest/coverage.log       # coverage summary
+rg -n "^\s*Summary" target/mise-logs/latest/coverage.log # test summary
+rg -n "^error" target/mise-logs/latest/clippy.log         # clippy errors
 ```
 
 #### Key Nextest Features
