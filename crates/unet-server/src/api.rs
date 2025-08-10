@@ -39,6 +39,7 @@ pub struct ApiError {
 
 impl ApiError {
     /// Create a new API error
+    #[must_use]
     pub const fn new(error: String, code: String) -> Self {
         Self {
             error,
@@ -60,6 +61,7 @@ pub struct NodeResponse {
 
 impl NodeResponse {
     /// Create from node only
+    #[must_use]
     pub const fn from_node(node: Node) -> Self {
         Self { node, status: None }
     }
@@ -90,6 +92,9 @@ pub struct CreateNodeRequest {
 
 impl CreateNodeRequest {
     /// Convert to Node using builder
+    ///
+    /// # Errors
+    /// Returns an error if validation fails or if `management_ip` cannot be parsed.
     pub fn into_node(self) -> Result<Node> {
         let mut builder = NodeBuilder::new()
             .name(self.name)

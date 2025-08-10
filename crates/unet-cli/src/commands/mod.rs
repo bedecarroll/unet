@@ -9,6 +9,9 @@ pub mod vendors;
 use anyhow::Result;
 
 /// Common output formatting utilities
+///
+/// # Errors
+/// Returns an error if serialization fails for the requested format.
 pub fn format_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat) -> Result<String> {
     match format {
         crate::OutputFormat::Json => Ok(serde_json::to_string_pretty(data)?),
@@ -21,6 +24,9 @@ pub fn format_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat)
 }
 
 /// Print data in the specified format
+///
+/// # Errors
+/// Returns an error if serialization fails.
 pub fn print_output<T: serde::Serialize>(data: &T, format: crate::OutputFormat) -> Result<()> {
     let output = format_output(data, format)?;
     println!("{output}");

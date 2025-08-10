@@ -184,7 +184,7 @@ pub async fn delete_link(
 }
 
 // Testable confirmation helper for link deletion
-pub(crate) fn confirm_link_deletion(
+pub fn confirm_link_deletion(
     yes: bool,
     link: &Link,
     reader: &mut impl std::io::BufRead,

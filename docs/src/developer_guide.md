@@ -47,6 +47,52 @@ Is this field user-configurable?
     └─ No → Consider if this belongs in custom_data JSON field
 ```
 
+## Build & Test Performance
+
+### Lib-First Binaries (sccache-friendly)
+
+- Pattern: keep `src/main.rs` as a thin shim and move logic into `src/lib.rs`.
+- Benefits: lib artifacts (`rlib`) are reused across tests, coverage, and other bins by `sccache`.
+- Applied in this repo:
+  - `unet-cli`: CLI parsing and execution in `lib`, `main` delegates.
+  - `unet-server`: modules and `run()` in `lib`, `main` delegates.
+  - `config-slicer`: CLI parsing and execution in `lib`, `main` delegates.
+- Writing tests: prefer in-process tests calling library functions; keep minimal binary smoke tests.
+
+### sccache Usage
+
+- Local defaults: `.cargo/config.toml` sets `RUSTC_WRAPPER=sccache` if not set.
+- CI: workflows install and cache `~/.cache/sccache`.
+- Cache hints:
+  - Keep flags consistent between tasks to maximize cache hits.
+  - Prefer default features locally; use `--all-features` only in CI.
+  - Avoid embedding non-deterministic build-time values unless gated.
+
+### Optional Fast Linker (Linux GNU)
+
+- lld/mold can reduce link time. Example usage for local runs:
+
+```bash
+# Requires clang + lld
+RUSTFLAGS="-C link-arg=-fuse-ld=lld" \
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang \
+  cargo build
+
+# Or mold if installed
+RUSTFLAGS="-C link-arg=-fuse-ld=mold" \
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang \
+  cargo nextest run
+```
+
+- Notes:
+  - macOS uses Apple’s linker; lld/mold steps above are Linux-specific.
+  - These flags are optional and not set globally to avoid portability issues.
+
+### Fast Coverage Loop
+
+- Local: `mise run coverage-fast` (tests only, `--no-clean`, show missing lines).
+- CI: `mise run ci-coverage` (workspace, all features/targets as configured).
+
 ### Choosing Error Handling Approach
 
 ```text

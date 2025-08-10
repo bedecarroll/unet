@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use anyhow::Result;
 use async_trait::async_trait;
 use tracing::info;
 use unet_core::datastore::types::{BatchResult, DataStoreError, DataStoreResult, PagedResult, QueryOptions};
@@ -150,4 +149,3 @@ mod tests {
         assert!(store.delete_node(&node.id).await.is_ok());
     }
 }
-

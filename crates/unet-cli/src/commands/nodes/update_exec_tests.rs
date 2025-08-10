@@ -205,7 +205,7 @@ mod tests {
         let node = make_node();
         let store = Store {
             node: node.clone(),
-            last_updated: Default::default(),
+            last_updated: std::sync::Arc::default(),
         };
         let args = UpdateNodeArgs {
             id: node.id,
@@ -229,7 +229,7 @@ mod tests {
         let node = make_node();
         let store = Store {
             node: node.clone(),
-            last_updated: Default::default(),
+            last_updated: std::sync::Arc::default(),
         };
         let args = UpdateNodeArgs {
             id: node.id,
@@ -254,7 +254,7 @@ mod tests {
         let node = make_node();
         let store = Store {
             node: node.clone(),
-            last_updated: Default::default(),
+            last_updated: std::sync::Arc::default(),
         };
 
         // Domain -> empty, fqdn should equal name

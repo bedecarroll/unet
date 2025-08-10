@@ -8,6 +8,7 @@ cargo-binstall = "latest"
 "cargo:cargo-audit" = "latest"
 "cargo:cargo-llvm-cov" = "latest"
 "cargo:cargo-nextest" = "latest"
+"cargo:sccache" = "latest"
 typos = "latest"
 "npm:markdownlint-cli2" = "latest"
 
@@ -29,6 +30,24 @@ run = [
 ]
 
 ## Removed quiet coverage task in favor of single 'status' task.
+
+[tasks.coverage-fast]
+description = "Fast local coverage (tests only, no clean)"
+run = [
+  "cargo llvm-cov nextest --workspace --tests --show-missing-lines --no-clean",
+]
+
+[tasks.fast-build]
+description = "Fast local build using lld (Linux gnu)"
+run = [
+  "bash -lc 'RUSTFLAGS=\"-C link-arg=-fuse-ld=lld\" CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang cargo build'",
+]
+
+[tasks.fast-test]
+description = "Fast local nextest using lld (Linux gnu)"
+run = [
+  "bash -lc 'RUSTFLAGS=\"-C link-arg=-fuse-ld=lld\" CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang cargo nextest run'",
+]
 
 [tasks.ci-coverage]
 description = "Generate coverage report with LCOV output for CI"

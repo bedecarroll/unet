@@ -6,6 +6,9 @@ use tracing::{info, warn};
 use crate::{error::ServerResult, server::AppState};
 
 /// Get policy engine status
+///
+/// # Errors
+/// Returns an error if datastore operations fail.
 pub async fn get_policy_status(
     State(state): State<AppState>,
 ) -> ServerResult<Json<serde_json::Value>> {
@@ -42,21 +45,14 @@ pub async fn get_policy_status(
 mod tests {
     use super::*;
     use crate::server::AppState;
-    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::{
-        datastore::{DataStore, sqlite::SqliteStore},
+        datastore::DataStore,
         models::*,
         policy_integration::PolicyService,
     };
 
-    async fn setup_test_datastore() -> SqliteStore {
-        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-        Migrator::up(store.connection(), None).await.unwrap();
-        store
-    }
-
-    async fn create_test_node(datastore: &SqliteStore) -> Node {
+    async fn create_test_node(datastore: &dyn DataStore) -> Node {
         let mut node = Node::new(
             "test-node".to_string(),
             "example.com".to_string(),
@@ -70,18 +66,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_policy_status() {
-        let datastore = setup_test_datastore().await;
-        let _node = create_test_node(&datastore).await;
-        let app_state = AppState {
-            datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir("/tmp"),
-        };
+        test_support::sqlite::with_savepoint("pol_status", |store| async move {
+            let _node = create_test_node(&store).await;
+            let app_state = AppState {
+                datastore: Arc::new(store),
+                policy_service: PolicyService::with_local_dir("/tmp"),
+            };
 
-        let result = get_policy_status(State(app_state)).await;
-        assert!(result.is_ok());
+            let result = get_policy_status(State(app_state)).await;
+            assert!(result.is_ok());
 
-        let response = result.unwrap().0;
-        assert_eq!(response["policy_engine_enabled"], true);
-        assert_eq!(response["nodes_available"], 1);
+            let response = result.unwrap().0;
+            assert_eq!(response["policy_engine_enabled"], true);
+            assert_eq!(response["nodes_available"], 1);
+        }).await;
     }
 }

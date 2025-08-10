@@ -204,6 +204,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_eval_policy_with_single_node_and_simple_rule() {
+        use std::io::Write;
         let node = make_node();
         let store = Store {
             node: Some(node.clone()),
@@ -211,7 +212,6 @@ mod tests {
         };
 
         let mut temp_file = NamedTempFile::new().unwrap();
-        use std::io::Write;
         writeln!(
             temp_file,
             "WHEN node.vendor == \"cisco\" THEN ASSERT node.model IS \"ISR4321\""

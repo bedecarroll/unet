@@ -12,6 +12,9 @@ use crate::server::AppState;
 use unet_core::models::derived::{InterfaceStatus, NodeStatus, PerformanceMetrics};
 
 /// Get node status (derived state)
+///
+/// # Errors
+/// Returns an error if the node does not exist or datastore operations fail.
 pub async fn get_node_status(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -39,6 +42,9 @@ pub async fn get_node_status(
 }
 
 /// Get node interfaces (derived state)
+///
+/// # Errors
+/// Returns an error if the node does not exist or datastore operations fail.
 pub async fn get_node_interfaces(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -62,6 +68,9 @@ pub async fn get_node_interfaces(
 }
 
 /// Get node performance metrics (derived state)
+///
+/// # Errors
+/// Returns an error if the node does not exist, metrics are unavailable, or datastore operations fail.
 pub async fn get_node_metrics(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -93,7 +102,6 @@ mod tests {
     use super::*;
     use crate::server::AppState;
     use axum::extract::{Path, State};
-    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::{
         datastore::{DataStore, sqlite::SqliteStore},
@@ -102,9 +110,8 @@ mod tests {
     };
 
     async fn setup_test_datastore() -> SqliteStore {
-        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-        Migrator::up(store.connection(), None).await.unwrap();
-        store
+        
+        test_support::sqlite::sqlite_store().await
     }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {

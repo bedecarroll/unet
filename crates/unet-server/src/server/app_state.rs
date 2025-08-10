@@ -51,11 +51,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn test_app_state_creation() {
-        let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(
-            unet_core::datastore::sqlite::SqliteStore::new("sqlite::memory:")
-                .await
-                .unwrap(),
-        );
+        let store = test_support::sqlite::sqlite_store().await;
+        let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(store);
         let git_config = unet_core::config::types::GitConfig {
             repository_url: None,
             local_directory: None,
@@ -103,11 +100,8 @@ pub mod tests {
     #[tokio::test]
     async fn test_background_tasks_initialization() {
         let config = create_test_config();
-        let datastore = Arc::new(
-            unet_core::datastore::sqlite::SqliteStore::new("sqlite::memory:")
-                .await
-                .unwrap(),
-        );
+        let store = test_support::sqlite::sqlite_store().await;
+        let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(store);
         let policy_service = PolicyService::new(config.git.clone());
 
         let background_tasks = BackgroundTasks::new(config, datastore, policy_service);
@@ -115,9 +109,7 @@ pub mod tests {
     }
 
     pub async fn create_mock_app_state() -> AppState {
-        let datastore = unet_core::datastore::sqlite::SqliteStore::new("sqlite::memory:")
-            .await
-            .unwrap();
+        let datastore = test_support::sqlite::sqlite_store().await;
 
         let git_config = unet_core::config::types::GitConfig {
             repository_url: None,

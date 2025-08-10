@@ -1,10 +1,16 @@
 //! CLI integration tests
 //!
-//! These tests verify the CLI commands work end-to-end using `assert_cmd`.
+//! These tests verify the CLI commands work end-to-end. Most run in-process
+//! against an in-memory `SQLite` schema; a few smoke tests invoke the binary.
 
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::TempDir;
+use unet_cli::{Cli, AppContext, Db};
+use std::future::Future;
+use std::pin::Pin;
+use clap::Parser;
+use test_support::sqlite::entity_db;
 
 /// Create a test command with in-memory database
 fn create_test_command() -> (Command, TempDir) {
@@ -15,6 +21,30 @@ fn create_test_command() -> (Command, TempDir) {
     cmd.arg("--database-url").arg("sqlite::memory:");
 
     (cmd, temp_dir)
+}
+
+/// Run the CLI in-process with an entity-schema in-memory DB.
+async fn run_in_process<I, S>(args: I) -> anyhow::Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<std::ffi::OsString> + Clone,
+{
+    // Build a context that ignores the URL and uses shared entity DB
+    let connect = Box::new(|_url: &str| {
+        Box::pin(async move {
+            let conn = entity_db().await;
+            Ok::<Db, anyhow::Error>(Db(conn))
+        }) as Pin<Box<dyn Future<Output = anyhow::Result<Db>> + Send>>
+    });
+    let migrate = Box::new(|_db: &Db| {
+        // Schema is already applied by entity_db(); no-op here.
+        Box::pin(async { Ok::<(), anyhow::Error>(()) })
+            as Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send>>
+    });
+    let ctx = AppContext { connect, migrate };
+
+    let cli = Cli::parse_from(args);
+    unet_cli::run_with(ctx, cli).await
 }
 
 #[test]
@@ -48,72 +78,62 @@ fn test_invalid_output_format() {
         .failure();
 }
 
-#[test]
-fn test_output_format_json() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["--output", "json", "nodes", "list"])
-        .assert()
-        .success();
+#[tokio::test]
+async fn test_output_format_json() {
+    let res = run_in_process(["unet", "--output", "json", "nodes", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_output_format_yaml() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["--output", "yaml", "nodes", "list"])
-        .assert()
-        .success();
+#[tokio::test]
+async fn test_output_format_yaml() {
+    let res = run_in_process(["unet", "--output", "yaml", "nodes", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_output_format_table() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["--output", "table", "nodes", "list"])
-        .assert()
-        .success();
+#[tokio::test]
+async fn test_output_format_table() {
+    let res = run_in_process(["unet", "--output", "table", "nodes", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_nodes_list_empty() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["nodes", "list"]).assert().success();
+#[tokio::test]
+async fn test_nodes_list_empty() {
+    let res = run_in_process(["unet", "nodes", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_locations_list_empty() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["locations", "list"]).assert().success();
+#[tokio::test]
+async fn test_locations_list_empty() {
+    let res = run_in_process(["unet", "locations", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_links_list_empty() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["links", "list"]).assert().success();
+#[tokio::test]
+async fn test_links_list_empty() {
+    let res = run_in_process(["unet", "links", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_vendors_list_empty() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["vendors", "list"]).assert().success();
+#[tokio::test]
+async fn test_vendors_list_empty() {
+    let res = run_in_process(["unet", "vendors", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_policy_list_empty() {
-    let (mut cmd, temp_dir) = create_test_command();
-
-    // Create a temporary policy directory
+#[tokio::test]
+async fn test_policy_list_empty() {
+    let temp_dir = TempDir::new().expect("tempdir");
     let policy_dir = temp_dir.path().join("policies");
-    std::fs::create_dir(&policy_dir).expect("Failed to create policy directory");
-
-    cmd.args(["policy", "list", "--path", &policy_dir.to_string_lossy()])
-        .assert()
-        .success();
+    std::fs::create_dir(&policy_dir).expect("mkdir policy dir");
+    let res = run_in_process([
+        "unet",
+        "policy",
+        "list",
+        "--path",
+        &policy_dir.to_string_lossy(),
+    ])
+    .await;
+    assert!(res.is_ok());
 }
 
 #[test]
@@ -125,18 +145,17 @@ fn test_invalid_database_url() {
         .failure();
 }
 
-#[test]
-fn test_verbose_flag() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["--verbose", "nodes", "list"]).assert().success();
+#[tokio::test]
+async fn test_verbose_flag() {
+    let res = run_in_process(["unet", "--verbose", "nodes", "list"]).await;
+    assert!(res.is_ok());
 }
 
-#[test]
-fn test_verbose_with_config_file() {
+#[tokio::test]
+async fn test_verbose_with_config_file() {
     use tempfile::NamedTempFile;
 
-    let (mut cmd, _temp_dir) = create_test_command();
+    // Run in-process
 
     // Create a temporary config file
     let temp_config =
@@ -174,21 +193,21 @@ token_expiry = 3600
 
     // Test CLI with both --verbose and --config flags
     // This should exercise line 115: info!("Using configuration from: {}", config_path.display());
-    cmd.args([
+    let res = run_in_process([
+        "unet",
         "--verbose",
         "--config",
         &temp_config.path().to_string_lossy(),
         "nodes",
         "list",
     ])
-    .assert()
-    .success();
+    .await;
+    assert!(res.is_ok());
 }
 
 #[test]
 fn test_unknown_subcommand() {
     let (mut cmd, _temp_dir) = create_test_command();
-
     cmd.args(["unknown", "command"]).assert().failure();
 }
 

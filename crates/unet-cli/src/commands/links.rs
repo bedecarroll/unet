@@ -7,6 +7,10 @@ mod types;
 
 pub use types::LinkCommands;
 
+/// Execute link subcommands.
+///
+/// # Errors
+/// Returns an error if datastore operations or output formatting fail.
 pub async fn execute(
     command: LinkCommands,
     datastore: &dyn DataStore,

@@ -35,7 +35,7 @@ pub async fn delete_node(
 }
 
 // Extracted for testability
-pub(crate) fn confirm_deletion(
+pub fn confirm_deletion(
     yes: bool,
     node_name: &str,
     reader: &mut impl std::io::BufRead,

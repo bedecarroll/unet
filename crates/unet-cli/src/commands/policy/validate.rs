@@ -5,6 +5,10 @@ use unet_core::policy::{PolicyLoader, PolicyParser};
 
 use super::ValidatePolicyArgs;
 
+/// Validate a single policy file.
+///
+/// # Errors
+/// Returns an error if reading or parsing the policy file fails.
 pub fn validate_policy(args: &ValidatePolicyArgs) -> Result<()> {
     println!("Validating policy file: {}", args.path.display());
 

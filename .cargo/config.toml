@@ -1,2 +1,5 @@
 [env]
 RUST_BACKTRACE = { value = "1", condition = { env_not_set = "RUST_BACKTRACE" } }
+RUSTC_WRAPPER = { value = "sccache", condition = { env_not_set = "RUSTC_WRAPPER" } }
+SCCACHE_CONCURRENCY = { value = "0", condition = { env_not_set = "SCCACHE_CONCURRENCY" } }
+SCCACHE_CACHE_SIZE = { value = "5G", condition = { env_not_set = "SCCACHE_CACHE_SIZE" } }

@@ -6,6 +6,10 @@ use unet_core::policy::{EvaluationContext, PolicyEvaluator};
 use super::helpers::{get_evaluation_nodes, load_policies_from_path};
 use super::{DiffPolicyArgs, EvalPolicyArgs};
 
+/// Evaluate policies against provided nodes.
+///
+/// # Errors
+/// Returns an error if policy parsing or datastore operations fail.
 pub async fn eval_policy(args: EvalPolicyArgs, datastore: &dyn DataStore) -> Result<()> {
     println!("Evaluating policies from: {}", args.path.display());
 
@@ -32,7 +36,6 @@ pub async fn eval_policy(args: EvalPolicyArgs, datastore: &dyn DataStore) -> Res
 
 #[cfg(test)]
 mod e2e_light_tests {
-    use super::*;
     use mockall::predicate::eq;
     use tempfile::NamedTempFile;
     use unet_core::datastore::{types::PagedResult, MockDataStore};
@@ -163,6 +166,10 @@ fn evaluate_node_policies(
     Ok(())
 }
 
+/// Diff policies between current and expected states.
+///
+/// # Errors
+/// Returns an error if policy parsing or datastore operations fail.
 pub async fn diff_policy(args: DiffPolicyArgs, datastore: &dyn DataStore) -> Result<()> {
     println!("Checking compliance for node: {}", args.node_id);
 

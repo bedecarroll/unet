@@ -2,7 +2,6 @@
 
 use crate::background::policy_task::PolicyEvaluationTask;
 use crate::background::scheduler::EvaluationStats;
-use migration::{Migrator, MigratorTrait};
 use std::sync::Arc;
 use std::time::Duration;
 use unet_core::{
@@ -13,9 +12,8 @@ use unet_core::{
 };
 
 async fn setup_test_datastore() -> SqliteStore {
-    let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-    Migrator::up(store.connection(), None).await.unwrap();
-    store
+    
+    test_support::sqlite::sqlite_store().await
 }
 
 fn create_test_node() -> Node {

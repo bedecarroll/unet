@@ -7,6 +7,9 @@ use unet_core::policy::PolicyRule;
 use crate::{error::ServerResult, server::AppState};
 
 /// Validate policy rules
+///
+/// # Errors
+/// Returns an error if validation output cannot be serialized.
 pub async fn validate_policies(
     State(_state): State<AppState>,
     Json(policies): Json<Vec<PolicyRule>>,
@@ -52,19 +55,15 @@ pub async fn validate_policies(
 mod tests {
     use super::*;
     use crate::server::AppState;
-    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::{
         datastore::sqlite::SqliteStore,
         policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value},
         policy_integration::PolicyService,
     };
+    use test_support::sqlite::sqlite_store;
 
-    async fn setup_test_datastore() -> SqliteStore {
-        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-        Migrator::up(store.connection(), None).await.unwrap();
-        store
-    }
+    async fn setup_test_datastore() -> SqliteStore { sqlite_store().await }
 
     fn create_test_policy_rule() -> PolicyRule {
         PolicyRule {

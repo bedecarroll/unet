@@ -1,25 +1,17 @@
 // Integration test for SQLite datastore
 // Moved from root test_sqlite_datastore.rs, converted into proper cargo integration test.
 
-use migration::{Migrator, MigratorTrait};
 use sea_orm::EntityTrait;
-use unet_core::datastore::{DataStore, QueryOptions, sqlite::SqliteStore};
+use test_support::sqlite::sqlite_store;
+use unet_core::datastore::{DataStore, QueryOptions};
 use unet_core::entities::Vendors;
 use unet_core::models::{DeviceRole, Lifecycle, Node, Vendor};
 
 /// End-to-end integration test for SQLite-based DataStore
 #[tokio::test]
 async fn sqlite_datastore_integration() {
-    // Use in-memory SQLite database for testing
-    let database_url = "sqlite::memory:";
-    let store = SqliteStore::new(database_url)
-        .await
-        .expect("Failed to connect to SQLite database");
-
-    // Run database migrations to create tables
-    Migrator::up(store.connection(), None)
-        .await
-        .expect("Failed to run database migrations");
+    // Use entity-based schema on in-memory SQLite for testing
+    let store = sqlite_store().await;
 
     // Verify seeded vendors
     let vendor_names: Vec<String> = Vendors::find()
@@ -91,12 +83,7 @@ async fn sqlite_datastore_integration() {
 /// Verify vendor management through the datastore
 #[tokio::test]
 async fn vendor_management() {
-    let store = SqliteStore::new("sqlite::memory:")
-        .await
-        .expect("Failed to init DB");
-    Migrator::up(store.connection(), None)
-        .await
-        .expect("migrations");
+    let store = sqlite_store().await;
 
     // Add vendor
     store
@@ -113,4 +100,36 @@ async fn vendor_management() {
         .expect("delete vendor");
     let vendors = store.list_vendors().await.expect("list vendors");
     assert!(!vendors.contains(&"ExampleCorp".to_string()));
+}
+
+/// Verify error handling when inserting duplicate vendors
+#[tokio::test]
+async fn vendor_duplicate_insertion_errors() {
+    let store = sqlite_store().await;
+    // First insert succeeds
+    store.create_vendor("DupCorp").await.expect("add vendor");
+    // Second insert should error
+    let err = store.create_vendor("DupCorp").await.expect_err("expected error on duplicate");
+    // Ensure error message path covered
+    let msg = format!("{err}");
+    assert!(msg.to_lowercase().contains("insert") || msg.to_lowercase().contains("failed"));
+}
+
+/// Ensure get_node_required returns NotFound for unknown ID
+#[tokio::test]
+async fn get_node_required_not_found() {
+    let store = sqlite_store().await;
+    let missing = uuid::Uuid::new_v4();
+    let err = store.get_node_required(&missing).await.expect_err("expected not found");
+    let msg = format!("{err}");
+    assert!(msg.to_lowercase().contains("not found") || msg.to_lowercase().contains("node"));
+}
+
+/// Deleting a non-existent vendor returns NotFound
+#[tokio::test]
+async fn delete_vendor_nonexistent_errors() {
+    let store = sqlite_store().await;
+    let err = store.delete_vendor("does-not-exist").await.expect_err("expected not found");
+    let msg = format!("{err}");
+    assert!(msg.to_lowercase().contains("not found") || msg.to_lowercase().contains("vendor"));
 }
