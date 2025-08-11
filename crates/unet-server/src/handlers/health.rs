@@ -9,6 +9,9 @@ use crate::handlers::ServerResult;
 use crate::server::AppState;
 
 /// Health check endpoint
+///
+/// # Errors
+/// Returns an error if datastore health check or response construction fails.
 pub async fn health_check(
     State(app_state): State<AppState>,
 ) -> ServerResult<(StatusCode, Json<serde_json::Value>)> {
@@ -69,6 +72,7 @@ mod tests {
     use std::sync::Arc;
     use unet_core::datastore::sqlite::SqliteStore;
     use unet_core::policy_integration::PolicyService;
+    use test_support::sqlite::sqlite_store;
 
     async fn create_healthy_app_state() -> AppState {
         let git_config = unet_core::config::GitConfig {
@@ -86,7 +90,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&temp_dir);
 
         AppState {
-            datastore: Arc::new(SqliteStore::new("sqlite::memory:").await.unwrap()),
+            datastore: Arc::new(sqlite_store().await),
             policy_service: PolicyService::new(git_config),
         }
     }
@@ -129,7 +133,7 @@ mod tests {
     async fn test_build_health_response_healthy() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_2");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("healthy", true, &datastore);
 
         assert_eq!(response["status"], "healthy");
@@ -144,7 +148,7 @@ mod tests {
     async fn test_build_health_response_unhealthy() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_3");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("degraded", false, &datastore);
 
         assert_eq!(response["status"], "degraded");
@@ -159,7 +163,7 @@ mod tests {
     async fn test_health_response_structure() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_4");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("healthy", true, &datastore);
 
         // Check that all required fields are present
@@ -177,7 +181,7 @@ mod tests {
     async fn test_health_response_version() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_5");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("healthy", true, &datastore);
 
         // Version should be a non-empty string
@@ -189,7 +193,7 @@ mod tests {
     async fn test_health_response_timestamp_format() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_6");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("healthy", true, &datastore);
 
         // Timestamp should be a valid RFC3339 string
@@ -201,7 +205,7 @@ mod tests {
     async fn test_health_response_service_name() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_7");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("healthy", true, &datastore);
 
         // Service name should be μNet
@@ -212,7 +216,7 @@ mod tests {
     async fn test_health_response_components_structure() {
         let temp_dir = std::env::temp_dir().join("unet_test_data_8");
         let _ = std::fs::create_dir_all(&temp_dir);
-        let datastore = SqliteStore::new("sqlite::memory:").await.unwrap();
+        let datastore = sqlite_store().await;
         let response = build_health_response("healthy", true, &datastore);
 
         let components = &response["components"];

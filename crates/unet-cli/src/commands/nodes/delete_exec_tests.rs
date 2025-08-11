@@ -1,7 +1,7 @@
 /// Execution tests for node delete command
 #[cfg(test)]
 mod tests {
-    use super::super::delete::{delete_node, confirm_deletion};
+    use super::super::delete::delete_node;
     use super::super::types::DeleteNodeArgs;
     use async_trait::async_trait;
     use std::collections::HashMap;

@@ -18,7 +18,7 @@ pub trait MigrationRunner: Send + Sync {
     fn run(&self, db: &Db) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>;
 }
 
-/// Default connector using SeaORM.
+/// Default connector using `SeaORM`.
 pub struct SeaOrmConnector;
 
 #[allow(clippy::module_name_repetitions)]
@@ -51,9 +51,12 @@ impl MigrationRunner for DefaultMigrator {
 }
 
 /// Application runtime context for dependency injection.
+type ConnectFn = dyn Fn(&str) -> Pin<Box<dyn Future<Output = Result<Db>> + Send>> + Send + Sync;
+type MigrateFn = dyn Fn(&Db) -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync;
+
 pub struct AppContext {
-    pub connect: Box<dyn Fn(&str) -> Pin<Box<dyn Future<Output = Result<Db>> + Send>> + Send + Sync>,
-    pub migrate: Box<dyn Fn(&Db) -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync>,
+    pub connect: Box<ConnectFn>,
+    pub migrate: Box<MigrateFn>,
 }
 
 impl Default for AppContext {

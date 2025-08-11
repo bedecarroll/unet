@@ -17,6 +17,10 @@ pub fn display_policy_listing(path: &Path, load_result: &LoadResult, verbose: bo
 }
 
 /// Displays details for a specific policy file
+/// Display parsed policy information and optional AST.
+///
+/// # Errors
+/// Returns an error if output formatting fails.
 pub fn display_policy_details(
     path: &Path,
     contents: &str,

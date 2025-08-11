@@ -48,14 +48,12 @@ impl BackgroundTasks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::datastore::sqlite::SqliteStore;
 
     async fn setup_test_datastore() -> SqliteStore {
-        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-        Migrator::up(store.connection(), None).await.unwrap();
-        store
+        
+        test_support::sqlite::sqlite_store().await
     }
 
     #[tokio::test]

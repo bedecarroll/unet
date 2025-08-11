@@ -6,6 +6,10 @@ use unet_core::policy::{PolicyLoader, PolicyParser};
 use unet_core::prelude::QueryOptions;
 
 /// Load policies from a file or directory path
+/// Load and parse policy files from a directory.
+///
+/// # Errors
+/// Returns an error if reading files or parsing policy contents fails.
 pub fn load_policies_from_path(
     path: &std::path::Path,
 ) -> Result<Vec<Vec<unet_core::policy::PolicyRule>>> {
@@ -41,6 +45,10 @@ pub fn load_policies_from_path(
 }
 
 /// Get nodes to evaluate policies against
+/// Resolve nodes to evaluate for policy commands.
+///
+/// # Errors
+/// Returns an error if datastore operations fail.
 pub async fn get_evaluation_nodes(
     node_id: Option<uuid::Uuid>,
     datastore: &dyn DataStore,

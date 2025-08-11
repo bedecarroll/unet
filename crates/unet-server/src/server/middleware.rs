@@ -11,6 +11,9 @@ use unet_core::config::Config;
 use super::{app_state::initialize_app_state, routes::create_router};
 
 /// Run the μNet HTTP server
+///
+/// # Errors
+/// Returns an error if binding the listener or serving the app fails.
 pub async fn run(config: Config, database_url: String) -> Result<()> {
     let app = create_app(config.clone(), database_url).await?;
 

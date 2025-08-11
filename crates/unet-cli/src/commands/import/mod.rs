@@ -32,6 +32,10 @@ pub struct ImportArgs {
 }
 
 /// Execute import command with provided arguments
+/// Execute import commands.
+///
+/// # Errors
+/// Returns an error if file I/O, parsing, datastore operations, or output formatting fail.
 pub async fn execute(
     args: ImportArgs,
     datastore: &dyn DataStore,

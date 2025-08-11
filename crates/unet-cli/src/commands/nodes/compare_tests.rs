@@ -180,7 +180,7 @@ mod exec_tests {
     async fn test_compare_nodes_with_two_nodes_all_and_specific_types() {
         // Arrange
         let node_a_id = Uuid::new_v4();
-        let node_b_id = Uuid::new_v4();
+        let node_b_uuid = Uuid::new_v4();
 
         let node_a = NodeBuilder::new()
             .id(node_a_id)
@@ -193,7 +193,7 @@ mod exec_tests {
             .unwrap();
 
         let node_b = NodeBuilder::new()
-            .id(node_b_id)
+            .id(node_b_uuid)
             .name("node-b")
             .domain("example.com")
             .vendor(Vendor::Cisco)
@@ -210,7 +210,7 @@ mod exec_tests {
                 Box::pin(async move { Ok(node) })
             });
         mock.expect_get_node_required()
-            .with(eq(node_b_id))
+            .with(eq(node_b_uuid))
             .returning(move |_| {
                 let node = node_b.clone();
                 Box::pin(async move { Ok(node) })
@@ -218,7 +218,7 @@ mod exec_tests {
 
         let args = CompareNodeArgs {
             node_a: node_a_id,
-            node_b: Some(node_b_id),
+            node_b: Some(node_b_uuid),
             compare_type: vec![CompareType::All, CompareType::Interfaces],
             diff_only: false,
         };

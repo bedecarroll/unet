@@ -30,24 +30,18 @@ mod delete_node_tests;
 pub mod test_utils {
     use crate::api::{CreateNodeRequest, UpdateNodeRequest};
     use crate::server::AppState;
-    use migration::{Migrator, MigratorTrait};
     use std::sync::Arc;
     use unet_core::{
         config::Config,
-        datastore::{DataStore, sqlite::SqliteStore},
+        datastore::DataStore,
         models::{DeviceRole, Lifecycle, Location, Node, Vendor, location::LocationBuilder},
         policy_integration::PolicyService,
     };
+    use test_support::sqlite::sqlite_store;
 
     /// Set up a test app state with in-memory `SQLite`
     pub async fn setup_test_app_state() -> AppState {
-        let store = SqliteStore::new("sqlite::memory:")
-            .await
-            .expect("Failed to create test datastore");
-
-        // Run migrations manually
-        Migrator::up(store.connection(), None).await.unwrap();
-
+        let store = sqlite_store().await;
         let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(store);
 
         let config = Config::default();

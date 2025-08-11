@@ -27,6 +27,10 @@ pub struct DeleteVendorArgs {
     pub yes: bool,
 }
 
+/// Execute vendor subcommands.
+///
+/// # Errors
+/// Returns an error if datastore operations or output formatting fail.
 pub async fn execute(
     command: VendorCommands,
     datastore: &dyn DataStore,
@@ -97,8 +101,6 @@ pub(crate) fn confirm_deletion(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockall::predicate::eq;
-    use unet_core::datastore::MockDataStore;
 
     #[tokio::test]
     async fn test_add_vendor_args_creation() {

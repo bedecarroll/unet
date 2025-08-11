@@ -115,6 +115,8 @@ derived state (SNMP polling)
 - **NEVER** test multiple behaviors in a single test function
 - **ALWAYS** test edge cases and error conditions
 - **NEVER** write tests that depend on external state or other tests
+- **ALWAYS** avoid unused imports in tests; prefer importing inside each test function when only used there
+- **ALWAYS** keep test modules free of dead code and warnings (unused variables, functions, or imports)
 
 ### TDD Coverage Requirements
 

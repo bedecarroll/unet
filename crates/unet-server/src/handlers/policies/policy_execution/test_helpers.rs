@@ -1,15 +1,13 @@
 //! Shared test helper functions for policy execution tests
 
-use migration::{Migrator, MigratorTrait};
 use unet_core::{
     datastore::{DataStore, sqlite::SqliteStore},
     models::*,
 };
 
 pub async fn setup_test_datastore() -> SqliteStore {
-    let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-    Migrator::up(store.connection(), None).await.unwrap();
-    store
+    
+    test_support::sqlite::sqlite_store().await
 }
 
 pub async fn create_test_node(datastore: &SqliteStore) -> Node {

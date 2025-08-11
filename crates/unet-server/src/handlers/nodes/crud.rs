@@ -16,6 +16,9 @@ use unet_core::prelude::*;
 use super::types::ListNodesQuery;
 
 /// List all nodes with optional filtering and pagination
+///
+/// # Errors
+/// Returns an error if datastore operations fail.
 pub async fn list_nodes(
     State(app_state): State<AppState>,
     Query(query): Query<ListNodesQuery>,
@@ -90,6 +93,9 @@ pub async fn list_nodes(
 }
 
 /// Get a specific node by ID
+///
+/// # Errors
+/// Returns an error if the node does not exist or datastore operations fail.
 pub async fn get_node(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -110,6 +116,9 @@ pub async fn get_node(
 }
 
 /// Create a new node
+///
+/// # Errors
+/// Returns an error if validation fails or datastore operations fail.
 pub async fn create_node(
     State(app_state): State<AppState>,
     Json(payload): Json<CreateNodeRequest>,
@@ -126,6 +135,9 @@ pub async fn create_node(
 }
 
 /// Update an existing node
+///
+/// # Errors
+/// Returns an error if the node is not found, input is invalid, or datastore operations fail.
 pub async fn update_node(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -197,6 +209,9 @@ pub async fn update_node(
 }
 
 /// Delete a node
+///
+/// # Errors
+/// Returns an error if the node is not found or datastore operations fail.
 pub async fn delete_node(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,

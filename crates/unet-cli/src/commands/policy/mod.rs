@@ -95,6 +95,10 @@ pub struct ShowPolicyArgs {
 }
 
 /// Execute policy commands
+/// Execute top-level policy commands.
+///
+/// # Errors
+/// Returns an error if policy parsing or datastore operations fail.
 pub async fn execute(command: PolicyCommands, datastore: &dyn DataStore) -> Result<()> {
     match command {
         PolicyCommands::Validate(args) => validate::validate_policy(&args),

@@ -8,6 +8,10 @@ use super::{ListPolicyArgs, ShowPolicyArgs};
 use crate::commands::policy::list::display::{display_policy_details, display_policy_listing};
 
 /// Lists policy files in a directory
+/// List policies in a directory.
+///
+/// # Errors
+/// Returns an error if reading or parsing policy files fails.
 pub fn list_policies(args: &ListPolicyArgs) -> Result<()> {
     if !args.path.exists() {
         return Err(anyhow::anyhow!(
@@ -30,6 +34,10 @@ pub fn list_policies(args: &ListPolicyArgs) -> Result<()> {
 }
 
 /// Shows detailed information about a specific policy file
+/// Show details for a single policy file.
+///
+/// # Errors
+/// Returns an error if reading or parsing the policy file fails.
 pub fn show_policy(args: &ShowPolicyArgs) -> Result<()> {
     if !args.path.exists() {
         return Err(anyhow::anyhow!(

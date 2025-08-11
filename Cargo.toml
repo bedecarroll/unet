@@ -6,6 +6,7 @@ members = [
   "crates/unet-cli",
   "crates/config-slicer",
   "crates/migrations",
+  "crates/test-support",
 ]
 
 [workspace.package]
@@ -32,6 +33,16 @@ locale = "en-us"
 [workspace.metadata.typos.default.extend-words]
 hpe = "hpe"
 sme = "SME"
+
+[profile.dev]
+opt-level = 0
+debug = 2
+incremental = true
+codegen-units = 16
+lto = false
+
+[profile.test]
+inherits = "dev"
 
 [workspace.dependencies]
 # Core async runtime

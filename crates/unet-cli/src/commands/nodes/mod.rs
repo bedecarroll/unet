@@ -50,6 +50,9 @@ mod update_tests;
 mod dispatch_tests;
 
 /// Execute a node command
+///
+/// # Errors
+/// Returns an error if datastore operations or output formatting fail.
 pub async fn execute(
     command: NodeCommands,
     datastore: &dyn DataStore,

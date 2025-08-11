@@ -36,6 +36,9 @@ pub struct Args {
 }
 
 /// Load configuration from file or environment with fallback to defaults
+///
+/// # Errors
+/// Returns an error if a specified config file cannot be parsed.
 pub fn load_configuration(args: &Args) -> Result<Config> {
     if let Some(config_path) = &args.config {
         info!("Loading configuration from: {}", config_path.display());
@@ -63,6 +66,7 @@ pub fn apply_cli_overrides(config: &mut Config, args: &Args) {
 }
 
 /// Determine the database URL to use (CLI override or config)
+#[must_use]
 pub fn determine_database_url(args: &Args, config: &Config) -> String {
     if args.database_url == "sqlite://unet.db" {
         config.database_url().to_string()
@@ -72,15 +76,18 @@ pub fn determine_database_url(args: &Args, config: &Config) -> String {
 }
 
 /// Initialize the application with given arguments
-pub async fn initialize_app(args: Args) -> Result<(Config, String)> {
+///
+/// # Errors
+/// Returns an error if configuration is invalid or logging initialization fails.
+pub fn initialize_app(args: &Args) -> Result<(Config, String)> {
     // Load configuration
-    let mut config = load_configuration(&args)?;
+    let mut config = load_configuration(args)?;
 
     // Override config with command line arguments
-    apply_cli_overrides(&mut config, &args);
+    apply_cli_overrides(&mut config, args);
 
     // Override database URL from command line or use config
-    let database_url = determine_database_url(&args, &config);
+    let database_url = determine_database_url(args, &config);
 
     // Validate configuration before starting
     config.validate()?;
@@ -229,8 +236,8 @@ level = "info"
         assert_eq!(db_url, "postgresql://localhost/test");
     }
 
-    #[tokio::test]
-    async fn test_initialize_app() {
+    #[test]
+    fn test_initialize_app() {
         let args = Args {
             config: None,
             host: Some("127.0.0.1".to_string()),
@@ -239,7 +246,7 @@ level = "info"
             log_level: Some("warn".to_string()),
         };
 
-        let result = initialize_app(args).await;
+        let result = initialize_app(&args);
         assert!(result.is_ok());
         let (config, db_url) = result.unwrap();
         assert_eq!(config.server.host, "127.0.0.1");

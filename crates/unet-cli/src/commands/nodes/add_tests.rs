@@ -43,11 +43,10 @@ mod tests {
             &self,
             node: &unet_core::models::Node,
         ) -> unet_core::datastore::DataStoreResult<unet_core::models::Node> {
-            let mut guard = self
+            *self
                 .last_node
                 .lock()
-                .expect("lock last_node in create_node");
-            *guard = Some(node.clone());
+                .expect("lock last_node in create_node") = Some(node.clone());
             Ok(node.clone())
         }
 

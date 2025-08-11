@@ -76,4 +76,4 @@ tempfile = { workspace = true }
 criterion = { workspace = true }
 mockall = { workspace = true }
 migration = { path = "../migrations" }
-
+test-support = { path = "../test-support" }

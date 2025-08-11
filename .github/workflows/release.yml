@@ -61,6 +61,17 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      - name: Install sccache
+        run: |
+          cargo install sccache || true
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/sccache
+          key: sccache-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            sccache-${{ runner.os }}-${{ matrix.target }}-
+
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
@@ -68,6 +79,8 @@ jobs:
           sudo apt-get install -y musl-tools
 
       - name: Build release binary
+        env:
+          RUSTC_WRAPPER: sccache
         run: cargo build --release --target ${{ matrix.target }} --bin unet-server --bin unet-cli
 
       - name: Create archive

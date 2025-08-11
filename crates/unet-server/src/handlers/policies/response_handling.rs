@@ -14,6 +14,9 @@ use super::{
 };
 
 /// Evaluate policies against nodes
+///
+/// # Errors
+/// Returns an error if request parsing fails or datastore operations fail.
 pub async fn evaluate_policies(
     State(state): State<AppState>,
     Json(request): Json<PolicyEvaluationRequest>,
@@ -89,7 +92,6 @@ pub fn log_evaluation_completion(
 mod tests {
     use super::*;
     use axum::{Json, extract::State};
-    use migration::{Migrator, MigratorTrait};
     use std::fs;
     use std::sync::Arc;
     use tempfile::TempDir;
@@ -99,12 +101,9 @@ mod tests {
         policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value},
         policy_integration::PolicyService,
     };
+    use test_support::sqlite::sqlite_store;
 
-    async fn setup_test_datastore() -> SqliteStore {
-        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
-        Migrator::up(store.connection(), None).await.unwrap();
-        store
-    }
+    async fn setup_test_datastore() -> SqliteStore { sqlite_store().await }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {
         let mut node = Node::new(
@@ -162,30 +161,31 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_policies_with_nodes() {
-        let datastore = setup_test_datastore().await;
-        let node = create_test_node(&datastore).await;
-        let temp_dir = TempDir::new().unwrap();
-        let policy_content = r#"# Test policy file
+        test_support::sqlite::with_savepoint("pol_eval_nodes", |store| async move {
+            let node = create_test_node(&store).await;
+            let temp_dir = TempDir::new().unwrap();
+            let policy_content = r#"# Test policy file
 WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 "#;
-        let policy_file = temp_dir.path().join("test.policy");
-        fs::write(&policy_file, policy_content).unwrap();
-        let app_state = AppState {
-            datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
-        };
+            let policy_file = temp_dir.path().join("test.policy");
+            fs::write(&policy_file, policy_content).unwrap();
+            let app_state = AppState {
+                datastore: Arc::new(store),
+                policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
+            };
 
-        let request = PolicyEvaluationRequest {
-            node_ids: Some(vec![node.id]),
-            policies: None,
-            store_results: Some(false),
-        };
+            let request = PolicyEvaluationRequest {
+                node_ids: Some(vec![node.id]),
+                policies: None,
+                store_results: Some(false),
+            };
 
-        let result = evaluate_policies(State(app_state), Json(request)).await;
-        assert!(result.is_ok());
+            let result = evaluate_policies(State(app_state), Json(request)).await;
+            assert!(result.is_ok());
 
-        let response = result.unwrap().0;
-        assert_eq!(response.nodes_evaluated, 1);
+            let response = result.unwrap().0;
+            assert_eq!(response.nodes_evaluated, 1);
+        }).await;
     }
 
     #[tokio::test]
@@ -311,30 +311,31 @@ WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 
     #[tokio::test]
     async fn test_evaluate_policies_store_results_default() {
-        let datastore = setup_test_datastore().await;
-        let node = create_test_node(&datastore).await;
-        let temp_dir = TempDir::new().unwrap();
-        let policy_content = r#"# Test policy file
+        test_support::sqlite::with_savepoint("pol_eval_store_default", |store| async move {
+            let node = create_test_node(&store).await;
+            let temp_dir = TempDir::new().unwrap();
+            let policy_content = r#"# Test policy file
 WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 "#;
-        let policy_file = temp_dir.path().join("test.policy");
-        fs::write(&policy_file, policy_content).unwrap();
-        let app_state = AppState {
-            datastore: Arc::new(datastore),
-            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
-        };
+            let policy_file = temp_dir.path().join("test.policy");
+            fs::write(&policy_file, policy_content).unwrap();
+            let app_state = AppState {
+                datastore: Arc::new(store),
+                policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
+            };
 
-        let request = PolicyEvaluationRequest {
-            node_ids: Some(vec![node.id]),
-            policies: None,
-            store_results: None, // Should default to true
-        };
+            let request = PolicyEvaluationRequest {
+                node_ids: Some(vec![node.id]),
+                policies: None,
+                store_results: None, // Should default to true
+            };
 
-        let result = evaluate_policies(State(app_state), Json(request)).await;
-        assert!(result.is_ok());
+            let result = evaluate_policies(State(app_state), Json(request)).await;
+            assert!(result.is_ok());
 
-        let response = result.unwrap().0;
-        assert_eq!(response.nodes_evaluated, 1);
+            let response = result.unwrap().0;
+            assert_eq!(response.nodes_evaluated, 1);
+        }).await;
     }
 
     #[tokio::test]

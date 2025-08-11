@@ -1,33 +1,25 @@
-//! μNet HTTP Server
+//! μNet HTTP Server (binary shim)
 //!
-//! REST API server for μNet network configuration management.
-
-mod api;
-mod background;
-mod config_loader;
-mod error;
-mod handlers;
-mod server;
-#[cfg(test)]
-mod tests;
+//! Thin entrypoint that delegates to the `unet_server` library.
 
 use anyhow::Result;
 use clap::Parser;
-use config_loader::{Args, initialize_app};
+
+use unet_server::config_loader::{Args, initialize_app};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let (config, database_url) = initialize_app(args).await?;
+    let (config, database_url) = initialize_app(&args)?;
 
     // Start the server
-    server::run(config, database_url).await
+    unet_server::run(config, database_url).await
 }
 
 #[cfg(test)]
 mod main_tests {
     use super::*;
-    use config_loader::Args;
+    use unet_server::config_loader::Args;
 
     #[tokio::test]
     async fn test_args_parsing() {
@@ -47,8 +39,8 @@ mod main_tests {
         assert_eq!(args.log_level, Some("debug".to_string()));
     }
 
-    #[tokio::test]
-    async fn test_initialize_app_functionality() {
+    #[test]
+    fn test_initialize_app_functionality() {
         // Test initialize_app function call (covers line 21)
         let args = Args {
             config: None,
@@ -58,7 +50,7 @@ mod main_tests {
             log_level: Some("info".to_string()),
         };
 
-        let result = initialize_app(args).await;
+        let result = initialize_app(&args);
         assert!(result.is_ok());
 
         let (config, database_url) = result.unwrap();
@@ -67,8 +59,8 @@ mod main_tests {
         assert_eq!(database_url, "sqlite://test.db");
     }
 
-    #[tokio::test]
-    async fn test_initialize_app_with_config_file() {
+    #[test]
+    fn test_initialize_app_with_config_file() {
         // Test initialize_app with config file
         use std::io::Write;
         use tempfile::NamedTempFile;
@@ -95,7 +87,7 @@ level = "warn"
             log_level: None,
         };
 
-        let result = initialize_app(args).await;
+        let result = initialize_app(&args);
         // Config loading might fail in test environment, just verify it doesn't panic
         if let Ok((config, database_url)) = result {
             assert!(!config.server.host.is_empty());
