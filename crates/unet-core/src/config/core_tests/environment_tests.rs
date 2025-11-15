@@ -35,7 +35,11 @@ fn test_config_from_env_incomplete_fails() {
     // Should fail because not all required fields are provided
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(error.to_string().contains("missing field"));
+    let message = error.to_string();
+    assert!(
+        message.contains("missing configuration field") || message.contains("missing field"),
+        "expected missing-field error, got: {message}"
+    );
 }
 
 #[test]
