@@ -116,7 +116,7 @@ tempfile = "3.8"
 
 # Testing
 criterion = { version = "0.7", features = ["html_reports"] }
-mockall = "0.13"
+mockall = "0.14"
 
 # Development and testing dependencies
 assert_cmd = "2.0"
