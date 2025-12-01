@@ -115,7 +115,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 tempfile = "3.8"
 
 # Testing
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 mockall = "0.13"
 
 # Development and testing dependencies
