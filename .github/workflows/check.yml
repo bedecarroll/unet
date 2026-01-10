@@ -38,7 +38,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
@@ -79,7 +79,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
@@ -141,7 +141,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
@@ -175,7 +175,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
