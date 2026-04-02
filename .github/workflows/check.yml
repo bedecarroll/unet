@@ -103,7 +103,7 @@ jobs:
         continue-on-error: true # keep pipeline going even if threshold fails
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: ./lcov.info
           fail_ci_if_error: true
