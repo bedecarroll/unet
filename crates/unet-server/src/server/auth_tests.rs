@@ -11,7 +11,7 @@ use unet_core::config::Config;
 
 use super::middleware::create_app;
 
-const PROTECTED_PATH: &str = "/api/v1/policies/results";
+const PROTECTED_PATH: &str = "/api/v1/policies/status";
 
 async fn request_status(
     config: Config,
