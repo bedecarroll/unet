@@ -60,6 +60,7 @@ mod tests {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
                 max_request_size: 1024,
+                ..ServerConfig::default()
             },
             ..Default::default()
         }

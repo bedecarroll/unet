@@ -54,6 +54,42 @@ pub mod server {
     pub const MIN_REQUEST_SIZE: usize = 1024;
     /// Maximum request size in bytes (100MB)
     pub const MAX_REQUEST_SIZE: usize = 100 * 1024 * 1024;
+
+    const DEFAULT_CORS_ORIGINS: [&str; 4] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ];
+    const DEFAULT_CORS_METHODS: [&str; 5] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
+    const DEFAULT_CORS_HEADERS: [&str; 2] = ["authorization", "content-type"];
+
+    /// Default CORS origins for local development.
+    #[must_use]
+    pub fn default_cors_origins() -> Vec<String> {
+        DEFAULT_CORS_ORIGINS
+            .iter()
+            .map(ToString::to_string)
+            .collect()
+    }
+
+    /// Default allowed CORS methods.
+    #[must_use]
+    pub fn default_cors_methods() -> Vec<String> {
+        DEFAULT_CORS_METHODS
+            .iter()
+            .map(ToString::to_string)
+            .collect()
+    }
+
+    /// Default allowed CORS headers.
+    #[must_use]
+    pub fn default_cors_headers() -> Vec<String> {
+        DEFAULT_CORS_HEADERS
+            .iter()
+            .map(ToString::to_string)
+            .collect()
+    }
 }
 
 /// Performance tuning constants

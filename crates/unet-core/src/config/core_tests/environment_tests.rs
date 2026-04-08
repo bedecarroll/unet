@@ -1,6 +1,6 @@
 //! Tests for environment variable handling
 
-use super::super::core::Config;
+use super::super::{core::Config, env::collect_env_vars};
 use std::collections::HashMap;
 use std::env;
 
@@ -67,7 +67,7 @@ fn test_config_from_env_invalid_values() {
 #[test]
 fn test_collect_env_vars_empty() {
     let env_source = |_key: &str| Err(env::VarError::NotPresent);
-    let vars = super::super::core::collect_env_vars(&env_source);
+    let vars = collect_env_vars(&env_source);
     assert!(vars.is_empty());
 }
 
@@ -85,7 +85,7 @@ fn test_collect_env_vars_with_values() {
             .ok_or(env::VarError::NotPresent)
     };
 
-    let vars = super::super::core::collect_env_vars(&env_source);
+    let vars = collect_env_vars(&env_source);
     assert_eq!(vars.len(), 3);
 
     let vars_map: HashMap<String, String> = vars.into_iter().collect();
@@ -110,7 +110,7 @@ fn test_collect_env_vars_partial_values() {
             .ok_or(env::VarError::NotPresent)
     };
 
-    let vars = super::super::core::collect_env_vars(&env_source);
+    let vars = collect_env_vars(&env_source);
     assert_eq!(vars.len(), 1);
 
     let vars_map: HashMap<String, String> = vars.into_iter().collect();
@@ -132,11 +132,66 @@ fn test_collect_env_vars_includes_auth_token() {
             .ok_or(env::VarError::NotPresent)
     };
 
-    let vars = super::super::core::collect_env_vars(&env_source);
+    let vars = collect_env_vars(&env_source);
     let vars_map: HashMap<String, String> = vars.into_iter().collect();
     assert_eq!(
         vars_map.get("auth.token"),
         Some(&"bed-24-secret".to_string())
+    );
+}
+
+#[test]
+fn test_config_from_env_with_cors_lists() {
+    let mut env_vars = HashMap::new();
+    env_vars.insert("UNET_DATABASE__URL", "sqlite://test.db");
+    env_vars.insert("UNET_DATABASE__MAX_CONNECTIONS", "10");
+    env_vars.insert("UNET_DATABASE__TIMEOUT", "30");
+    env_vars.insert("UNET_LOGGING__LEVEL", "info");
+    env_vars.insert("UNET_LOGGING__FORMAT", "text");
+    env_vars.insert("UNET_SNMP__COMMUNITY", "public");
+    env_vars.insert("UNET_SNMP__TIMEOUT", "5");
+    env_vars.insert("UNET_SNMP__RETRIES", "3");
+    env_vars.insert("UNET_SERVER__HOST", "127.0.0.1");
+    env_vars.insert("UNET_SERVER__PORT", "8080");
+    env_vars.insert("UNET_SERVER__MAX_REQUEST_SIZE", "1048576");
+    env_vars.insert(
+        "UNET_SERVER__CORS_ORIGINS",
+        "https://dashboard.corp.local,http://localhost:3000",
+    );
+    env_vars.insert("UNET_SERVER__CORS_METHODS", "GET,POST");
+    env_vars.insert("UNET_SERVER__CORS_HEADERS", "authorization,content-type");
+    env_vars.insert("UNET_GIT__BRANCH", "main");
+    env_vars.insert("UNET_GIT__SYNC_INTERVAL", "300");
+    env_vars.insert("UNET_DOMAIN__SEARCH_DOMAINS", "corp.local,lab.local");
+    env_vars.insert("UNET_AUTH__ENABLED", "false");
+
+    let env_source = |key: &str| {
+        env_vars
+            .get(key)
+            .map(|v| (*v).to_string())
+            .ok_or(env::VarError::NotPresent)
+    };
+
+    let config = Config::from_env_with_source(env_source).expect("config should load");
+
+    assert_eq!(
+        config.server.cors_origins,
+        vec![
+            "https://dashboard.corp.local".to_string(),
+            "http://localhost:3000".to_string()
+        ]
+    );
+    assert_eq!(
+        config.server.cors_methods,
+        vec!["GET".to_string(), "POST".to_string()]
+    );
+    assert_eq!(
+        config.server.cors_headers,
+        vec!["authorization".to_string(), "content-type".to_string()]
+    );
+    assert_eq!(
+        config.domain.search_domains,
+        vec!["corp.local".to_string(), "lab.local".to_string()]
     );
 }
 
