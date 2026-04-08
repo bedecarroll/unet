@@ -26,10 +26,18 @@ assert_file_contains() {
   local file_path=$1
   local expected_text=$2
 
-  if ! rg -Fq -- "$expected_text" "$file_path"; then
+  if command -v rg >/dev/null 2>&1; then
+    if rg -Fq -- "$expected_text" "$file_path"; then
+      return 0
+    fi
+  elif grep -Fq -- "$expected_text" "$file_path"; then
+    return 0
+  fi
+
+  {
     printf 'expected %s to contain: %s\n' "$file_path" "$expected_text" >&2
     exit 1
-  fi
+  }
 }
 
 lint_block=$(extract_task_block "lint")
