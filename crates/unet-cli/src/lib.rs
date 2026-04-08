@@ -9,6 +9,7 @@ use unet_core::prelude::*;
 
 pub mod commands;
 pub mod dry_run;
+mod remote;
 pub mod runtime;
 
 pub use runtime::{AppContext, Db};
@@ -29,6 +30,14 @@ pub struct Cli {
     /// Database URL (`SQLite`)
     #[arg(short, long, default_value = "sqlite://unet.db")]
     pub database_url: String,
+
+    /// Server URL for remote node API operations
+    #[arg(short, long)]
+    pub server: Option<String>,
+
+    /// Bearer token used for authenticated remote requests
+    #[arg(short, long)]
+    pub token: Option<String>,
 
     /// Output format
     #[arg(short = 'f', long, default_value = "table")]
@@ -96,6 +105,10 @@ pub async fn run_with(ctx: AppContext, cli: Cli) -> Result<()> {
 
     // Initialize tracing with config
     init_tracing(&config.logging)?;
+
+    if let Some(server_url) = cli.server.as_deref() {
+        return remote::dispatch(cli.command, server_url, cli.token.as_deref(), cli.output).await;
+    }
 
     // Initialize SQLite datastore via injected runtime
     let database_url = cli.database_url.clone();

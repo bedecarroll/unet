@@ -203,13 +203,14 @@ impl Config {
     }
 
     fn validate_auth(&self) -> Result<()> {
-        if self.auth.enabled && self.auth.token_endpoint.is_none() {
-            return Err(Error::config(
-                "Auth token_endpoint must be set when auth is enabled",
-            ));
-        }
-        if self.auth.token_expiry == 0 {
-            return Err(Error::config("Auth token_expiry must be greater than 0"));
+        if self.auth.enabled
+            && self
+                .auth
+                .token
+                .as_deref()
+                .is_none_or(|token| token.trim().is_empty())
+        {
+            return Err(Error::config("Auth token must be set when auth is enabled"));
         }
         Ok(())
     }
@@ -253,8 +254,7 @@ impl Default for Config {
             },
             auth: AuthConfig {
                 enabled: false,
-                token_endpoint: None,
-                token_expiry: 3_600,
+                token: None,
             },
         }
     }
@@ -284,8 +284,7 @@ where
         ("UNET_GIT__SYNC_INTERVAL", "git.sync_interval"),
         ("UNET_DOMAIN__DEFAULT_DOMAIN", "domain.default_domain"),
         ("UNET_AUTH__ENABLED", "auth.enabled"),
-        ("UNET_AUTH__TOKEN_ENDPOINT", "auth.token_endpoint"),
-        ("UNET_AUTH__TOKEN_EXPIRY", "auth.token_expiry"),
+        ("UNET_AUTH__TOKEN", "auth.token"),
     ];
 
     env_vars

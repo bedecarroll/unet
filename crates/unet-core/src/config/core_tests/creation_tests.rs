@@ -60,8 +60,5 @@ fn test_config_default() {
     assert_eq!(config.git.local_directory, Some("./policies".to_string()));
 
     assert!(!config.auth.enabled);
-    assert_eq!(
-        config.auth.token_expiry,
-        defaults::auth::DEFAULT_TOKEN_EXPIRY_SECONDS
-    );
+    assert!(config.auth.token.is_none());
 }

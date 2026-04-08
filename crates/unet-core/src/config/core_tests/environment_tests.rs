@@ -121,6 +121,26 @@ fn test_collect_env_vars_partial_values() {
 }
 
 #[test]
+fn test_collect_env_vars_includes_auth_token() {
+    let mut env_vars = HashMap::new();
+    env_vars.insert("UNET_AUTH__TOKEN", "bed-24-secret");
+
+    let env_source = |key: &str| {
+        env_vars
+            .get(key)
+            .map(|v| (*v).to_string())
+            .ok_or(env::VarError::NotPresent)
+    };
+
+    let vars = super::super::core::collect_env_vars(&env_source);
+    let vars_map: HashMap<String, String> = vars.into_iter().collect();
+    assert_eq!(
+        vars_map.get("auth.token"),
+        Some(&"bed-24-secret".to_string())
+    );
+}
+
+#[test]
 fn test_config_from_env_partial_override() {
     let mut env_vars = HashMap::new();
     env_vars.insert("UNET_DATABASE__URL", "sqlite://test.db");
