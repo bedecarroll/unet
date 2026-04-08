@@ -2,7 +2,7 @@
 
 use axum::{
     body::{Body, to_bytes},
-    http::{Request, StatusCode},
+    http::{HeaderValue, Request, StatusCode},
 };
 use serde_json::Value;
 use tempfile::NamedTempFile;
@@ -18,13 +18,24 @@ async fn request_status(
     path: &str,
     token: Option<&str>,
 ) -> (StatusCode, Option<Value>) {
+    let header = token.map(|token| {
+        HeaderValue::from_str(&format!("Bearer {token}")).expect("token header should be valid")
+    });
+    request_status_with_header(config, path, header).await
+}
+
+async fn request_status_with_header(
+    config: Config,
+    path: &str,
+    authorization: Option<HeaderValue>,
+) -> (StatusCode, Option<Value>) {
     let app = create_app(config, "sqlite::memory:".to_string())
         .await
         .expect("app should build");
 
     let mut builder = Request::builder().uri(path);
-    if let Some(token) = token {
-        builder = builder.header("Authorization", format!("Bearer {token}"));
+    if let Some(header) = authorization {
+        builder = builder.header("Authorization", header);
     }
 
     let response = app
@@ -117,6 +128,28 @@ async fn test_protected_route_rejects_invalid_bearer_token() {
 }
 
 #[tokio::test]
+async fn test_protected_route_rejects_invalid_authorization_header() {
+    let invalid_header = HeaderValue::from_bytes(&[0xFF]).expect("header should build");
+    let (status, body) =
+        request_status_with_header(auth_config(true), PROTECTED_PATH, Some(invalid_header)).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    let body = body.expect("unauthorized response should be json");
+    assert_eq!(body["code"], "INVALID_AUTH_TOKEN");
+}
+
+#[tokio::test]
+async fn test_protected_route_rejects_non_bearer_authorization_header() {
+    let header = HeaderValue::from_static("Basic bed-24-secret");
+    let (status, body) =
+        request_status_with_header(auth_config(true), PROTECTED_PATH, Some(header)).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    let body = body.expect("unauthorized response should be json");
+    assert_eq!(body["code"], "AUTH_REQUIRED");
+}
+
+#[tokio::test]
 async fn test_protected_route_accepts_valid_bearer_token() {
     let (status, _) =
         request_status(auth_config(true), PROTECTED_PATH, Some("bed-24-secret")).await;
@@ -127,4 +160,16 @@ async fn test_protected_route_accepts_valid_bearer_token() {
 async fn test_protected_route_remains_open_when_auth_disabled() {
     let (status, _) = request_status(auth_config(false), PROTECTED_PATH, None).await;
     assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_protected_route_rejects_when_token_is_not_configured() {
+    let mut config = auth_config(true);
+    config.auth.token = None;
+
+    let (status, body) = request_status(config, PROTECTED_PATH, Some("bed-24-secret")).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    let body = body.expect("unauthorized response should be json");
+    assert_eq!(body["code"], "AUTH_REQUIRED");
 }
