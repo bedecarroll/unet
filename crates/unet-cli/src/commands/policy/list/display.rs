@@ -38,7 +38,7 @@ pub fn display_policy_details(
         }
         Err(e) => {
             println!("\n❌ Failed to parse policy file: {e}");
-            return Err(anyhow::anyhow!("Failed to parse policy file: {}", e));
+            return Err(anyhow::anyhow!("Failed to parse policy file: {e}"));
         }
     }
 

@@ -12,10 +12,12 @@ use uuid::Uuid;
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
+#[derive(Default)]
 pub enum PolicyPriority {
     /// Low priority execution
     Low = 0,
     /// Medium priority execution
+    #[default]
     Medium = 1,
     /// High priority execution
     High = 2,
@@ -23,11 +25,6 @@ pub enum PolicyPriority {
     Critical = 3,
 }
 
-impl Default for PolicyPriority {
-    fn default() -> Self {
-        Self::Medium
-    }
-}
 
 impl std::fmt::Display for PolicyPriority {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -299,6 +296,57 @@ impl Default for BatchStatistics {
             nodes_with_failures: 0,
             nodes_with_errors: 0,
             overall_success_rate: 100.0,
+        }
+    }
+}
+
+impl BatchStatistics {
+    /// Aggregate batch statistics across multiple node evaluation results.
+    #[must_use]
+    pub fn from_aggregated_results(results: &[AggregatedResult]) -> Self {
+        let total_nodes = results.len();
+        let total_rules_evaluated = results.iter().map(|result| result.total_rules).sum();
+        let total_execution_time = results.iter().fold(Duration::ZERO, |total, result| {
+            total + result.execution_duration
+        });
+        let total_nodes_u32 = u32::try_from(total_nodes).unwrap_or(u32::MAX);
+        let avg_execution_time_per_node = if total_nodes_u32 == 0 {
+            Duration::ZERO
+        } else {
+            total_execution_time / total_nodes_u32
+        };
+        let nodes_with_failures = results
+            .iter()
+            .filter(|result| result.has_compliance_failures())
+            .count();
+        let nodes_with_errors = results
+            .iter()
+            .filter(|result| result.error_rules > 0)
+            .count();
+        let successful_rules = results
+            .iter()
+            .map(|result| {
+                result
+                    .total_rules
+                    .saturating_sub(result.failed_rules + result.error_rules)
+            })
+            .sum::<usize>();
+        let total_rules_u32 = u32::try_from(total_rules_evaluated).unwrap_or(u32::MAX);
+        let successful_rules_u32 = u32::try_from(successful_rules).unwrap_or(u32::MAX);
+        let overall_success_rate = if total_rules_u32 == 0 {
+            100.0
+        } else {
+            (f64::from(successful_rules_u32) / f64::from(total_rules_u32)) * 100.0
+        };
+
+        Self {
+            total_nodes,
+            total_rules_evaluated,
+            total_execution_time,
+            avg_execution_time_per_node,
+            nodes_with_failures,
+            nodes_with_errors,
+            overall_success_rate,
         }
     }
 }

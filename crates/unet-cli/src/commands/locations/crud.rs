@@ -50,7 +50,7 @@ pub async fn add_location(
 
     let location = builder
         .build()
-        .map_err(|e| anyhow::anyhow!("Location validation failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Location validation failed: {e}"))?;
 
     // Create location in datastore
     let created_location = datastore.create_location(&location).await?;

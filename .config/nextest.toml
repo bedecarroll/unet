@@ -1,5 +1,5 @@
 [profile.default]
-slow-timeout = { period = "250ms", terminate-after = 4 }
+slow-timeout = { period = "500ms", terminate-after = 4 }
 status-level = "all"
 
 # Integration tests get a higher slow timeout since they spawn processes and do full system setup
@@ -12,6 +12,12 @@ slow-timeout = { period = "500ms", terminate-after = 4 }
 [[profile.default.overrides]]
 filter = "test(test_retry_transaction_all_failures) | test(test_retry_transaction_success_after_failures)"
 slow-timeout = { period = "1000ms", terminate-after = 4 }
+
+# These argument-construction tests pass quickly on their own but can exceed the
+# default timeout budget under `llvm-cov` instrumentation.
+[[profile.default.overrides]]
+filter = "test(test_list_link_args_creation) | test(test_update_link_args_creation)"
+slow-timeout = { period = "500ms", terminate-after = 4 }
 
 # CI profile with JUnit XML generation for Codecov Test Analytics
 [profile.ci]

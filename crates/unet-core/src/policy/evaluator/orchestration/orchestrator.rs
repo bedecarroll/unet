@@ -4,7 +4,7 @@
 //! complex policy evaluation workflows including batching and scheduling.
 
 use super::super::context::{EvaluationContext, PolicyExecutionContext};
-use super::super::results::AggregatedResult;
+use super::super::results::{AggregatedResult, BatchStatistics};
 use super::config::OrchestrationConfig;
 use super::core::{EvaluationBatch, OrchestrationRule};
 use crate::datastore::DataStore;
@@ -14,6 +14,7 @@ use std::collections::{HashMap, hash_map::DefaultHasher};
 use std::hash::{Hash, Hasher};
 use std::time::{Duration, Instant};
 use tokio::time::interval;
+use tracing::debug;
 use uuid::Uuid;
 
 /// Policy evaluation orchestrator for managing complex evaluation workflows
@@ -100,6 +101,18 @@ impl PolicyOrchestrator {
 
             results.push(result);
         }
+
+        let batch_statistics = BatchStatistics::from_aggregated_results(&results);
+        debug!(
+            total_nodes = batch_statistics.total_nodes,
+            total_rules_evaluated = batch_statistics.total_rules_evaluated,
+            ?batch_statistics.total_execution_time,
+            ?batch_statistics.avg_execution_time_per_node,
+            nodes_with_failures = batch_statistics.nodes_with_failures,
+            nodes_with_errors = batch_statistics.nodes_with_errors,
+            overall_success_rate = batch_statistics.overall_success_rate,
+            "Executed pending policy batches"
+        );
 
         Ok(results)
     }

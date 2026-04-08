@@ -40,7 +40,7 @@ pub fn validate_policy(args: &ValidatePolicyArgs) -> Result<()> {
             }
             Err(e) => {
                 println!("❌ Policy file validation failed: {e}");
-                return Err(anyhow::anyhow!("Policy validation failed: {}", e));
+                return Err(anyhow::anyhow!("Policy validation failed: {e}"));
             }
         }
     } else if args.path.is_dir() {
