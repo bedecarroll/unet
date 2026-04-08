@@ -95,15 +95,17 @@ mod tests {
     use std::fs;
     use std::sync::Arc;
     use tempfile::TempDir;
+    use test_support::sqlite::sqlite_store;
     use unet_core::{
         datastore::{DataStore, sqlite::SqliteStore},
         models::*,
         policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value},
         policy_integration::PolicyService,
     };
-    use test_support::sqlite::sqlite_store;
 
-    async fn setup_test_datastore() -> SqliteStore { sqlite_store().await }
+    async fn setup_test_datastore() -> SqliteStore {
+        sqlite_store().await
+    }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {
         let mut node = Node::new(
@@ -185,7 +187,8 @@ WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 
             let response = result.unwrap().0;
             assert_eq!(response.nodes_evaluated, 1);
-        }).await;
+        })
+        .await;
     }
 
     #[tokio::test]
@@ -335,7 +338,8 @@ WHEN node.vendor == "cisco" THEN ASSERT node.version IS "15.1"
 
             let response = result.unwrap().0;
             assert_eq!(response.nodes_evaluated, 1);
-        }).await;
+        })
+        .await;
     }
 
     #[tokio::test]

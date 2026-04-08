@@ -70,9 +70,9 @@ mod tests {
     use crate::server::AppState;
     use axum::{extract::State, http::StatusCode};
     use std::sync::Arc;
+    use test_support::sqlite::sqlite_store;
     use unet_core::datastore::sqlite::SqliteStore;
     use unet_core::policy_integration::PolicyService;
-    use test_support::sqlite::sqlite_store;
 
     async fn create_healthy_app_state() -> AppState {
         let git_config = unet_core::config::GitConfig {

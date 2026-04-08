@@ -1,6 +1,6 @@
 # Setting Up Pre-commit Hooks
 
-μNet uses mise for pre-commit hooks instead of the traditional pre-commit framework. This ensures **perfect consistency** between local development and CI environments.
+μNet uses `mise` for pre-commit hooks instead of the traditional `pre-commit` framework. Local hooks and CI share the same task definitions, but they now use separate read-only and autofix tasks.
 
 ## Quick Setup
 
@@ -12,28 +12,26 @@ chmod +x .git/hooks/pre-commit
 
 ## What the Pre-commit Hook Does
 
-When you run `git commit`, it automatically executes `mise run pre-commit` which runs the **exact same `lint` task** used in CI:
+When you run `git commit`, it automatically executes `mise run pre-commit`, which depends on `lint-fix` for local autofix behavior:
 
 1. **Fixes typos** with `typos -w`
 2. **Formats code** with `cargo fmt`  
-3. **Runs clippy** with `--allow-dirty --fix` (auto-fixes issues when possible)
+3. **Runs clippy** with `--allow-dirty --fix`
 
-## Benefits
-
-✅ **Zero duplication** - same task as CI uses  
-✅ **Auto-fixes** code issues when possible  
-✅ **Fast feedback** - catch issues before pushing  
-✅ **Consistent** - identical behavior locally and in CI
+CI continues to use the separate read-only `mise run ci-lint` task, which depends on `mise run lint`.
 
 ## Manual Tasks
 
-You can also run the same checks manually:
+You can run the local autofix path or the read-only CI path directly:
 
 ```bash
-# Run the same checks as pre-commit hook
+# Run the same autofix task as the pre-commit hook
 mise run pre-commit
 
-# Or run lint directly (same thing)
+# Or run the autofix task directly
+mise run lint-fix
+
+# Run the read-only checks used by CI and `status`
 mise run lint
 ```
 

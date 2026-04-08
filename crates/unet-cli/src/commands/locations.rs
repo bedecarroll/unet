@@ -37,7 +37,7 @@ mod dispatch_tests {
     use super::*;
     use crate::commands::locations::types::ListLocationArgs;
     use mockall::predicate::always;
-    use unet_core::datastore::{types::PagedResult, MockDataStore};
+    use unet_core::datastore::{MockDataStore, types::PagedResult};
 
     #[tokio::test]
     async fn test_execute_list_locations_dispatch() {
@@ -46,7 +46,12 @@ mod dispatch_tests {
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
 
-        let args = ListLocationArgs { location_type: None, parent_id: None, page: 1, per_page: 20 };
+        let args = ListLocationArgs {
+            location_type: None,
+            parent_id: None,
+            page: 1,
+            per_page: 20,
+        };
 
         let res = execute(
             types::LocationCommands::List(args),

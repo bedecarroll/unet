@@ -12,4 +12,3 @@ pub fn init_tracing_once() {
             .try_init();
     });
 }
-

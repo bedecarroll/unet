@@ -19,6 +19,12 @@ slow-timeout = { period = "1000ms", terminate-after = 4 }
 filter = "test(test_list_link_args_creation) | test(test_update_link_args_creation)"
 slow-timeout = { period = "500ms", terminate-after = 4 }
 
+# These error-conversion/reporting tests complete their assertions quickly but
+# can take longer to tear down under `llvm-cov` instrumentation.
+[[profile.default.overrides]]
+filter = "test(test_serde_json_error_serialization) | test(test_error_log_template_error) | test(test_error_log_snmp_error) | test(test_error_log_validation_error_without_value)"
+slow-timeout = { period = "1000ms", terminate-after = 6 }
+
 # CI profile with JUnit XML generation for Codecov Test Analytics
 [profile.ci]
 # Inherit from default profile
