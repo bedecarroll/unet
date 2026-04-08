@@ -4,13 +4,13 @@
 //! against an in-memory `SQLite` schema; a few smoke tests invoke the binary.
 
 use assert_cmd::Command;
+use clap::Parser;
 use predicates::prelude::*;
-use tempfile::TempDir;
-use unet_cli::{Cli, AppContext, Db};
 use std::future::Future;
 use std::pin::Pin;
-use clap::Parser;
+use tempfile::TempDir;
 use test_support::sqlite::entity_db;
+use unet_cli::{AppContext, Cli, Db};
 
 /// Create a test command with in-memory database
 fn create_test_command() -> (Command, TempDir) {
@@ -143,6 +143,26 @@ fn test_invalid_database_url() {
     cmd.args(["--database-url", "invalid://url", "nodes", "list"])
         .assert()
         .failure();
+}
+
+#[test]
+fn test_server_flag_is_rejected() {
+    let (mut cmd, _temp_dir) = create_test_command();
+
+    cmd.args(["--server", "http://localhost:8080", "nodes", "list"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unexpected argument '--server'"));
+}
+
+#[test]
+fn test_token_flag_is_rejected() {
+    let (mut cmd, _temp_dir) = create_test_command();
+
+    cmd.args(["--token", "secret-token", "nodes", "list"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unexpected argument '--token'"));
 }
 
 #[tokio::test]
