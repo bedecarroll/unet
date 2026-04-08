@@ -89,6 +89,24 @@ pub mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn test_initialize_app_state_redacts_database_url_on_error() {
+        let config = create_test_config();
+        let database_url =
+            "postgresql://demo-user:demo-pass@db.example.internal:5432/unet?sslmode=require"
+                .to_string();
+
+        let result = initialize_app_state(config, database_url.clone()).await;
+
+        let error = result.err().expect("unsupported driver should fail");
+        let message = error.to_string();
+        assert!(message.contains("postgresql connection"));
+        assert!(!message.contains(&database_url));
+        assert!(!message.contains("demo-user"));
+        assert!(!message.contains("demo-pass"));
+        assert!(!message.contains("db.example.internal"));
+    }
+
     #[test]
     fn test_policy_service_creation() {
         let config = create_test_config();

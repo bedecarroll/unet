@@ -145,6 +145,41 @@ mod tests {
     }
 
     #[test]
+    fn test_describe_database_target_redacts_blank_values() {
+        let target = describe_database_target("   ");
+
+        assert_eq!(target, "database connection (value redacted)");
+    }
+
+    #[test]
+    fn test_describe_database_target_redacts_non_hierarchical_values() {
+        let target = describe_database_target("postgresql:ssl-required");
+
+        assert_eq!(target, "postgresql connection (value redacted)");
+    }
+
+    #[test]
+    fn test_describe_database_target_redacts_minimal_network_targets() {
+        let target = describe_database_target("postgresql://");
+
+        assert_eq!(target, "postgresql connection (value redacted)");
+    }
+
+    #[test]
+    fn test_describe_database_target_supports_ipv6_hosts() {
+        let target =
+            describe_database_target("postgresql://user:pass@[2001:db8::1]:5432/unet#fragment");
+
+        assert!(target.contains("postgresql connection"));
+        assert!(target.contains("endpoint=redacted"));
+        assert!(target.contains("port=5432"));
+        assert!(target.contains("database=unet"));
+        assert!(target.contains("credentials=redacted"));
+        assert!(target.contains("query=omitted"));
+        assert!(!target.contains("2001:db8::1"));
+    }
+
+    #[test]
     fn test_redact_connection_string_replaces_raw_url_inside_error_text() {
         let connection_string =
             "postgresql://demo-user:demo-pass@db.example.internal:5432/unet?sslmode=require";
@@ -159,5 +194,12 @@ mod tests {
         assert!(!sanitized.contains("demo-user"));
         assert!(!sanitized.contains("demo-pass"));
         assert!(!sanitized.contains("db.example.internal"));
+    }
+
+    #[test]
+    fn test_redact_connection_string_keeps_message_when_connection_string_empty() {
+        let message = "Failed to connect to database";
+
+        assert_eq!(redact_connection_string(message, ""), message);
     }
 }
