@@ -611,7 +611,33 @@ unet-server --config /etc/unet/server.toml
 
 ### CORS
 
-The server enables permissive CORS for development. In production, configure appropriate CORS policies.
+The server uses an explicit allowlist-based CORS policy.
+
+Default behavior:
+
+- `server.cors_origins` defaults to local development frontends only:
+  `http://localhost:3000`, `http://127.0.0.1:3000`, `http://localhost:5173`,
+  and `http://127.0.0.1:5173`
+- `server.cors_methods` defaults to `GET`, `POST`, `PUT`, `DELETE`, and `OPTIONS`
+- `server.cors_headers` defaults to `authorization` and `content-type`
+
+Production deployments should override the local-development origin defaults
+with the exact dashboard or automation origins that are allowed to call the API.
+
+```toml
+[server]
+cors_origins = ["https://dashboard.corp.local"]
+cors_methods = ["GET", "POST"]
+cors_headers = ["authorization", "content-type"]
+```
+
+Environment variables follow the existing `UNET_SERVER__...` convention:
+
+```bash
+export UNET_SERVER__CORS_ORIGINS="https://dashboard.corp.local"
+export UNET_SERVER__CORS_METHODS="GET,POST"
+export UNET_SERVER__CORS_HEADERS="authorization,content-type"
+```
 
 ---
 

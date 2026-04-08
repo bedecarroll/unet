@@ -4,11 +4,13 @@ use anyhow::Result;
 use axum::Router;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 use tracing::info;
 use unet_core::config::Config;
 
-use super::{app_state::initialize_app_state, auth::ApiAuth, routes::create_router};
+use super::{
+    app_state::initialize_app_state, auth::ApiAuth, cors::build_cors_layer, routes::create_router,
+};
 
 /// Run the μNet HTTP server
 ///
@@ -38,10 +40,11 @@ pub async fn create_app(config: Config, database_url: String) -> Result<Router> 
     let auth = ApiAuth::from_config(&config.auth);
     let app_state = initialize_app_state(config.clone(), database_url).await?;
     let router = create_router(auth);
+    let cors_layer = build_cors_layer(&config.server)?;
     let app = router.with_state(app_state).layer(
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
-            .layer(CorsLayer::permissive()),
+            .layer(cors_layer),
     );
 
     Ok(app)
@@ -144,14 +147,15 @@ mod tests {
 
     #[test]
     fn test_cors_layer_creation() {
-        let _cors_layer = CorsLayer::permissive();
+        let _cors_layer = build_cors_layer(&Config::default().server).expect("cors should build");
     }
 
     #[test]
     fn test_service_builder_configuration() {
+        let cors_layer = build_cors_layer(&Config::default().server).expect("cors should build");
         let _service_builder = ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
-            .layer(CorsLayer::permissive());
+            .layer(cors_layer);
     }
 
     #[test]

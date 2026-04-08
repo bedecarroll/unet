@@ -7,8 +7,11 @@ pub use middleware::run;
 
 mod app_state;
 mod auth;
+mod cors;
 mod middleware;
 mod routes;
 
 #[cfg(test)]
 mod auth_tests;
+#[cfg(test)]
+mod cors_tests;
