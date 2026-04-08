@@ -350,3 +350,7 @@ fn parse_oper_status(value: &str) -> DataStoreResult<InterfaceOperStatus> {
         }),
     }
 }
+
+#[cfg(test)]
+#[path = "conversions_tests.rs"]
+mod tests;

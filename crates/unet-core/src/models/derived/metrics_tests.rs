@@ -107,6 +107,36 @@ fn test_environmental_metrics_from_snmp() {
 }
 
 #[test]
+fn test_environmental_metrics_from_snmp_supports_gauge_values() {
+    let mut snmp_data = HashMap::new();
+    snmp_data.insert(
+        "1.3.6.1.4.1.9.9.13.1.3.1.3.2".to_string(),
+        SnmpValue::Gauge32(41),
+    );
+
+    let metrics = EnvironmentalMetrics::from_snmp(&snmp_data).unwrap();
+    assert_eq!(metrics.temperatures.len(), 1);
+    assert_eq!(metrics.temperatures[0].name, "Temperature Sensor 2");
+    assert!((metrics.temperatures[0].temperature - 41.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn test_environmental_metrics_from_snmp_returns_none_without_supported_temperatures() {
+    let mut snmp_data = HashMap::new();
+    snmp_data.insert(
+        "1.3.6.1.4.1.9.9.13.1.3.1.3.not-a-sensor".to_string(),
+        SnmpValue::Integer(42),
+    );
+    snmp_data.insert(
+        "1.3.6.1.4.1.9.9.13.1.3.1.3.5".to_string(),
+        SnmpValue::String("forty-two".to_string()),
+    );
+
+    let metrics = EnvironmentalMetrics::from_snmp(&snmp_data);
+    assert!(metrics.is_none());
+}
+
+#[test]
 fn test_temperature_sensor_creation() {
     let sensor = TemperatureSensor {
         name: "CPU Temp".to_string(),

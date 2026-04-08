@@ -174,6 +174,16 @@ mod tests {
     }
 
     #[test]
+    fn test_server_error_into_response_unsupported_operation() {
+        let ds_error = DataStoreError::UnsupportedOperation {
+            operation: "get_policy_results".to_string(),
+        };
+        let server_error = ServerError::DataStore(ds_error);
+        let response = server_error.into_response();
+        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+    }
+
+    #[test]
     fn test_server_error_into_response_not_found() {
         let server_error = ServerError::NotFound("Item not found".to_string());
         let response = server_error.into_response();

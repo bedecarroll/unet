@@ -49,97 +49,169 @@ mod tests {
     use super::*;
     use crate::server::AppState;
     use std::sync::Arc;
-    use unet_core::{datastore::DataStore, models::*, policy_integration::PolicyService};
+    use tempfile::tempdir;
+    use unet_core::{
+        config::Config,
+        datastore::{DataStoreError, MockDataStore},
+        policy::{
+            Action, Condition, EvaluationResult, FieldRef, PolicyExecutionResult, PolicyRule, Value,
+        },
+        policy_integration::PolicyService,
+    };
+    use uuid::Uuid;
 
-    async fn create_test_node(datastore: &dyn DataStore) -> Node {
-        let mut node = Node::new(
-            "test-node".to_string(),
-            "example.com".to_string(),
-            Vendor::Cisco,
-            DeviceRole::Router,
-        );
-        node.model = "ASR1000".to_string();
-        node.lifecycle = Lifecycle::Live;
-        datastore.create_node(&node).await.unwrap()
+    fn test_policy_result(rule_id: &str) -> PolicyExecutionResult {
+        PolicyExecutionResult::new(
+            PolicyRule {
+                id: Some(rule_id.to_string()),
+                condition: Condition::True,
+                action: Action::Assert {
+                    field: FieldRef {
+                        path: vec!["node".to_string(), "status".to_string()],
+                    },
+                    expected: Value::String("active".to_string()),
+                },
+            },
+            EvaluationResult::NotSatisfied,
+            None,
+        )
     }
 
     #[tokio::test]
     async fn test_get_policy_results_with_node_id() {
-        test_support::sqlite::with_savepoint("pol_results_node", |store| async move {
-            let node = create_test_node(&store).await;
-            let app_state = AppState {
-                datastore: Arc::new(store),
-                policy_service: PolicyService::with_local_dir("/tmp"),
-            };
+        let policies_dir = tempdir().unwrap();
+        let policies_path = policies_dir.path().to_str().unwrap();
+        let node_id = Uuid::new_v4();
+        let mut mock_datastore = MockDataStore::new();
+        mock_datastore
+            .expect_get_policy_results()
+            .withf(move |candidate| *candidate == node_id)
+            .return_once(|_| {
+                Box::pin(async move {
+                    Ok(vec![
+                        test_policy_result("rule-1"),
+                        test_policy_result("rule-2"),
+                    ])
+                })
+            });
 
-            let query = PolicyResultsQuery {
-                node_id: Some(node.id),
-                offset: None,
-                limit: None,
-            };
+        let app_state = AppState {
+            datastore: Arc::new(mock_datastore),
+            policy_service: PolicyService::with_local_dir(policies_path),
+        };
 
-            let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("get_policy_results")
-            );
-        })
-        .await;
+        let query = PolicyResultsQuery {
+            node_id: Some(node_id),
+            offset: None,
+            limit: None,
+        };
+
+        let Json(response) = get_policy_results(State(app_state), axum::extract::Query(query))
+            .await
+            .unwrap();
+        assert_eq!(response.total_count, 2);
+        assert_eq!(response.returned_count, 2);
+        assert_eq!(response.results.len(), 2);
+        assert_eq!(response.results[0].rule.id.as_deref(), Some("rule-1"));
     }
 
     #[tokio::test]
     async fn test_get_policy_results_without_node_id() {
-        test_support::sqlite::with_savepoint("pol_results_none", |store| async move {
-            let app_state = AppState {
-                datastore: Arc::new(store),
-                policy_service: PolicyService::with_local_dir("/tmp"),
-            };
+        let policies_dir = tempdir().unwrap();
+        let policies_path = policies_dir.path().to_str().unwrap();
+        let app_state = AppState {
+            datastore: Arc::new(MockDataStore::new()),
+            policy_service: PolicyService::with_local_dir(policies_path),
+        };
 
-            let query = PolicyResultsQuery {
-                node_id: None,
-                offset: None,
-                limit: None,
-            };
+        let query = PolicyResultsQuery {
+            node_id: None,
+            offset: None,
+            limit: None,
+        };
 
-            let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("node_id query parameter is required")
-            );
-        })
-        .await;
+        let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("node_id query parameter is required")
+        );
     }
 
     #[tokio::test]
     async fn test_get_policy_results_with_pagination() {
-        test_support::sqlite::with_savepoint("pol_results_page", |store| async move {
-            let node = create_test_node(&store).await;
-            let app_state = AppState {
-                datastore: Arc::new(store),
-                policy_service: PolicyService::with_local_dir("/tmp"),
-            };
+        let policies_dir = tempdir().unwrap();
+        let policies_path = policies_dir.path().to_str().unwrap();
+        let node_id = Uuid::new_v4();
+        let mut mock_datastore = MockDataStore::new();
+        mock_datastore
+            .expect_get_policy_results()
+            .withf(move |candidate| *candidate == node_id)
+            .return_once(|_| {
+                Box::pin(async move {
+                    Ok(vec![
+                        test_policy_result("rule-1"),
+                        test_policy_result("rule-2"),
+                        test_policy_result("rule-3"),
+                    ])
+                })
+            });
 
-            let query = PolicyResultsQuery {
-                node_id: Some(node.id),
-                offset: Some(0),
-                limit: Some(10),
-            };
+        let app_state = AppState {
+            datastore: Arc::new(mock_datastore),
+            policy_service: PolicyService::with_local_dir(policies_path),
+        };
 
-            let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("get_policy_results")
-            );
-        })
-        .await;
+        let query = PolicyResultsQuery {
+            node_id: Some(node_id),
+            offset: Some(1),
+            limit: Some(1),
+        };
+
+        let Json(response) = get_policy_results(State(app_state), axum::extract::Query(query))
+            .await
+            .unwrap();
+        assert_eq!(response.total_count, 3);
+        assert_eq!(response.returned_count, 1);
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].rule.id.as_deref(), Some("rule-2"));
+    }
+
+    #[tokio::test]
+    async fn test_get_policy_results_with_unsupported_datastore_operation() {
+        let node_id = Uuid::new_v4();
+        let mut mock_datastore = MockDataStore::new();
+        mock_datastore
+            .expect_get_policy_results()
+            .withf(move |candidate| *candidate == node_id)
+            .return_once(|_| {
+                Box::pin(async move {
+                    Err(DataStoreError::UnsupportedOperation {
+                        operation: "get_policy_results".to_string(),
+                    })
+                })
+            });
+
+        let app_state = AppState {
+            datastore: Arc::new(mock_datastore),
+            policy_service: PolicyService::new(Config::default().git),
+        };
+
+        let query = PolicyResultsQuery {
+            node_id: Some(node_id),
+            offset: None,
+            limit: None,
+        };
+
+        let result = get_policy_results(State(app_state), axum::extract::Query(query)).await;
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("get_policy_results")
+        );
     }
 }

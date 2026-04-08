@@ -171,3 +171,33 @@ async fn test_get_node_metrics_returns_persisted_performance_metrics() {
     assert_eq!(metrics.memory_utilization, Some(70));
     assert_eq!(metrics.used_memory, Some(2048));
 }
+
+#[tokio::test]
+async fn test_get_node_status_returns_none_without_persisted_status() {
+    let store = setup_schema_store().await;
+    let node = test_node();
+    store.create_node(&node).await.unwrap();
+
+    let status = store.get_node_status(&node.id).await.unwrap();
+    assert!(status.is_none());
+}
+
+#[tokio::test]
+async fn test_get_node_interfaces_returns_empty_without_persisted_status() {
+    let store = setup_schema_store().await;
+    let node = test_node();
+    store.create_node(&node).await.unwrap();
+
+    let interfaces = store.get_node_interfaces(&node.id).await.unwrap();
+    assert!(interfaces.is_empty());
+}
+
+#[tokio::test]
+async fn test_get_node_metrics_returns_none_without_persisted_status() {
+    let store = setup_schema_store().await;
+    let node = test_node();
+    store.create_node(&node).await.unwrap();
+
+    let metrics = store.get_node_metrics(&node.id).await.unwrap();
+    assert!(metrics.is_none());
+}

@@ -90,6 +90,17 @@ mod tests {
     }
 
     #[test]
+    fn test_get_policies_directory_prefers_explicit_local_override() {
+        let mut git_config = create_git_config();
+        git_config.local_directory = Some("./git-config-policies".to_string());
+
+        let handler = DirectoryHandler::new(git_config).with_local_dir("./runtime-policies");
+        let result = handler.get_policies_directory().unwrap();
+
+        assert_eq!(result, PathBuf::from("./runtime-policies"));
+    }
+
+    #[test]
     fn test_get_policies_directory_rejects_repository_url_until_git_sync_exists() {
         let mut git_config = create_git_config();
         git_config.repository_url = Some("https://github.com/example/policies.git".to_string());
@@ -120,6 +131,20 @@ mod tests {
                 assert!(feature.contains("Git policy repository sync"));
             }
             other => panic!("Expected NotImplemented error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_get_policies_directory_errors_without_any_configured_source() {
+        let handler = DirectoryHandler::new(create_git_config());
+        let result = handler.get_policies_directory();
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            PolicyError::Evaluation { message } => {
+                assert!(message.contains("No policies source configured"));
+            }
+            other => panic!("Expected Evaluation error, got {other:?}"),
         }
     }
 }
