@@ -7,16 +7,16 @@
 ## Executive Summary
 
 μNet has functional core components with 166 passing tests. The project is ~60%
-complete. Key features like template engine and config-slicer exist only as
-placeholder code.
+complete. Key features like the template engine and Git integration still
+remain planned.
 
 **Current Reality:**
 
 - ✅ **Implemented:** Core models, policy engine, SNMP framework, CLI, API
 - ⚠️ **Missing Integration:** Background tasks, derived state tracking, some
 API endpoints
-- ❌ **Missing Features:** Template engine, config-slicer, Git integration (all
-placeholder code)
+- ⚠️ **Partially Implemented:** `config-slicer` baseline parse/slice/diff CLI
+- ❌ **Missing Features:** Template engine, Git integration (placeholder code)
 
 ## Current Project State
 
@@ -63,9 +63,9 @@ placeholder code)
 
 **Config-Slicer (Milestone 5):**
 
-- Hierarchical diff engine
-- Configuration parsing
-- Diff workflows
+- Baseline hierarchical parsing for `flat` and `junos` inputs
+- Parse, slice, and diff CLI workflows
+- Unified diff output for sliced configuration
 - **Implementation complexity:** Complex
 
 **Git Integration (Milestone 6):**
@@ -94,10 +94,10 @@ placeholder code)
 
 ### 3. **Config-Slicer Implementation** (Complex)
 
-- [ ] Build hierarchical configuration parser
+- [x] Build hierarchical configuration parser
 - [ ] Implement intelligent diff engine
-- [ ] Add configuration comparison workflows
-- [ ] Create CLI commands for diffing operations
+- [x] Add configuration comparison workflows
+- [x] Create CLI commands for parse/slice/diff operations
 - [ ] Add visualization for configuration changes
 
 ### 4. **Git Integration** (Moderate complexity)
