@@ -7,7 +7,7 @@
 
 ## Overview
 
-μNet provides a comprehensive command-line interface for network configuration management. The CLI supports local SQLite and remote (HTTP API) operation modes.
+μNet provides a comprehensive command-line interface for network configuration management. The CLI currently operates directly against the configured local datastore. Use the HTTP API separately when you need remote access.
 
 **Binary Name:** `unet`  
 **Current Version:** 0.1.0  
@@ -18,9 +18,6 @@
 ```bash
 # Local SQLite mode (default)
 unet nodes list
-
-# Remote server mode
-unet --server http://localhost:8080 nodes list
 
 # Import sample data (create your own JSON files)
 unet import your-locations.json
@@ -36,8 +33,6 @@ unet import your-links.json
 |--------|---------------------|---------|-------------|
 | `-c, --config <FILE>` | `UNET_CONFIG` | - | Configuration file path |
 | `-d, --database-url <URL>` | `UNET_DATABASE_URL` | `sqlite://unet.db` | Database connection URL |
-| `-s, --server <URL>` | `UNET_SERVER` | - | Server URL for remote operations |
-| `-t, --token <TOKEN>` | `UNET_TOKEN` | - | Authentication token |
 | `-f, --output <FORMAT>` | - | `table` | Output format: table, json, yaml |
 | `-v, --verbose` | - | - | Enable verbose logging |
 
@@ -517,8 +512,6 @@ Set environment variables to avoid repeating common options:
 
 ```bash
 export UNET_DATABASE_URL="sqlite:///path/to/unet.db"
-export UNET_SERVER="http://localhost:8080"
-export UNET_TOKEN="your-auth-token"
 ```
 
 ---
