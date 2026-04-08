@@ -275,3 +275,6 @@ mod tests {
         assert_eq!(scheduler.task_count().await, 0);
     }
 }
+
+#[cfg(test)]
+mod module_graph_tests;
