@@ -8,8 +8,8 @@ use unet_core::config::Config;
 use unet_core::prelude::*;
 
 pub mod commands;
-pub mod runtime;
 pub mod dry_run;
+pub mod runtime;
 
 pub use runtime::{AppContext, Db};
 
@@ -29,14 +29,6 @@ pub struct Cli {
     /// Database URL (`SQLite`)
     #[arg(short, long, default_value = "sqlite://unet.db")]
     pub database_url: String,
-
-    /// Server URL for remote operations
-    #[arg(short, long)]
-    pub server: Option<String>,
-
-    /// Authentication token
-    #[arg(short, long)]
-    pub token: Option<String>,
 
     /// Output format
     #[arg(short = 'f', long, default_value = "table")]
@@ -110,7 +102,6 @@ pub async fn run_with(ctx: AppContext, cli: Cli) -> Result<()> {
     // Optionally emit debug logs controlled by config logging settings
 
     let datastore = build_datastore(&ctx, &database_url, cli.dry_run).await?;
-    
 
     // Execute command
     dispatch_command(cli.command, datastore.as_ref(), cli.output).await
@@ -136,16 +127,17 @@ async fn build_datastore(
 ) -> Result<Box<dyn unet_core::datastore::DataStore>> {
     let db = (ctx.connect)(database_url).await.map_err(|e| {
         error!("Failed to connect to database: {}", e);
-        anyhow::anyhow!("Failed to connect to database: {}", e)
+        anyhow::anyhow!("Failed to connect to database: {e}")
     })?;
 
     (ctx.migrate)(&db).await.map_err(|e| {
         error!("Failed to run migrations: {}", e);
-        anyhow::anyhow!("Failed to run migrations: {}", e)
+        anyhow::anyhow!("Failed to run migrations: {e}")
     })?;
 
-    let base: Box<dyn unet_core::datastore::DataStore> =
-        Box::new(unet_core::datastore::sqlite::SqliteStore::from_connection(db.0));
+    let base: Box<dyn unet_core::datastore::DataStore> = Box::new(
+        unet_core::datastore::sqlite::SqliteStore::from_connection(db.0),
+    );
     if dry_run {
         info!("Dry-run mode enabled: no changes will be persisted");
         Ok(Box::new(crate::dry_run::DryRunStore::new(Arc::from(base))))
@@ -153,7 +145,6 @@ async fn build_datastore(
         Ok(base)
     }
 }
-
 
 async fn dispatch_command(
     command: Commands,
