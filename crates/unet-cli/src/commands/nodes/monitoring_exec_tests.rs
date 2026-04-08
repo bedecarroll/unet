@@ -5,12 +5,15 @@ mod tests {
     use crate::commands::nodes::monitoring::{metrics_node, status_node};
     use crate::commands::nodes::types::{MetricsNodeArgs, StatusNodeArgs, StatusType};
     use mockall::predicate::eq;
+    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use std::time::Duration;
     use unet_core::datastore::{DataStoreError, MockDataStore};
     use unet_core::models::derived::{
         InterfaceAdminStatus, InterfaceOperStatus, InterfaceStats, InterfaceStatus, NodeStatus,
         PerformanceMetrics,
     };
     use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
+    use unet_core::snmp::{PollingTask, SessionConfig};
     use uuid::Uuid;
 
     fn make_node() -> unet_core::models::Node {
@@ -188,6 +191,40 @@ mod tests {
                 .await
                 .is_ok()
         );
+    }
+
+    #[tokio::test]
+    async fn test_status_polling_fetches_saved_task() {
+        let node = make_node();
+        let id = node.id;
+        let polling_task = PollingTask::new(
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 50)), 161),
+            id,
+            vec!["1.3.6.1.2.1.1.1.0".to_string()],
+            Duration::from_secs(300),
+            SessionConfig::default(),
+        );
+
+        let mut mock = MockDataStore::new();
+        mock.expect_get_node_required()
+            .with(eq(id))
+            .returning(move |_| {
+                let n = node.clone();
+                Box::pin(async move { Ok(n) })
+            });
+        mock.expect_get_node_polling_task()
+            .with(eq(id))
+            .returning(move |_| {
+                let task = polling_task.clone();
+                Box::pin(async move { Ok(Some(task)) })
+            });
+
+        let args = StatusNodeArgs {
+            id,
+            status_type: vec![StatusType::Polling],
+        };
+        let res = status_node(args, &mock, crate::OutputFormat::Json).await;
+        assert!(res.is_ok());
     }
 
     #[tokio::test]

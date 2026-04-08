@@ -1,6 +1,6 @@
 //! Main `SQLite` store implementation
 
-use super::{derived_state, links, locations, metadata, nodes, vendors};
+use super::{derived_state, links, locations, metadata, nodes, polling_tasks, vendors};
 
 use super::super::DataStore;
 use super::super::types::{
@@ -232,6 +232,20 @@ impl DataStore for SqliteStore {
     ) -> DataStoreResult<Option<PerformanceMetrics>> {
         derived_state::get_node_metrics(self, node_id).await
     }
+
+    async fn get_node_polling_task(
+        &self,
+        node_id: &Uuid,
+    ) -> DataStoreResult<Option<crate::snmp::PollingTask>> {
+        polling_tasks::get_node_polling_task(self, node_id).await
+    }
+
+    async fn upsert_polling_task(
+        &self,
+        task: &crate::snmp::PollingTask,
+    ) -> DataStoreResult<crate::snmp::PollingTask> {
+        polling_tasks::upsert_polling_task(self, task).await
+    }
 }
 
 #[cfg(test)]
@@ -245,3 +259,6 @@ mod derived_state_tests;
 
 #[cfg(test)]
 mod metadata_tests;
+
+#[cfg(test)]
+mod polling_tasks_tests;

@@ -295,6 +295,26 @@ pub trait DataStore: Send + Sync {
         })
     }
 
+    /// Gets the persisted polling task for a specific node.
+    async fn get_node_polling_task(
+        &self,
+        _node_id: &Uuid,
+    ) -> DataStoreResult<Option<crate::snmp::PollingTask>> {
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_node_polling_task".to_string(),
+        })
+    }
+
+    /// Creates or updates a persisted polling task.
+    async fn upsert_polling_task(
+        &self,
+        _task: &crate::snmp::PollingTask,
+    ) -> DataStoreResult<crate::snmp::PollingTask> {
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "upsert_polling_task".to_string(),
+        })
+    }
+
     // Policy-related operations
     /// Stores a policy execution result
     async fn store_policy_result(

@@ -67,19 +67,17 @@ mod integration_tests {
             PollingAction::Start,
             PollingAction::Stop,
             PollingAction::Restart,
-            PollingAction::History,
         ];
 
         // Test that all polling actions are properly constructed
-        assert_eq!(polling_actions.len(), 5);
+        assert_eq!(polling_actions.len(), 4);
         // Verify all variants can be matched
         for polling_action in polling_actions {
             match polling_action {
                 PollingAction::Status
                 | PollingAction::Start
                 | PollingAction::Stop
-                | PollingAction::Restart
-                | PollingAction::History => {}
+                | PollingAction::Restart => {}
             }
         }
 
