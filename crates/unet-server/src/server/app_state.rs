@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::sync::Arc;
 use tracing::info;
 use unet_core::{
-    config::Config,
+    config::{Config, connection_string::describe_database_target},
     datastore::{DataStore, sqlite::SqliteStore},
     policy_integration::PolicyService,
 };
@@ -20,12 +20,12 @@ pub struct AppState {
 
 /// Initialize application state with datastore and services
 pub async fn initialize_app_state(config: Config, database_url: String) -> Result<AppState> {
-    info!("Initializing SQLite datastore with URL: {}", database_url);
-    let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(
-        SqliteStore::new(&database_url)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to initialize SQLite datastore: {e}"))?,
-    );
+    let database_target = describe_database_target(&database_url);
+    info!("Initializing SQLite datastore for {}", database_target);
+    let datastore: Arc<dyn DataStore + Send + Sync> =
+        Arc::new(SqliteStore::new(&database_url).await.map_err(|e| {
+            anyhow::anyhow!("Failed to initialize SQLite datastore ({database_target}): {e}")
+        })?);
 
     info!("Initializing policy service");
     let policy_service = PolicyService::new(config.git.clone());

@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
-use unet_core::config::Config;
+use unet_core::config::{Config, connection_string::describe_database_target};
 #[cfg(not(test))]
 use unet_core::logging::init_tracing;
 
@@ -88,6 +88,7 @@ pub fn initialize_app(args: &Args) -> Result<(Config, String)> {
 
     // Override database URL from command line or use config
     let database_url = determine_database_url(args, &config);
+    let database_target = describe_database_target(&database_url);
 
     // Validate configuration before starting
     config.validate()?;
@@ -98,8 +99,8 @@ pub fn initialize_app(args: &Args) -> Result<(Config, String)> {
 
     info!("Starting μNet server...");
     info!(
-        "Configuration: server={}:{}, database_url={}",
-        config.server.host, config.server.port, database_url
+        "Configuration: server={}:{}, database={}",
+        config.server.host, config.server.port, database_target
     );
 
     Ok((config, database_url))
