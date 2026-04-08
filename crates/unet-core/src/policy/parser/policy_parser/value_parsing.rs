@@ -5,6 +5,23 @@ use crate::policy::ast::{ComparisonOperator, FieldRef, Value};
 use crate::policy::grammar::Rule;
 use pest::iterators::Pair;
 
+fn parse_regex_pattern(regex_str: &str) -> Result<String, ParseError> {
+    let Some(regex_body) = regex_str.strip_prefix('/') else {
+        return Err(ParseError {
+            message: format!("Invalid regex literal: {regex_str}"),
+            location: None,
+        });
+    };
+    let Some((pattern, _flags)) = regex_body.rsplit_once('/') else {
+        return Err(ParseError {
+            message: format!("Invalid regex literal: {regex_str}"),
+            location: None,
+        });
+    };
+
+    Ok(pattern.to_string())
+}
+
 /// Parse a comparison operator
 pub fn parse_operator(pair: &Pair<Rule>) -> Result<ComparisonOperator, ParseError> {
     match pair.as_str() {
@@ -84,17 +101,7 @@ pub fn parse_value(pair: Pair<Rule>) -> Result<Value, ParseError> {
         Rule::null_literal => Ok(Value::Null),
         Rule::regex_literal => {
             let regex_str = pair.as_str();
-            // Extract the regex pattern between the slashes
-            if regex_str.starts_with('/') && regex_str.len() > 1 {
-                let end_pos = regex_str.rfind('/').unwrap_or(regex_str.len());
-                let pattern = &regex_str[1..end_pos];
-                Ok(Value::Regex(pattern.to_string()))
-            } else {
-                Err(ParseError {
-                    message: format!("Invalid regex literal: {regex_str}"),
-                    location: None,
-                })
-            }
+            parse_regex_pattern(regex_str).map(Value::Regex)
         }
         Rule::field_ref => {
             let field_ref = parse_field_ref(&pair);
@@ -104,5 +111,44 @@ pub fn parse_value(pair: Pair<Rule>) -> Result<Value, ParseError> {
             message: format!("Unexpected value rule: {:?}", pair.as_rule()),
             location: None,
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_regex_pattern;
+
+    #[test]
+    fn test_parse_regex_pattern_with_flags() {
+        let result = parse_regex_pattern("/dist-.+/im");
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "dist-.+");
+    }
+
+    #[test]
+    fn test_parse_regex_pattern_rejects_missing_leading_slash() {
+        let result = parse_regex_pattern("dist-.+/im");
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid regex literal: dist-.+/im")
+        );
+    }
+
+    #[test]
+    fn test_parse_regex_pattern_rejects_missing_trailing_slash() {
+        let result = parse_regex_pattern("/dist-.+");
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid regex literal: /dist-.+")
+        );
     }
 }
