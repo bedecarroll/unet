@@ -268,10 +268,11 @@ pub trait DataStore: Send + Sync {
     /// Gets node status (derived state) by node ID
     async fn get_node_status(
         &self,
-        node_id: &Uuid,
+        _node_id: &Uuid,
     ) -> DataStoreResult<Option<crate::models::derived::NodeStatus>> {
-        // Default implementation returns a basic status
-        Ok(Some(crate::models::derived::NodeStatus::new(*node_id)))
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_node_status".to_string(),
+        })
     }
 
     /// Gets interface status for a specific node
@@ -279,8 +280,9 @@ pub trait DataStore: Send + Sync {
         &self,
         _node_id: &Uuid,
     ) -> DataStoreResult<Vec<crate::models::derived::InterfaceStatus>> {
-        // Default implementation returns empty list
-        Ok(Vec::new())
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_node_interfaces".to_string(),
+        })
     }
 
     /// Gets performance metrics for a specific node
@@ -288,33 +290,32 @@ pub trait DataStore: Send + Sync {
         &self,
         _node_id: &Uuid,
     ) -> DataStoreResult<Option<crate::models::derived::PerformanceMetrics>> {
-        // Default implementation returns None
-        Ok(None)
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_node_metrics".to_string(),
+        })
     }
 
     // Policy-related operations
     /// Stores a policy execution result
     async fn store_policy_result(
         &self,
-        node_id: &Uuid,
-        rule_id: &str,
-        result: &PolicyExecutionResult,
+        _node_id: &Uuid,
+        _rule_id: &str,
+        _result: &PolicyExecutionResult,
     ) -> DataStoreResult<()> {
-        // Default implementation is a no-op for backward compatibility
-        // Parameters are intentionally unused in this default trait implementation
-        let _ = (node_id, rule_id, result);
-        Ok(())
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "store_policy_result".to_string(),
+        })
     }
 
     /// Gets policy execution results for a node
     async fn get_policy_results(
         &self,
-        node_id: &Uuid,
+        _node_id: &Uuid,
     ) -> DataStoreResult<Vec<PolicyExecutionResult>> {
-        // Default implementation returns empty results
-        // Parameter is intentionally unused in this default trait implementation
-        let _ = node_id;
-        Ok(Vec::new())
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_policy_results".to_string(),
+        })
     }
 
     /// Gets the latest policy execution results for a node
@@ -329,12 +330,11 @@ pub trait DataStore: Send + Sync {
     /// Gets policy execution results for a specific rule across all nodes
     async fn get_rule_results(
         &self,
-        rule_id: &str,
+        _rule_id: &str,
     ) -> DataStoreResult<Vec<(Uuid, PolicyExecutionResult)>> {
-        // Default implementation returns empty results
-        // Parameter is intentionally unused in this default trait implementation
-        let _ = rule_id;
-        Ok(Vec::new())
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_rule_results".to_string(),
+        })
     }
 
     /// Updates `custom_data` field for a node (used by SET actions)

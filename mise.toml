@@ -70,13 +70,13 @@ env = { COVERAGE_THRESHOLD = "84" }
 run = ["cargo llvm-cov report --fail-under-lines $COVERAGE_THRESHOLD"]
 
 [tasks.ci-check-large-files]
-description = "Find files exceeding size guidelines (>400 lines)"
+description = "Check Rust file-size policy (warn >300, fail on hard-limit regressions)"
 depends = ["check-large-files"]
 
 [tasks.check-large-files]
-description = "Find files exceeding size guidelines (>400 lines)"
+description = "Check Rust file-size policy (warn >300, fail on hard-limit regressions)"
 run = [
-  "find crates -name '*.rs' -exec wc -l {} + | awk '$1 > 400 {print $0}' | sort -nr",
+  "bash scripts/check-large-files.sh",
 ]
 
 [tasks.ci-audit]

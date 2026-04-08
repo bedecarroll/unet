@@ -36,7 +36,7 @@ pub async fn get_node_status(
         .datastore
         .get_node_status(&id)
         .await?
-        .unwrap_or_else(|| NodeStatus::new(id));
+        .ok_or_else(|| ServerError::NotFound(format!("No status available for node {id}")))?;
 
     Ok(Json(ApiResponse::success(status)))
 }
@@ -102,15 +102,16 @@ mod tests {
     use super::*;
     use crate::server::AppState;
     use axum::extract::{Path, State};
+    use migration::sea_orm::{ActiveModelTrait, Set};
     use std::sync::Arc;
     use unet_core::{
         datastore::{DataStore, sqlite::SqliteStore},
+        entities::node_status,
         models::*,
         policy_integration::PolicyService,
     };
 
     async fn setup_test_datastore() -> SqliteStore {
-        
         test_support::sqlite::sqlite_store().await
     }
 
@@ -131,6 +132,24 @@ mod tests {
         let datastore = setup_test_datastore().await;
         let node = create_test_node(&datastore).await;
 
+        node_status::ActiveModel {
+            id: Set("derived-handler-status".to_string()),
+            node_id: Set(node.id.to_string()),
+            last_updated: Set("2026-04-07T01:02:03Z".to_string()),
+            reachable: Set(true),
+            system_info: Set(Some(r#"{"name":"test-node"}"#.to_string())),
+            performance: Set(None),
+            environmental: Set(None),
+            vendor_metrics: Set(None),
+            raw_snmp_data: Set(None),
+            last_snmp_success: Set(Some("2026-04-07T01:00:00Z".to_string())),
+            last_error: Set(None),
+            consecutive_failures: Set(0),
+        }
+        .insert(datastore.connection())
+        .await
+        .unwrap();
+
         let app_state = AppState {
             datastore: Arc::new(datastore),
             policy_service: PolicyService::with_local_dir("/tmp"),
@@ -142,6 +161,7 @@ mod tests {
         let response = result.unwrap().0;
         assert!(response.success);
         assert_eq!(response.data.node_id, node.id);
+        assert!(response.data.reachable);
     }
 
     #[tokio::test]
@@ -299,7 +319,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_node_status_default_creation() {
+    async fn test_get_node_status_without_persisted_status_returns_not_found() {
         let datastore = setup_test_datastore().await;
         let node = create_test_node(&datastore).await;
 
@@ -309,12 +329,13 @@ mod tests {
         };
 
         let result = get_node_status(State(app_state), Path(node.id)).await;
-        assert!(result.is_ok());
+        assert!(result.is_err());
 
-        let response = result.unwrap().0;
-        assert!(response.success);
-        // Verify the default NodeStatus is created correctly - covers line 36
-        assert_eq!(response.data.node_id, node.id);
-        assert!(!response.data.reachable); // Default should be false
+        match result.unwrap_err() {
+            ServerError::NotFound(message) => {
+                assert!(message.contains("No status available"));
+            }
+            other => panic!("Expected NotFound error, got {other:?}"),
+        }
     }
 }
