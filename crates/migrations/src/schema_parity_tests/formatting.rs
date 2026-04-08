@@ -5,7 +5,7 @@ use super::types::{DifferenceType, SchemaDifference};
 
 /// Normalize CREATE TABLE SQL for consistent comparison
 /// Removes formatting differences that don't affect schema functionality
-fn normalize_create_table_sql(sql: &str) -> String {
+pub(super) fn normalize_create_table_sql(sql: &str) -> String {
     sql
         // Remove extra whitespace and newlines
         .split_whitespace()
@@ -18,7 +18,7 @@ fn normalize_create_table_sql(sql: &str) -> String {
 }
 
 /// Format schema differences for human-readable error messages
-fn format_schema_differences(differences: &[SchemaDifference]) -> String {
+pub(super) fn format_schema_differences(differences: &[SchemaDifference]) -> String {
     if differences.is_empty() {
         return "No differences found".to_string();
     }

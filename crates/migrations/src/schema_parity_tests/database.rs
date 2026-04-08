@@ -8,7 +8,7 @@ use super::types::SchemaDifference;
 use crate::Migrator;
 
 /// Compare schemas created by migrations vs entities and return differences
-async fn compare_migration_vs_entity_schemas()
+pub(super) async fn compare_migration_vs_entity_schemas()
 -> Result<Vec<SchemaDifference>, Box<dyn std::error::Error>> {
     // Create two temporary in-memory SQLite databases
     let migration_db = Database::connect("sqlite::memory:").await?;
@@ -81,7 +81,7 @@ async fn create_schema_from_entities(
 }
 
 /// Extract CREATE TABLE statements from a `SQLite` database
-async fn extract_create_table_statements(
+pub(super) async fn extract_create_table_statements(
     connection: &impl ConnectionTrait,
 ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
     use sea_orm::Statement;

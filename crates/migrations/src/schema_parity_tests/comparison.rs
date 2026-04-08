@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::types::{DifferenceType, SchemaDifference};
 
 /// Compare two schema maps and return differences
-fn compare_schemas(
+pub(super) fn compare_schemas(
     migration_schema: &HashMap<String, String>,
     entity_schema: &HashMap<String, String>,
 ) -> Result<Vec<SchemaDifference>, Box<dyn std::error::Error>> {
