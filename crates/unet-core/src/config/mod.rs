@@ -12,6 +12,7 @@ pub mod utils;
 
 #[cfg(test)]
 mod core_tests;
+mod env;
 
 // Re-export the main Config struct and commonly used items
 pub use core::Config;

@@ -44,6 +44,28 @@ pub struct ServerConfig {
     pub port: u16,
     /// Maximum request size in bytes
     pub max_request_size: usize,
+    /// Allowed CORS origins
+    #[serde(default = "crate::config::defaults::server::default_cors_origins")]
+    pub cors_origins: Vec<String>,
+    /// Allowed CORS methods
+    #[serde(default = "crate::config::defaults::server::default_cors_methods")]
+    pub cors_methods: Vec<String>,
+    /// Allowed CORS headers
+    #[serde(default = "crate::config::defaults::server::default_cors_headers")]
+    pub cors_headers: Vec<String>,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            host: crate::config::defaults::server::DEFAULT_SERVER_HOST.to_string(),
+            port: crate::config::defaults::network::DEFAULT_SERVER_PORT,
+            max_request_size: crate::config::defaults::server::DEFAULT_MAX_REQUEST_SIZE,
+            cors_origins: crate::config::defaults::server::default_cors_origins(),
+            cors_methods: crate::config::defaults::server::default_cors_methods(),
+            cors_headers: crate::config::defaults::server::default_cors_headers(),
+        }
+    }
 }
 
 /// Git repository configuration for policy loading

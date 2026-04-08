@@ -46,6 +46,18 @@ fn test_config_default() {
         config.server.max_request_size,
         defaults::server::DEFAULT_MAX_REQUEST_SIZE
     );
+    assert_eq!(
+        config.server.cors_origins,
+        defaults::server::default_cors_origins()
+    );
+    assert_eq!(
+        config.server.cors_methods,
+        defaults::server::default_cors_methods()
+    );
+    assert_eq!(
+        config.server.cors_headers,
+        defaults::server::default_cors_headers()
+    );
 
     assert_eq!(config.git.branch, defaults::git::DEFAULT_GIT_BRANCH);
     assert_eq!(

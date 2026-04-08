@@ -19,6 +19,9 @@ format = "json"
 host = "127.0.0.1"
 port = 8080
 max_request_size = 1048576
+cors_origins = ["https://dashboard.corp.local"]
+cors_methods = ["GET", "POST"]
+cors_headers = ["authorization", "content-type"]
 
 [snmp]
 community = "test"
@@ -52,6 +55,18 @@ token = "bed-24-secret"
     assert_eq!(config.server.host, "127.0.0.1");
     assert_eq!(config.server.port, 8080);
     assert_eq!(config.server.max_request_size, 1_048_576);
+    assert_eq!(
+        config.server.cors_origins,
+        vec!["https://dashboard.corp.local".to_string()]
+    );
+    assert_eq!(
+        config.server.cors_methods,
+        vec!["GET".to_string(), "POST".to_string()]
+    );
+    assert_eq!(
+        config.server.cors_headers,
+        vec!["authorization".to_string(), "content-type".to_string()]
+    );
 
     assert_eq!(config.snmp.community, "test");
     assert_eq!(config.snmp.timeout, 10);

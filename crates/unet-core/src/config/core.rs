@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::Path;
 
-use super::defaults;
 use super::types::{
     AuthConfig, DatabaseConfig, DomainConfig, GitConfig, LoggingConfig, ServerConfig, SnmpConfig,
 };
+use super::{defaults, env};
 
 /// Main configuration structure for μNet
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,13 +85,7 @@ impl Config {
     where
         F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
     {
-        let mut builder = ConfigBuilder::builder();
-
-        for (key, value) in collect_env_vars(&env_source) {
-            builder = builder.set_override(&key, value).map_err(|e| {
-                Error::config(format!("Failed to set config override for {key}: {e}"))
-            })?;
-        }
+        let builder = env::apply_env_overrides(ConfigBuilder::builder(), &env_source)?;
 
         builder
             .build()
@@ -235,11 +229,7 @@ impl Default for Config {
                 timeout: defaults::snmp::DEFAULT_SNMP_TIMEOUT_SECONDS,
                 retries: defaults::snmp::DEFAULT_SNMP_RETRIES,
             },
-            server: ServerConfig {
-                host: defaults::server::DEFAULT_SERVER_HOST.to_string(),
-                port: defaults::network::DEFAULT_SERVER_PORT,
-                max_request_size: defaults::server::DEFAULT_MAX_REQUEST_SIZE,
-            },
+            server: ServerConfig::default(),
             git: GitConfig {
                 repository_url: None,
                 local_directory: Some("./policies".to_string()),
@@ -259,41 +249,4 @@ impl Default for Config {
             },
         }
     }
-}
-
-pub(crate) fn collect_env_vars<F>(env_source: &F) -> Vec<(String, String)>
-where
-    F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
-{
-    let env_vars = [
-        ("UNET_DATABASE__URL", "database.url"),
-        ("UNET_DATABASE__MAX_CONNECTIONS", "database.max_connections"),
-        ("UNET_DATABASE__TIMEOUT", "database.timeout"),
-        ("UNET_LOGGING__LEVEL", "logging.level"),
-        ("UNET_LOGGING__FORMAT", "logging.format"),
-        ("UNET_LOGGING__FILE", "logging.file"),
-        ("UNET_SNMP__COMMUNITY", "snmp.community"),
-        ("UNET_SNMP__TIMEOUT", "snmp.timeout"),
-        ("UNET_SNMP__RETRIES", "snmp.retries"),
-        ("UNET_SERVER__HOST", "server.host"),
-        ("UNET_SERVER__PORT", "server.port"),
-        ("UNET_SERVER__MAX_REQUEST_SIZE", "server.max_request_size"),
-        ("UNET_GIT__REPOSITORY_URL", "git.repository_url"),
-        ("UNET_GIT__LOCAL_DIRECTORY", "git.local_directory"),
-        ("UNET_GIT__BRANCH", "git.branch"),
-        ("UNET_GIT__AUTH_TOKEN", "git.auth_token"),
-        ("UNET_GIT__SYNC_INTERVAL", "git.sync_interval"),
-        ("UNET_DOMAIN__DEFAULT_DOMAIN", "domain.default_domain"),
-        ("UNET_AUTH__ENABLED", "auth.enabled"),
-        ("UNET_AUTH__TOKEN", "auth.token"),
-    ];
-
-    env_vars
-        .iter()
-        .filter_map(|(env_key, config_key)| {
-            env_source(env_key)
-                .ok()
-                .map(|value| ((*config_key).to_string(), value))
-        })
-        .collect()
 }
