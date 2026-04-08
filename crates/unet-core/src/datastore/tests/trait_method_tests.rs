@@ -171,6 +171,42 @@ async fn test_get_node_metrics_default_implementation() {
 }
 
 #[tokio::test]
+async fn test_store_node_status_snapshot_default_implementation() {
+    let datastore = MockDataStore::new();
+    let snapshot = crate::models::derived::NodeStatus::new(Uuid::new_v4());
+
+    let result = datastore.store_node_status_snapshot(&snapshot).await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "store_node_status_snapshot");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_get_node_status_history_default_implementation() {
+    let datastore = MockDataStore::new();
+    let node_id = Uuid::new_v4();
+    let options = crate::datastore::HistoryQueryOptions {
+        limit: 10,
+        since: None,
+    };
+
+    let result = datastore.get_node_status_history(&node_id, &options).await;
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_node_status_history");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
 async fn test_store_policy_result_default_implementation() {
     let datastore = MockDataStore::new();
     let node_id = Uuid::new_v4();

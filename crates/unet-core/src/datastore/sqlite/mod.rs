@@ -5,6 +5,7 @@ pub use transaction::SqliteTransaction;
 
 mod conversions;
 mod derived_state;
+mod derived_state_history;
 mod filters;
 mod links;
 mod locations;
