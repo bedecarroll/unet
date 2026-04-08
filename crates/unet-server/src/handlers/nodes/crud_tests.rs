@@ -54,7 +54,7 @@ pub mod test_utils {
         }
     }
 
-    /// Set up a test app state together with the underlying SQLite connection.
+    /// Set up a test app state together with the underlying `SQLite` connection.
     pub async fn setup_test_app_state_with_connection() -> (DatabaseConnection, AppState) {
         let store = sqlite_store().await;
         let connection = store.connection().clone();
