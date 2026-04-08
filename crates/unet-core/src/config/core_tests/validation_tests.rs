@@ -128,10 +128,9 @@ fn test_config_validate_zero_git_sync_interval() {
 }
 
 #[test]
-fn test_config_validate_auth_enabled_without_token_endpoint() {
+fn test_config_validate_auth_enabled_without_token() {
     let mut config = Config::default();
     config.auth.enabled = true;
-    config.auth.token_endpoint = None;
 
     let result = config.validate();
     assert!(result.is_err());
@@ -139,31 +138,6 @@ fn test_config_validate_auth_enabled_without_token_endpoint() {
     assert!(
         error
             .to_string()
-            .contains("Auth token_endpoint must be set when auth is enabled")
+            .contains("Auth token must be set when auth is enabled")
     );
-}
-
-#[test]
-fn test_config_validate_zero_auth_token_expiry() {
-    let mut config = Config::default();
-    config.auth.token_expiry = 0;
-
-    let result = config.validate();
-    assert!(result.is_err());
-    let error = result.unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("Auth token_expiry must be greater than 0")
-    );
-}
-
-#[test]
-fn test_config_validate_auth_enabled_with_token_endpoint() {
-    let mut config = Config::default();
-    config.auth.enabled = true;
-    config.auth.token_endpoint = Some("https://auth.example.com/token".to_string());
-
-    let result = config.validate();
-    assert!(result.is_ok());
 }

@@ -53,7 +53,7 @@ config = { workspace = true }
 clap = { workspace = true }
 
 # HTTP client (will be added when needed)
-# reqwest = { workspace = true }
+reqwest = { workspace = true }
 
 # Logging and tracing
 tracing = { workspace = true }

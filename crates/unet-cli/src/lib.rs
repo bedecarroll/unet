@@ -8,8 +8,9 @@ use unet_core::config::Config;
 use unet_core::prelude::*;
 
 pub mod commands;
-pub mod runtime;
 pub mod dry_run;
+mod remote;
+pub mod runtime;
 
 pub use runtime::{AppContext, Db};
 
@@ -105,12 +106,15 @@ pub async fn run_with(ctx: AppContext, cli: Cli) -> Result<()> {
     // Initialize tracing with config
     init_tracing(&config.logging)?;
 
+    if let Some(server_url) = cli.server.as_deref() {
+        return remote::dispatch(cli.command, server_url, cli.token.as_deref(), cli.output).await;
+    }
+
     // Initialize SQLite datastore via injected runtime
     let database_url = cli.database_url.clone();
     // Optionally emit debug logs controlled by config logging settings
 
     let datastore = build_datastore(&ctx, &database_url, cli.dry_run).await?;
-    
 
     // Execute command
     dispatch_command(cli.command, datastore.as_ref(), cli.output).await
@@ -136,16 +140,17 @@ async fn build_datastore(
 ) -> Result<Box<dyn unet_core::datastore::DataStore>> {
     let db = (ctx.connect)(database_url).await.map_err(|e| {
         error!("Failed to connect to database: {}", e);
-        anyhow::anyhow!("Failed to connect to database: {}", e)
+        anyhow::anyhow!("Failed to connect to database: {e}")
     })?;
 
     (ctx.migrate)(&db).await.map_err(|e| {
         error!("Failed to run migrations: {}", e);
-        anyhow::anyhow!("Failed to run migrations: {}", e)
+        anyhow::anyhow!("Failed to run migrations: {e}")
     })?;
 
-    let base: Box<dyn unet_core::datastore::DataStore> =
-        Box::new(unet_core::datastore::sqlite::SqliteStore::from_connection(db.0));
+    let base: Box<dyn unet_core::datastore::DataStore> = Box::new(
+        unet_core::datastore::sqlite::SqliteStore::from_connection(db.0),
+    );
     if dry_run {
         info!("Dry-run mode enabled: no changes will be persisted");
         Ok(Box::new(crate::dry_run::DryRunStore::new(Arc::from(base))))
@@ -153,7 +158,6 @@ async fn build_datastore(
         Ok(base)
     }
 }
-
 
 async fn dispatch_command(
     command: Commands,
