@@ -3,5 +3,5 @@
 crates/unet-cli/src/commands/nodes/crud_business_logic_tests.rs	898
 crates/unet-cli/src/commands/locations/crud_business_logic_tests.rs	672
 crates/migrations/src/schema_parity_tests.rs	528
-crates/unet-cli/src/commands/export.rs	527
+crates/unet-cli/src/commands/export.rs	547
 crates/unet-core/src/snmp/client/client_operations_tests.rs	502
