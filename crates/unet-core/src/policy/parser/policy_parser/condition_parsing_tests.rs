@@ -1,4 +1,6 @@
-use super::condition_parsing::{parse_comparison, parse_existence_check, parse_not_condition};
+use super::condition_parsing::{
+    parse_comparison, parse_existence_check, parse_not_condition, parse_primary_condition,
+};
 use crate::policy::ast::Condition;
 use crate::policy::grammar::{PolicyGrammar, Rule};
 use pest::{Parser, iterators::Pair};
@@ -53,6 +55,20 @@ fn test_parse_not_condition_wraps_primary_condition() {
 
     assert!(result.is_ok());
     assert!(matches!(result.unwrap(), Condition::Not(_)));
+}
+
+#[test]
+fn test_parse_primary_condition_returns_error_for_unexpected_rule() {
+    let pair = create_test_pair(Rule::identifier, "vendor");
+    let result = parse_primary_condition(pair);
+
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .message
+            .contains("Unexpected rule in primary condition")
+    );
 }
 
 #[test]
