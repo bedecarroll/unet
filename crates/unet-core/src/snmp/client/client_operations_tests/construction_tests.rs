@@ -1,4 +1,3 @@
-use super::fixtures::create_test_session_config;
 use super::super::super::session_management::SessionManager;
 use super::super::ClientOperations;
 use crate::snmp::config::SnmpClientConfig;
