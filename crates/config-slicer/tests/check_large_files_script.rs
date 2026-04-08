@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -19,9 +20,10 @@ fn write_rust_file(root: &Path, relative_path: &str, line_count: usize) {
     let file_path = root.join(relative_path);
     fs::create_dir_all(file_path.parent().unwrap()).unwrap();
 
-    let contents = (1..=line_count)
-        .map(|line_number| format!("// line {line_number}\n"))
-        .collect::<String>();
+    let mut contents = String::new();
+    for line_number in 1..=line_count {
+        writeln!(contents, "// line {line_number}").unwrap();
+    }
 
     fs::write(file_path, contents).unwrap();
 }
@@ -32,7 +34,7 @@ fn write_baseline(root: &Path, entries: &[(&str, usize)]) {
 
     let mut contents = String::from("# path\tmax_lines\n");
     for (relative_path, line_count) in entries {
-        contents.push_str(&format!("{relative_path}\t{line_count}\n"));
+        writeln!(contents, "{relative_path}\t{line_count}").unwrap();
     }
 
     fs::write(baseline_path, contents).unwrap();
