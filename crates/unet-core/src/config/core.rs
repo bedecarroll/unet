@@ -41,8 +41,7 @@ impl Config {
     ///
     /// # Errors
     ///
-    /// Returns an error if the file path contains invalid UTF-8, the file cannot be read,
-    /// or the configuration cannot be parsed as valid TOML.
+    /// Returns an error if the file path contains invalid UTF-8, the file cannot be read, or the configuration cannot be parsed as valid TOML.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_str = path.as_ref().to_str().ok_or_else(|| {
             Error::config(format!(
@@ -81,8 +80,7 @@ impl Config {
     ///
     /// # Errors
     ///
-    /// Returns an error if configuration overrides cannot be set, the configuration cannot be built,
-    /// or the resulting configuration cannot be deserialized.
+    /// Returns an error if configuration overrides cannot be set, the configuration cannot be built, or the resulting configuration cannot be deserialized.
     pub fn from_env_with_source<F>(env_source: F) -> Result<Self>
     where
         F: Fn(&str) -> std::result::Result<String, std::env::VarError>,
@@ -110,8 +108,7 @@ impl Config {
     ///
     /// # Errors
     ///
-    /// Returns an error if the configuration cannot be serialized to TOML
-    /// or if the file cannot be written to the specified path.
+    /// Returns an error if the configuration cannot be serialized to TOML or if the file cannot be written to the specified path.
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let toml_content = toml::to_string_pretty(self)
             .map_err(|e| Error::config(format!("Failed to serialize config: {e}")))?;
@@ -130,10 +127,14 @@ impl Config {
     ///
     /// # Errors
     ///
-    /// Returns an error if any configuration values are invalid, such as empty required fields,
-    /// zero values where positive values are required, or invalid network addresses.
+    /// Returns an error if any configuration values are invalid, such as empty required fields, zero values where positive values are required, or invalid network addresses.
     pub fn validate(&self) -> Result<()> {
         self.validate_database()?;
+        if self.snmp.community.trim().is_empty() {
+            return Err(Error::config(
+                "SNMP community must be configured explicitly",
+            ));
+        }
         self.validate_server()?;
         self.validate_git()?;
         self.validate_auth()?;
@@ -230,7 +231,7 @@ impl Default for Config {
                 file: None,
             },
             snmp: SnmpConfig {
-                community: defaults::snmp::DEFAULT_SNMP_COMMUNITY.to_string(),
+                community: String::new(),
                 timeout: defaults::snmp::DEFAULT_SNMP_TIMEOUT_SECONDS,
                 retries: defaults::snmp::DEFAULT_SNMP_RETRIES,
             },

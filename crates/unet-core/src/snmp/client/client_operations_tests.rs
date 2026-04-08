@@ -42,7 +42,7 @@ fn create_test_session_config() -> SessionConfig {
         address: create_test_address(),
         version: 2,
         credentials: SnmpCredentials::Community {
-            community: "public".to_string(),
+            community: "test-community".to_string(),
         },
         timeout: Duration::from_secs(5),
         retries: 3,

@@ -7,7 +7,7 @@ fn create_test_config() -> SessionConfig {
         address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
         version: 2,
         credentials: SnmpCredentials::Community {
-            community: "public".to_string(),
+            community: "test-community".to_string(),
         },
         timeout: Duration::from_secs(5),
         retries: 3,
@@ -109,6 +109,19 @@ async fn test_create_client_community() {
     match result {
         Ok(_) | Err(SnmpError::Protocol { .. }) => {}
         Err(error) => panic!("Unexpected error type: {error:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_create_client_requires_explicit_community() {
+    let config = SessionConfig::default();
+
+    let result = SnmpSession::create_client(&config).await;
+    assert!(result.is_err());
+    if let Err(SnmpError::Protocol { message }) = result {
+        assert!(message.contains("SNMP community must be configured explicitly"));
+    } else {
+        panic!("Expected protocol error for missing SNMP community");
     }
 }
 

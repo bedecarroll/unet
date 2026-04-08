@@ -3,9 +3,31 @@
 use super::super::core::Config;
 
 #[test]
-fn test_config_validate_valid_config() {
+fn test_config_validate_default_config_requires_snmp_community() {
     let config = Config::default();
-    assert!(config.validate().is_ok());
+    let result = config.validate();
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("SNMP community must be configured explicitly")
+    );
+}
+
+#[test]
+fn test_config_validate_empty_snmp_community() {
+    let mut config = Config::default();
+    config.snmp.community = String::new();
+
+    let result = config.validate();
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("SNMP community must be configured explicitly")
+    );
 }
 
 #[test]

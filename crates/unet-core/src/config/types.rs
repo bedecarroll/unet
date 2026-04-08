@@ -27,7 +27,7 @@ pub struct LoggingConfig {
 /// SNMP configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SnmpConfig {
-    /// Default SNMP community string
+    /// SNMP community string, configured explicitly for runtime use
     pub community: String,
     /// SNMP timeout in seconds
     pub timeout: u64,

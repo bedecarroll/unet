@@ -12,7 +12,7 @@ mod snmp_config_tests {
         let creds = SnmpCredentials::default();
         match creds {
             SnmpCredentials::Community { community } => {
-                assert_eq!(community, "public");
+                assert!(community.is_empty());
             }
             SnmpCredentials::UserBased { .. } => panic!("Expected Community credentials"),
         }
@@ -96,7 +96,7 @@ mod snmp_config_tests {
         // Test default credentials
         match config.credentials {
             SnmpCredentials::Community { community } => {
-                assert_eq!(community, "public");
+                assert!(community.is_empty());
             }
             SnmpCredentials::UserBased { .. } => panic!("Expected Community credentials"),
         }

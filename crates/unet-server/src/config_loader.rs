@@ -238,8 +238,46 @@ level = "info"
 
     #[test]
     fn test_initialize_app() {
+        let mut temp_file = NamedTempFile::with_suffix(".toml").unwrap();
+        writeln!(
+            temp_file,
+            r#"
+[database]
+url = "sqlite://test.db"
+max_connections = 10
+timeout = 30
+
+[logging]
+level = "info"
+format = "text"
+
+[snmp]
+community = "test-community"
+timeout = 5
+retries = 3
+
+[server]
+host = "0.0.0.0"
+port = 3000
+max_request_size = 1048576
+
+[git]
+branch = "main"
+sync_interval = 300
+
+[domain]
+default_domain = "example.com"
+search_domains = []
+
+[auth]
+enabled = false
+token = "bed-24-secret"
+"#
+        )
+        .unwrap();
+
         let args = Args {
-            config: None,
+            config: Some(temp_file.path().to_path_buf()),
             host: Some("127.0.0.1".to_string()),
             port: Some(8080),
             database_url: "sqlite://test.db".to_string(),
@@ -253,5 +291,25 @@ level = "info"
         assert_eq!(config.server.port, 8080);
         assert_eq!(config.logging.level, "warn");
         assert_eq!(db_url, "sqlite://test.db");
+    }
+
+    #[test]
+    fn test_initialize_app_requires_explicit_snmp_community() {
+        let args = Args {
+            config: None,
+            host: Some("127.0.0.1".to_string()),
+            port: Some(8080),
+            database_url: "sqlite://test.db".to_string(),
+            log_level: Some("warn".to_string()),
+        };
+
+        let result = initialize_app(&args);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("SNMP community must be configured explicitly")
+        );
     }
 }
