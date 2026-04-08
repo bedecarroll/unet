@@ -47,6 +47,9 @@ mod tests {
             )))
         });
         store
+            .expect_get_node_polling_task()
+            .returning(|_| ready_ok(None));
+        store
             .expect_get_node_interfaces()
             .returning(|_| ready_ok(Vec::<unet_core::models::derived::InterfaceStatus>::new()));
         store
