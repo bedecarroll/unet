@@ -178,15 +178,14 @@ THEN ASSERT custom_data.redundancy_configured IS true
 ./unet-server --host 0.0.0.0 --port 8080 --database-url sqlite://network.db
 ```
 
-### 2. Use CLI with Remote Server
+### 2. Use the CLI Against the Server
 
 ```bash
-# Set server URL
-export UNET_SERVER=http://localhost:8080
+# Query the server from the CLI
+./unet --server http://localhost:8080 nodes list
 
-# Now CLI commands use the server
-./unet nodes list
-./unet policy eval network-standards.rules
+# Include a bearer token when server auth is enabled
+./unet --server http://localhost:8080 --token bed-24-secret nodes list
 ```
 
 ### 3. Use the API Directly
@@ -294,9 +293,6 @@ EOF
 # Database location
 export UNET_DATABASE_URL="sqlite:///path/to/unet.db"
 
-# Server URL for remote operations
-export UNET_SERVER="http://unet-server:8080"
-
 # Default output format
 export UNET_OUTPUT_FORMAT="json"
 ```
@@ -308,7 +304,6 @@ Create `~/.config/unet/config.toml`:
 ```toml
 [defaults]
 database_url = "sqlite:///home/user/network/unet.db"
-server_url = "http://unet-server:8080"
 output_format = "table"
 
 [logging]

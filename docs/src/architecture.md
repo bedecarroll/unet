@@ -155,7 +155,7 @@ Commands:
 #### Features
 
 - **Multiple Output Formats**: Table, JSON, YAML
-- **Local & Remote Operation**: Direct database or HTTP API
+- **Local and Remote Operation**: Direct datastore access or authenticated remote node API requests
 - **Comprehensive Validation**: Input checking and error reporting
 - **Pagination Support**: Handle large datasets efficiently
 

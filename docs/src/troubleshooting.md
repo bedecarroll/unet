@@ -317,10 +317,10 @@ unet vendors delete ExampleCorp
 # 5. Use specific filters
 unet nodes list --vendor cisco --role core
 
-# 6. Consider using server mode
+# 6. For remote access, use the CLI server mode or query the HTTP API directly
 unet-server &
-export UNET_SERVER=http://localhost:8080
-unet nodes list  # Now uses HTTP API
+unet --server http://localhost:8080 nodes list
+curl http://localhost:8080/api/v1/nodes
 ```
 
 ### Memory Usage Issues
@@ -461,7 +461,6 @@ rm -f test_*.db
 ```bash
 # 1. Check variable names
 echo $UNET_DATABASE_URL
-echo $UNET_SERVER
 
 # 2. Export variables properly
 export UNET_DATABASE_URL="sqlite:///path/to/db"

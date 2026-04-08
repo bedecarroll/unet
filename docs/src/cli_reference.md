@@ -7,7 +7,7 @@
 
 ## Overview
 
-μNet provides a comprehensive command-line interface for network configuration management. The CLI supports local SQLite and remote (HTTP API) operation modes.
+μNet provides a comprehensive command-line interface for network configuration management. The CLI supports direct local datastore access and remote node API operations through `--server` plus optional `--token` bearer authentication.
 
 **Binary Name:** `unet`  
 **Current Version:** 0.1.0  
@@ -19,8 +19,9 @@
 # Local SQLite mode (default)
 unet nodes list
 
-# Remote server mode
+# Remote server mode for node commands
 unet --server http://localhost:8080 nodes list
+unet --server http://localhost:8080 --token bed-24-secret nodes list
 
 # Import sample data (create your own JSON files)
 unet import your-locations.json
@@ -36,8 +37,8 @@ unet import your-links.json
 |--------|---------------------|---------|-------------|
 | `-c, --config <FILE>` | `UNET_CONFIG` | - | Configuration file path |
 | `-d, --database-url <URL>` | `UNET_DATABASE_URL` | `sqlite://unet.db` | Database connection URL |
-| `-s, --server <URL>` | `UNET_SERVER` | - | Server URL for remote operations |
-| `-t, --token <TOKEN>` | `UNET_TOKEN` | - | Authentication token |
+| `-s, --server <URL>` | - | - | Remote server URL for supported node commands |
+| `-t, --token <TOKEN>` | - | - | Bearer token sent with remote requests when required |
 | `-f, --output <FORMAT>` | - | `table` | Output format: table, json, yaml |
 | `-v, --verbose` | - | - | Enable verbose logging |
 
@@ -517,8 +518,12 @@ Set environment variables to avoid repeating common options:
 
 ```bash
 export UNET_DATABASE_URL="sqlite:///path/to/unet.db"
-export UNET_SERVER="http://localhost:8080"
-export UNET_TOKEN="your-auth-token"
+```
+
+Remote mode is currently configured with CLI flags rather than environment variables:
+
+```bash
+unet --server http://localhost:8080 --token bed-24-secret nodes list
 ```
 
 ---

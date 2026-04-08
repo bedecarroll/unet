@@ -31,11 +31,11 @@ pub struct Cli {
     #[arg(short, long, default_value = "sqlite://unet.db")]
     pub database_url: String,
 
-    /// Server URL for remote operations
+    /// Server URL for remote node API operations
     #[arg(short, long)]
     pub server: Option<String>,
 
-    /// Authentication token
+    /// Bearer token used for authenticated remote requests
     #[arg(short, long)]
     pub token: Option<String>,
 

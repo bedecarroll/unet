@@ -4,13 +4,13 @@
 //! against an in-memory `SQLite` schema; a few smoke tests invoke the binary.
 
 use assert_cmd::Command;
+use clap::Parser;
 use predicates::prelude::*;
-use tempfile::TempDir;
-use unet_cli::{Cli, AppContext, Db};
 use std::future::Future;
 use std::pin::Pin;
-use clap::Parser;
+use tempfile::TempDir;
 use test_support::sqlite::entity_db;
+use unet_cli::{AppContext, Cli, Db};
 
 /// Create a test command with in-memory database
 fn create_test_command() -> (Command, TempDir) {
@@ -145,6 +145,48 @@ fn test_invalid_database_url() {
         .failure();
 }
 
+#[test]
+fn test_server_and_token_flags_parse_for_remote_mode() {
+    let cli = Cli::parse_from([
+        "unet",
+        "--server",
+        "http://localhost:8080",
+        "--token",
+        "secret-token",
+        "nodes",
+        "list",
+    ]);
+
+    assert_eq!(cli.server.as_deref(), Some("http://localhost:8080"));
+    assert_eq!(cli.token.as_deref(), Some("secret-token"));
+}
+
+#[tokio::test]
+async fn test_dry_run_vendor_add_does_not_persist_changes() {
+    use unet_core::datastore::{DataStore, sqlite::SqliteStore};
+
+    let conn = entity_db().await;
+    let connect_conn = conn.clone();
+    let connect = Box::new(move |_url: &str| {
+        let conn = connect_conn.clone();
+        Box::pin(async move { Ok::<Db, anyhow::Error>(Db(conn)) })
+            as Pin<Box<dyn Future<Output = anyhow::Result<Db>> + Send>>
+    });
+    let migrate = Box::new(|_db: &Db| {
+        Box::pin(async { Ok::<(), anyhow::Error>(()) })
+            as Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send>>
+    });
+    let ctx = AppContext { connect, migrate };
+
+    let vendor_name = format!("dry-run-vendor-{}", uuid::Uuid::new_v4());
+    let cli = Cli::parse_from(["unet", "--dry-run", "vendors", "add", &vendor_name]);
+    unet_cli::run_with(ctx, cli).await.unwrap();
+
+    let store = SqliteStore::from_connection(conn);
+    let vendors = store.list_vendors().await.unwrap();
+    assert!(!vendors.contains(&vendor_name));
+}
+
 #[tokio::test]
 async fn test_verbose_flag() {
     let res = run_in_process(["unet", "--verbose", "nodes", "list"]).await;
@@ -187,7 +229,7 @@ search_domains = []
 
 [auth]
 enabled = false
-token_expiry = 3600
+token = "bed-24-secret"
 "#;
     std::fs::write(temp_config.path(), toml_content).expect("Failed to write to temp config");
 
