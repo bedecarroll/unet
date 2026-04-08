@@ -12,6 +12,8 @@ use crate::policy::PolicyExecutionResult;
 
 pub mod helpers;
 pub mod sqlite;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod testing;
 #[cfg(test)]
 mod tests;
 pub mod transaction_helpers;

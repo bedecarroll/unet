@@ -4,13 +4,9 @@ mod tests {
     use crate::commands::nodes::types::ShowNodeArgs;
     use uuid::Uuid;
 
-    // Tests for ShowNodeArgs argument structure
-
     #[tokio::test]
     async fn test_show_node_args_structure() {
-        // Test ShowNodeArgs structure and field access
         let node_id = Uuid::new_v4();
-
         let args = ShowNodeArgs {
             id: node_id,
             include_status: true,
@@ -26,9 +22,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_show_node_args_all_false() {
-        // Test ShowNodeArgs with all flags false
         let node_id = Uuid::new_v4();
-
         let args = ShowNodeArgs {
             id: node_id,
             include_status: false,
@@ -44,255 +38,80 @@ mod tests {
 
     #[tokio::test]
     async fn test_show_node_mixed_flags() {
-        // Test various combinations of flags to ensure all code paths
         let node_id = Uuid::new_v4();
 
-        // Test include_status + show_interfaces
         let args1 = ShowNodeArgs {
             id: node_id,
             include_status: true,
             show_interfaces: true,
             show_system_info: false,
         };
-
         assert_eq!(args1.id, node_id);
         assert!(args1.include_status);
         assert!(args1.show_interfaces);
         assert!(!args1.show_system_info);
 
-        // Test include_status + show_system_info
         let args2 = ShowNodeArgs {
             id: node_id,
             include_status: true,
             show_interfaces: false,
             show_system_info: true,
         };
-
         assert_eq!(args2.id, node_id);
         assert!(args2.include_status);
         assert!(!args2.show_interfaces);
         assert!(args2.show_system_info);
 
-        // Test show_interfaces + show_system_info
         let args3 = ShowNodeArgs {
             id: node_id,
             include_status: false,
             show_interfaces: true,
             show_system_info: true,
         };
-
         assert_eq!(args3.id, node_id);
         assert!(!args3.include_status);
         assert!(args3.show_interfaces);
         assert!(args3.show_system_info);
     }
 }
+
 #[cfg(test)]
 mod exec_tests {
     use super::super::show::show_node;
     use super::super::types::ShowNodeArgs;
-    use async_trait::async_trait;
-    use std::collections::HashMap;
-    use unet_core::datastore::DataStore;
+    use unet_core::datastore::{
+        MockDataStore,
+        testing::{ready_err, ready_ok},
+        types::DataStoreError,
+    };
     use uuid::Uuid;
 
-    #[derive(Clone)]
-    struct NodeOnlyStore {
-        node: unet_core::models::Node,
-        fail_status: bool,
-    }
+    fn store_for_show(node: unet_core::models::Node, fail_status: bool) -> MockDataStore {
+        let node_for_lookup = node.clone();
+        let node_for_status = node.clone();
+        let mut store = MockDataStore::new();
+        store
+            .expect_get_node_required()
+            .returning(move |_| ready_ok(node_for_lookup.clone()));
 
-    #[async_trait]
-    impl DataStore for NodeOnlyStore {
-        fn name(&self) -> &'static str {
-            "node-only"
-        }
-        async fn health_check(&self) -> unet_core::datastore::DataStoreResult<()> {
-            Ok(())
-        }
-        async fn begin_transaction(
-            &self,
-        ) -> unet_core::datastore::DataStoreResult<Box<dyn unet_core::datastore::Transaction>>
-        {
-            unimplemented!("not needed")
-        }
-        async fn create_node(
-            &self,
-            _node: &unet_core::models::Node,
-        ) -> unet_core::datastore::DataStoreResult<unet_core::models::Node> {
-            unimplemented!("not needed")
-        }
-        async fn get_node(
-            &self,
-            _id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Option<unet_core::models::Node>> {
-            Ok(Some(self.node.clone()))
-        }
-        async fn list_nodes(
-            &self,
-            _options: &unet_core::datastore::QueryOptions,
-        ) -> unet_core::datastore::DataStoreResult<
-            unet_core::datastore::types::PagedResult<unet_core::models::Node>,
-        > {
-            Ok(unet_core::datastore::types::PagedResult::new(
-                vec![],
-                0,
-                None,
-            ))
-        }
-        async fn update_node(
-            &self,
-            node: &unet_core::models::Node,
-        ) -> unet_core::datastore::DataStoreResult<unet_core::models::Node> {
-            Ok(node.clone())
-        }
-        async fn delete_node(&self, _id: &Uuid) -> unet_core::datastore::DataStoreResult<()> {
-            unimplemented!("not needed")
-        }
-        async fn get_nodes_by_location(
-            &self,
-            _location_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Vec<unet_core::models::Node>> {
-            unimplemented!("not needed")
-        }
-        async fn search_nodes_by_name(
-            &self,
-            _name: &str,
-        ) -> unet_core::datastore::DataStoreResult<Vec<unet_core::models::Node>> {
-            unimplemented!("not needed")
-        }
-        async fn create_link(
-            &self,
-            _link: &unet_core::models::Link,
-        ) -> unet_core::datastore::DataStoreResult<unet_core::models::Link> {
-            unimplemented!("not needed")
-        }
-        async fn get_link(
-            &self,
-            _id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Option<unet_core::models::Link>> {
-            Ok(None)
-        }
-        async fn list_links(
-            &self,
-            _options: &unet_core::datastore::QueryOptions,
-        ) -> unet_core::datastore::DataStoreResult<
-            unet_core::datastore::types::PagedResult<unet_core::models::Link>,
-        > {
-            unimplemented!("not needed")
-        }
-        async fn update_link(
-            &self,
-            _link: &unet_core::models::Link,
-        ) -> unet_core::datastore::DataStoreResult<unet_core::models::Link> {
-            unimplemented!("not needed")
-        }
-        async fn delete_link(&self, _id: &Uuid) -> unet_core::datastore::DataStoreResult<()> {
-            unimplemented!("not needed")
-        }
-        async fn get_links_for_node(
-            &self,
-            _node_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Vec<unet_core::models::Link>> {
-            unimplemented!("not needed")
-        }
-        async fn get_links_between_nodes(
-            &self,
-            _first_node_id: &Uuid,
-            _second_node_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Vec<unet_core::models::Link>> {
-            unimplemented!("not needed")
-        }
-        async fn create_location(
-            &self,
-            _location: &unet_core::models::Location,
-        ) -> unet_core::datastore::DataStoreResult<unet_core::models::Location> {
-            unimplemented!("not needed")
-        }
-        async fn get_location(
-            &self,
-            _id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Option<unet_core::models::Location>> {
-            Ok(None)
-        }
-        async fn list_locations(
-            &self,
-            _options: &unet_core::datastore::QueryOptions,
-        ) -> unet_core::datastore::DataStoreResult<
-            unet_core::datastore::types::PagedResult<unet_core::models::Location>,
-        > {
-            unimplemented!("not needed")
-        }
-        async fn update_location(
-            &self,
-            _location: &unet_core::models::Location,
-        ) -> unet_core::datastore::DataStoreResult<unet_core::models::Location> {
-            unimplemented!("not needed")
-        }
-        async fn delete_location(&self, _id: &Uuid) -> unet_core::datastore::DataStoreResult<()> {
-            unimplemented!("not needed")
-        }
-        async fn create_vendor(&self, _name: &str) -> unet_core::datastore::DataStoreResult<()> {
-            unimplemented!("not needed")
-        }
-        async fn list_vendors(&self) -> unet_core::datastore::DataStoreResult<Vec<String>> {
-            unimplemented!("not needed")
-        }
-        async fn delete_vendor(&self, _name: &str) -> unet_core::datastore::DataStoreResult<()> {
-            unimplemented!("not needed")
-        }
-        async fn batch_nodes(
-            &self,
-            _operations: &[unet_core::datastore::BatchOperation<unet_core::models::Node>],
-        ) -> unet_core::datastore::DataStoreResult<unet_core::datastore::types::BatchResult>
-        {
-            unimplemented!("not needed")
-        }
-        async fn batch_links(
-            &self,
-            _operations: &[unet_core::datastore::BatchOperation<unet_core::models::Link>],
-        ) -> unet_core::datastore::DataStoreResult<unet_core::datastore::types::BatchResult>
-        {
-            unimplemented!("not needed")
-        }
-        async fn batch_locations(
-            &self,
-            _operations: &[unet_core::datastore::BatchOperation<unet_core::models::Location>],
-        ) -> unet_core::datastore::DataStoreResult<unet_core::datastore::types::BatchResult>
-        {
-            unimplemented!("not needed")
-        }
-        async fn get_entity_counts(
-            &self,
-        ) -> unet_core::datastore::DataStoreResult<HashMap<String, usize>> {
-            unimplemented!("not needed")
-        }
-        async fn get_statistics(
-            &self,
-        ) -> unet_core::datastore::DataStoreResult<HashMap<String, serde_json::Value>> {
-            unimplemented!("not needed")
-        }
-        async fn get_node_status(
-            &self,
-            _node_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Option<unet_core::models::derived::NodeStatus>>
-        {
-            if self.fail_status {
-                return Err(unet_core::datastore::types::DataStoreError::InternalError {
+        if fail_status {
+            store.expect_get_node_status().returning(|_| {
+                ready_err(DataStoreError::InternalError {
                     message: "status failed".to_string(),
-                });
-            }
-            Ok(Some(unet_core::models::derived::NodeStatus::new(
-                self.node.id,
-            )))
+                })
+            });
+        } else {
+            store.expect_get_node_status().returning(move |_| {
+                ready_ok(Some(unet_core::models::derived::NodeStatus::new(
+                    node_for_status.id,
+                )))
+            });
         }
-        async fn get_node_interfaces(
-            &self,
-            _node_id: &Uuid,
-        ) -> unet_core::datastore::DataStoreResult<Vec<unet_core::models::derived::InterfaceStatus>>
-        {
-            Ok(Vec::new())
-        }
+
+        store
+            .expect_get_node_interfaces()
+            .returning(|_| ready_ok(Vec::<unet_core::models::derived::InterfaceStatus>::new()));
+        store
     }
 
     fn make_node() -> unet_core::models::Node {
@@ -313,10 +132,7 @@ mod exec_tests {
     #[tokio::test]
     async fn test_show_node_basic_exec() {
         let node = make_node();
-        let store = NodeOnlyStore {
-            node: node.clone(),
-            fail_status: false,
-        };
+        let store = store_for_show(node.clone(), false);
         let args = ShowNodeArgs {
             id: node.id,
             include_status: false,
@@ -330,10 +146,7 @@ mod exec_tests {
     #[tokio::test]
     async fn test_show_node_with_status_and_interfaces_exec() {
         let node = make_node();
-        let store = NodeOnlyStore {
-            node: node.clone(),
-            fail_status: false,
-        };
+        let store = store_for_show(node.clone(), false);
         let args = ShowNodeArgs {
             id: node.id,
             include_status: true,
@@ -347,10 +160,7 @@ mod exec_tests {
     #[tokio::test]
     async fn test_show_node_status_error_branch_exec() {
         let node = make_node();
-        let store = NodeOnlyStore {
-            node: node.clone(),
-            fail_status: true,
-        };
+        let store = store_for_show(node.clone(), true);
         let args = ShowNodeArgs {
             id: node.id,
             include_status: true,

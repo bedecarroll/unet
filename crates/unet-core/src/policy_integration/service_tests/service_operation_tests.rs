@@ -17,7 +17,7 @@ async fn test_evaluate_node_success() {
     ));
     let mut service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
     let node = create_test_node();
 
     // Note: This test assumes load_policies will work.
@@ -36,7 +36,7 @@ async fn test_evaluate_node_engine_failure() {
     let mock_engine = Arc::new(MockPolicyEvaluationEngine::with_failure());
     let mut service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
     let node = create_test_node();
 
     let result = service.evaluate_node(&datastore, &node).await;
@@ -52,7 +52,7 @@ async fn test_evaluate_all_nodes_success() {
     let mock_engine = Arc::new(MockPolicyEvaluationEngine::with_results(mock_results));
     let mut service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
 
     let result = service.evaluate_all_nodes(&datastore).await;
 
@@ -66,7 +66,7 @@ async fn test_evaluate_all_nodes_engine_failure() {
     let mock_engine = Arc::new(MockPolicyEvaluationEngine::with_failure());
     let mut service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
 
     let result = service.evaluate_all_nodes(&datastore).await;
 
@@ -81,7 +81,7 @@ async fn test_evaluate_with_orchestration() {
     let mock_engine = Arc::new(MockPolicyEvaluationEngine::with_results(mock_results));
     let mut service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
 
     let result = service.evaluate_with_orchestration(&datastore).await;
 
@@ -95,7 +95,7 @@ async fn test_store_results_success() {
     let mock_engine = Arc::new(MockPolicyEvaluationEngine::new());
     let service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
     let node_id = Uuid::new_v4();
     let results = vec![create_test_policy_result()];
 
@@ -110,7 +110,7 @@ async fn test_store_results_failure() {
     let mock_engine = Arc::new(MockPolicyEvaluationEngine::with_failure());
     let service = PolicyService::with_engine(git_config, mock_engine);
 
-    let datastore = MockDataStore;
+    let datastore = MockDataStore::new();
     let node_id = Uuid::new_v4();
     let results = vec![create_test_policy_result()];
 
