@@ -2,6 +2,12 @@
 
 use super::super::core::Config;
 
+fn config_with_explicit_snmp_community() -> Config {
+    let mut config = Config::default();
+    config.snmp.community = "test-community".to_string();
+    config
+}
+
 #[test]
 fn test_config_validate_default_config_requires_snmp_community() {
     let config = Config::default();
@@ -32,7 +38,7 @@ fn test_config_validate_empty_snmp_community() {
 
 #[test]
 fn test_config_validate_empty_database_url() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.database.url = String::new();
 
     let result = config.validate();
@@ -43,7 +49,7 @@ fn test_config_validate_empty_database_url() {
 
 #[test]
 fn test_config_validate_zero_database_max_connections() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.database.max_connections = Some(0);
 
     let result = config.validate();
@@ -58,7 +64,7 @@ fn test_config_validate_zero_database_max_connections() {
 
 #[test]
 fn test_config_validate_zero_database_timeout() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.database.timeout = Some(0);
 
     let result = config.validate();
@@ -73,7 +79,7 @@ fn test_config_validate_zero_database_timeout() {
 
 #[test]
 fn test_config_validate_empty_server_host() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.server.host = String::new();
 
     let result = config.validate();
@@ -84,7 +90,7 @@ fn test_config_validate_empty_server_host() {
 
 #[test]
 fn test_config_validate_zero_server_port() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.server.port = 0;
 
     let result = config.validate();
@@ -99,7 +105,7 @@ fn test_config_validate_zero_server_port() {
 
 #[test]
 fn test_config_validate_zero_max_request_size() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.server.max_request_size = 0;
 
     let result = config.validate();
@@ -114,7 +120,7 @@ fn test_config_validate_zero_max_request_size() {
 
 #[test]
 fn test_config_validate_invalid_server_address() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.server.host = "invalid host with spaces".to_string();
 
     let result = config.validate();
@@ -125,7 +131,7 @@ fn test_config_validate_invalid_server_address() {
 
 #[test]
 fn test_config_validate_empty_git_branch() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.git.branch = String::new();
 
     let result = config.validate();
@@ -136,7 +142,7 @@ fn test_config_validate_empty_git_branch() {
 
 #[test]
 fn test_config_validate_zero_git_sync_interval() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.git.sync_interval = 0;
 
     let result = config.validate();
@@ -151,7 +157,7 @@ fn test_config_validate_zero_git_sync_interval() {
 
 #[test]
 fn test_config_validate_auth_enabled_without_token() {
-    let mut config = Config::default();
+    let mut config = config_with_explicit_snmp_community();
     config.auth.enabled = true;
 
     let result = config.validate();
