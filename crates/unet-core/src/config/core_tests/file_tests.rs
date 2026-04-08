@@ -34,7 +34,7 @@ search_domains = []
 
 [auth]
 enabled = true
-token_expiry = 7200
+token = "bed-24-secret"
 "#;
 
     let temp_file = NamedTempFile::with_suffix(".toml").unwrap();
@@ -61,7 +61,48 @@ token_expiry = 7200
     assert_eq!(config.git.sync_interval, 600);
 
     assert!(config.auth.enabled);
-    assert_eq!(config.auth.token_expiry, 7200);
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_config_from_file_auth_token_contract() {
+    let toml_content = r#"
+[database]
+url = "sqlite://test.db"
+max_connections = 10
+timeout = 30
+
+[logging]
+level = "info"
+format = "text"
+
+[server]
+host = "127.0.0.1"
+port = 8080
+max_request_size = 1048576
+
+[snmp]
+community = "public"
+timeout = 5
+retries = 3
+
+[git]
+branch = "main"
+sync_interval = 300
+
+[domain]
+search_domains = []
+
+[auth]
+enabled = true
+token = "bed-24-secret"
+"#;
+
+    let temp_file = NamedTempFile::with_suffix(".toml").unwrap();
+    std::fs::write(temp_file.path(), toml_content).unwrap();
+
+    let config = Config::from_file(temp_file.path()).unwrap();
+    assert!(config.validate().is_ok());
 }
 
 #[test]

@@ -317,8 +317,9 @@ unet vendors delete ExampleCorp
 # 5. Use specific filters
 unet nodes list --vendor cisco --role core
 
-# 6. For remote access, query the HTTP API directly
+# 6. For remote access, use the CLI server mode or query the HTTP API directly
 unet-server &
+unet --server http://localhost:8080 nodes list
 curl http://localhost:8080/api/v1/nodes
 ```
 

@@ -17,7 +17,7 @@ mod list;
 mod monitoring;
 mod polling;
 mod show;
-mod types;
+pub(crate) mod types;
 mod update;
 
 #[cfg(test)]
@@ -28,6 +28,8 @@ mod advanced_tests;
 mod compare_tests;
 #[cfg(test)]
 mod delete_exec_tests;
+#[cfg(test)]
+mod dispatch_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
@@ -46,8 +48,6 @@ mod show_tests;
 mod update_exec_tests;
 #[cfg(test)]
 mod update_tests;
-#[cfg(test)]
-mod dispatch_tests;
 
 /// Execute a node command
 ///

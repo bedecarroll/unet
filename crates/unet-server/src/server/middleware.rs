@@ -8,7 +8,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
 use unet_core::config::Config;
 
-use super::{app_state::initialize_app_state, routes::create_router};
+use super::{app_state::initialize_app_state, auth::ApiAuth, routes::create_router};
 
 /// Run the μNet HTTP server
 ///
@@ -22,7 +22,7 @@ pub async fn run(config: Config, database_url: String) -> Result<()> {
             .server
             .host
             .parse::<std::net::IpAddr>()
-            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
         config.server.port,
     ));
     info!("μNet server listening on {}", addr);
@@ -35,8 +35,9 @@ pub async fn run(config: Config, database_url: String) -> Result<()> {
 
 /// Create the Axum application with all routes
 pub async fn create_app(config: Config, database_url: String) -> Result<Router> {
+    let auth = ApiAuth::from_config(&config.auth);
     let app_state = initialize_app_state(config.clone(), database_url).await?;
-    let router = create_router();
+    let router = create_router(auth);
     let app = router.with_state(app_state).layer(
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())

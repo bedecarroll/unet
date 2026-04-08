@@ -178,7 +178,17 @@ THEN ASSERT custom_data.redundancy_configured IS true
 ./unet-server --host 0.0.0.0 --port 8080 --database-url sqlite://network.db
 ```
 
-### 2. Use the API Directly
+### 2. Use the CLI Against the Server
+
+```bash
+# Query the server from the CLI
+./unet --server http://localhost:8080 nodes list
+
+# Include a bearer token when server auth is enabled
+./unet --server http://localhost:8080 --token bed-24-secret nodes list
+```
+
+### 3. Use the API Directly
 
 ```bash
 # List nodes via API

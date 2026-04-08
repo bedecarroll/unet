@@ -146,23 +146,19 @@ fn test_invalid_database_url() {
 }
 
 #[test]
-fn test_server_flag_is_rejected() {
-    let (mut cmd, _temp_dir) = create_test_command();
+fn test_server_and_token_flags_parse_for_remote_mode() {
+    let cli = Cli::parse_from([
+        "unet",
+        "--server",
+        "http://localhost:8080",
+        "--token",
+        "secret-token",
+        "nodes",
+        "list",
+    ]);
 
-    cmd.args(["--server", "http://localhost:8080", "nodes", "list"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("unexpected argument '--server'"));
-}
-
-#[test]
-fn test_token_flag_is_rejected() {
-    let (mut cmd, _temp_dir) = create_test_command();
-
-    cmd.args(["--token", "secret-token", "nodes", "list"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("unexpected argument '--token'"));
+    assert_eq!(cli.server.as_deref(), Some("http://localhost:8080"));
+    assert_eq!(cli.token.as_deref(), Some("secret-token"));
 }
 
 #[tokio::test]
@@ -233,7 +229,7 @@ search_domains = []
 
 [auth]
 enabled = false
-token_expiry = 3600
+token = "bed-24-secret"
 "#;
     std::fs::write(temp_config.path(), toml_content).expect("Failed to write to temp config");
 
