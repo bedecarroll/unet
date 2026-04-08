@@ -22,7 +22,7 @@ pub async fn run(config: Config, database_url: String) -> Result<()> {
             .server
             .host
             .parse::<std::net::IpAddr>()
-            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
+            .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)),
         config.server.port,
     ));
     info!("μNet server listening on {}", addr);

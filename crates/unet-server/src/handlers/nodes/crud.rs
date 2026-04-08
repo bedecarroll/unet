@@ -155,19 +155,20 @@ pub async fn update_node(
         })?;
 
     // Update fields that were provided
-    let mut fqdn_needs_update = false;
-
-    if let Some(name) = payload.name {
+    let name_updated = if let Some(name) = payload.name {
         node.name = name;
-        fqdn_needs_update = true;
-    }
-
-    if let Some(domain) = payload.domain {
+        true
+    } else {
+        false
+    };
+    let domain_updated = if let Some(domain) = payload.domain {
         node.domain = domain;
-        fqdn_needs_update = true;
-    }
+        true
+    } else {
+        false
+    };
 
-    if fqdn_needs_update {
+    if name_updated || domain_updated {
         node.update_fqdn();
     }
 

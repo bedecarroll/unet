@@ -81,7 +81,7 @@ where
             tracing::warn!("{}", error_msg);
 
             if !continue_on_error {
-                return Err(anyhow::anyhow!("Import failed: {}", error_msg));
+                return Err(anyhow::anyhow!("Import failed: {error_msg}"));
             }
         }
     }

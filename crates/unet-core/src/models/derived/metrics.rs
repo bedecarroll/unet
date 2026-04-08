@@ -46,22 +46,22 @@ impl PerformanceMetrics {
             load_average: None,
         };
 
-        let mut has_data = false;
-
         // Try to extract vendor-specific CPU metrics
         // Cisco CPU utilization (example)
         if let Some(SnmpValue::Integer(cpu)) = snmp_data.get("1.3.6.1.4.1.9.2.1.3.0") {
             metrics.cpu_utilization = Self::percentage_to_u8(*cpu);
-            has_data = true;
         }
 
         // Cisco memory utilization (example)
         if let Some(SnmpValue::Integer(mem)) = snmp_data.get("1.3.6.1.4.1.9.2.1.8.0") {
             metrics.memory_utilization = Self::percentage_to_u8(*mem);
-            has_data = true;
         }
 
-        if has_data { Some(metrics) } else { None }
+        if metrics.cpu_utilization.is_some() || metrics.memory_utilization.is_some() {
+            Some(metrics)
+        } else {
+            None
+        }
     }
 }
 

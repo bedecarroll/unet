@@ -29,7 +29,7 @@ pub use transaction_helpers::{
     batch_with_transaction, retry_transaction, with_transaction, with_transaction_control,
 };
 
-/// Main DataStore trait for abstracting data access
+/// Main `DataStore` trait for abstracting data access
 #[async_trait]
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait DataStore: Send + Sync {
@@ -335,7 +335,7 @@ pub trait DataStore: Send + Sync {
         Ok(Vec::new())
     }
 
-    /// Updates custom_data field for a node (used by SET actions)
+    /// Updates `custom_data` field for a node (used by SET actions)
     async fn update_node_custom_data(
         &self,
         node_id: &Uuid,

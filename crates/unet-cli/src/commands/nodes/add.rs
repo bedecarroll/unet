@@ -50,7 +50,7 @@ pub async fn add_node(
     if let Some(management_ip_str) = args.management_ip {
         let management_ip = management_ip_str
             .parse()
-            .map_err(|e| anyhow::anyhow!("Invalid management IP '{}': {}", management_ip_str, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid management IP '{management_ip_str}': {e}"))?;
         builder = builder.management_ip(management_ip);
     }
 
@@ -60,7 +60,7 @@ pub async fn add_node(
 
     let node = builder
         .build()
-        .map_err(|e| anyhow::anyhow!("Node validation failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Node validation failed: {e}"))?;
 
     // Create node in datastore
     let created_node = datastore.create_node(&node).await?;

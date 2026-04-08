@@ -8,7 +8,7 @@ use crate::datastore::{DataStore, DataStoreResult};
 use crate::models::Node;
 use crate::policy::{EvaluationContext, PolicyExecutionResult, PolicyResult, PolicyRule};
 
-/// Policy evaluation trait for integrating with DataStore
+/// Policy evaluation trait for integrating with `DataStore`
 #[async_trait]
 pub trait PolicyEvaluationEngine: Send + Sync {
     /// Evaluates policies against a single node

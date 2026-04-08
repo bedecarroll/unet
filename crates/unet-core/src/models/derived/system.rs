@@ -38,53 +38,55 @@ impl SystemInfo {
             services: None,
         };
 
-        let mut has_data = false;
-
         // Extract system description
         if let Some(SnmpValue::String(desc)) = snmp_data.get("1.3.6.1.2.1.1.1.0") {
             system_info.description = Some(desc.clone());
-            has_data = true;
         }
 
         // Extract system object ID
         if let Some(SnmpValue::Oid(oid)) = snmp_data.get("1.3.6.1.2.1.1.2.0") {
             system_info.object_id = Some(oid.clone());
-            has_data = true;
         }
 
         // Extract system uptime
         if let Some(SnmpValue::TimeTicks(ticks)) = snmp_data.get("1.3.6.1.2.1.1.3.0") {
             system_info.uptime_ticks = Some(*ticks);
-            has_data = true;
         }
 
         // Extract system contact
         if let Some(SnmpValue::String(contact)) = snmp_data.get("1.3.6.1.2.1.1.4.0") {
             system_info.contact = Some(contact.clone());
-            has_data = true;
         }
 
         // Extract system name
         if let Some(SnmpValue::String(name)) = snmp_data.get("1.3.6.1.2.1.1.5.0") {
             system_info.name = Some(name.clone());
-            has_data = true;
         }
 
         // Extract system location
         if let Some(SnmpValue::String(location)) = snmp_data.get("1.3.6.1.2.1.1.6.0") {
             system_info.location = Some(location.clone());
-            has_data = true;
         }
 
         // Extract system services
         if let Some(SnmpValue::Integer(services)) = snmp_data.get("1.3.6.1.2.1.1.7.0") {
             if let Ok(services_u32) = u32::try_from(*services) {
                 system_info.services = Some(services_u32);
-                has_data = true;
             }
         }
 
-        if has_data { Some(system_info) } else { None }
+        if system_info.description.is_some()
+            || system_info.object_id.is_some()
+            || system_info.uptime_ticks.is_some()
+            || system_info.contact.is_some()
+            || system_info.name.is_some()
+            || system_info.location.is_some()
+            || system_info.services.is_some()
+        {
+            Some(system_info)
+        } else {
+            None
+        }
     }
 }
 
@@ -116,5 +118,18 @@ mod tests {
         assert_eq!(info.description, Some("Test Device v1.0".to_string()));
         assert_eq!(info.uptime_ticks, Some(12_345_678));
         assert_eq!(info.name, Some("test-router".to_string()));
+    }
+
+    #[test]
+    fn test_system_info_from_snmp_with_services_only() {
+        let mut snmp_data = HashMap::new();
+        snmp_data.insert("1.3.6.1.2.1.1.7.0".to_string(), SnmpValue::Integer(72));
+
+        let system_info = SystemInfo::from_snmp(&snmp_data);
+        assert!(system_info.is_some());
+
+        let info = system_info.unwrap();
+        assert_eq!(info.services, Some(72));
+        assert_eq!(info.name, None);
     }
 }

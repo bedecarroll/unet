@@ -25,5 +25,7 @@ allowed-duplicate-crates = [
     "hashbrown",
     "thiserror",
     "thiserror-impl",
-    "toml_datetime"
+    "toml_datetime",
+    # `sea-orm-migration` pulls Redox-only variants through `sea-orm-cli`.
+    "redox_syscall",
 ]
