@@ -2,6 +2,8 @@
 
 mod action_parsing;
 mod condition_parsing;
+#[cfg(test)]
+mod condition_parsing_tests;
 pub mod core;
 mod entry_points;
 mod tests;
