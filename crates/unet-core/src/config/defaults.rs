@@ -93,9 +93,3 @@ pub mod git {
     /// Default sync interval in seconds (5 minutes)
     pub const DEFAULT_SYNC_INTERVAL_SECONDS: u64 = 300;
 }
-
-/// Authentication configuration constants
-pub mod auth {
-    /// Default token expiry in seconds (1 hour)
-    pub const DEFAULT_TOKEN_EXPIRY_SECONDS: u64 = 3600;
-}
