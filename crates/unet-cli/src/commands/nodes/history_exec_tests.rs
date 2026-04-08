@@ -160,4 +160,62 @@ mod tests {
             assert!(!output.to_string().contains("implementation_required"));
         }
     }
+
+    #[tokio::test]
+    async fn test_build_history_output_simplifies_interfaces_when_not_detailed() {
+        let node = make_node();
+        let mut store = MockDataStore::new();
+        let history = vec![snapshot(node.id)];
+
+        store
+            .expect_get_node_status_history()
+            .times(2)
+            .returning(move |_, _| ready_ok(history.clone()));
+
+        let interface_output = build_history_output(
+            &node,
+            HistoryNodeArgs {
+                id: node.id,
+                history_type: HistoryType::Interfaces,
+                limit: 5,
+                last_hours: None,
+                detailed: false,
+            },
+            &store,
+        )
+        .await
+        .unwrap();
+
+        let interfaces = interface_output["interface_history"][0]["interfaces"]
+            .as_array()
+            .unwrap();
+        assert_eq!(
+            interfaces[0]["name"],
+            serde_json::json!("GigabitEthernet0/1")
+        );
+        assert!(interfaces[0]["speed"].is_null());
+
+        let complete_output = build_history_output(
+            &node,
+            HistoryNodeArgs {
+                id: node.id,
+                history_type: HistoryType::All,
+                limit: 5,
+                last_hours: None,
+                detailed: false,
+            },
+            &store,
+        )
+        .await
+        .unwrap();
+
+        let complete_interfaces = complete_output["complete_history"][0]["interfaces"]
+            .as_array()
+            .unwrap();
+        assert_eq!(
+            complete_interfaces[0]["oper_status"],
+            serde_json::json!(InterfaceOperStatus::Up)
+        );
+        assert!(complete_output["complete_history"][0]["vendor_metrics"].is_null());
+    }
 }

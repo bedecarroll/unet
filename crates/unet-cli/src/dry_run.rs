@@ -257,7 +257,7 @@ impl DataStore for DryRunStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unet_core::datastore::MockDataStore;
+    use unet_core::datastore::{MockDataStore, testing::ready_ok};
     use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
 
     #[tokio::test]
@@ -277,5 +277,23 @@ mod tests {
         let updated = store.update_node(&node).await.unwrap();
         assert_eq!(updated.name, node.name);
         assert!(store.delete_node(&node.id).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_dry_run_update_node_custom_data_returns_not_found_for_missing_node() {
+        let node_id = Uuid::new_v4();
+        let mut mock = MockDataStore::new();
+        mock.expect_get_node().returning(|_| ready_ok(None));
+        let store = DryRunStore::new(Arc::new(mock));
+
+        let error = store
+            .update_node_custom_data(&node_id, &serde_json::json!({"role": "missing"}))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            unet_core::datastore::types::DataStoreError::NotFound { .. }
+        ));
     }
 }
