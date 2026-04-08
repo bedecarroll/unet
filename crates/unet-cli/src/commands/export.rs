@@ -141,8 +141,7 @@ fn finalize_export(
 
     if !stats.errors.is_empty() {
         return Err(anyhow::anyhow!(
-            "Export completed with {} errors",
-            error_count
+            "Export completed with {error_count} errors"
         ));
     }
 

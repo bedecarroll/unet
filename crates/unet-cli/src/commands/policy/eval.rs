@@ -177,7 +177,7 @@ pub async fn diff_policy(args: DiffPolicyArgs, datastore: &dyn DataStore) -> Res
     let node = match datastore.get_node(&args.node_id).await {
         Ok(Some(node)) => node,
         Ok(None) => return Err(anyhow::anyhow!("Node not found: {}", args.node_id)),
-        Err(e) => return Err(anyhow::anyhow!("Failed to get node: {}", e)),
+        Err(e) => return Err(anyhow::anyhow!("Failed to get node: {e}")),
     };
 
     // Load policies

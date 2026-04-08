@@ -57,7 +57,7 @@ impl SeededDataStore {
     fn snapshot(&self) -> SeededData {
         self.data
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 
@@ -102,7 +102,7 @@ impl DataStore for SeededDataStore {
     async fn update_node(&self, node: &Node) -> DataStoreResult<Node> {
         self.data
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .nodes
             .insert(node.id, node.clone());
         Ok(node.clone())

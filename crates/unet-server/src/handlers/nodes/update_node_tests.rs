@@ -70,6 +70,7 @@ mod tests {
         let Json(ApiResponse { data, success, .. }) = result.unwrap();
         assert!(success);
         assert_eq!(data.node.name, "partially-updated");
+        assert_eq!(data.node.fqdn, "partially-updated.example.com");
         // Other fields should remain unchanged
         assert_eq!(data.node.domain, "example.com");
         assert_eq!(data.node.vendor, Vendor::Cisco);

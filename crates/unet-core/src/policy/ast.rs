@@ -21,11 +21,11 @@ pub struct PolicyRule {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Condition {
     /// Boolean AND operation
-    And(Box<Condition>, Box<Condition>),
+    And(Box<Self>, Box<Self>),
     /// Boolean OR operation  
-    Or(Box<Condition>, Box<Condition>),
+    Or(Box<Self>, Box<Self>),
     /// Boolean NOT operation
-    Not(Box<Condition>),
+    Not(Box<Self>),
     /// Comparison between field and value
     Comparison {
         /// Field reference to compare
@@ -116,9 +116,9 @@ pub enum Value {
     /// Reference to another field
     FieldRef(FieldRef),
     /// Array of values
-    Array(Vec<Value>),
+    Array(Vec<Self>),
     /// Object with key-value pairs  
-    Object(HashMap<String, Value>),
+    Object(HashMap<String, Self>),
 }
 
 impl fmt::Display for FieldRef {

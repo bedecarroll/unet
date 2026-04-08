@@ -46,7 +46,7 @@ pub async fn add_link(
 
     let link = builder
         .build()
-        .map_err(|e| anyhow::anyhow!("Link validation failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Link validation failed: {e}"))?;
 
     // Create link in datastore
     let created_link = datastore.create_link(&link).await?;
