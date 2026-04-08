@@ -18,28 +18,6 @@ async fn setup_test_store() -> SqliteStore {
 }
 
 #[tokio::test]
-async fn test_get_entity_counts_returns_empty_map() {
-    let store = setup_test_store().await;
-
-    let result = store.get_entity_counts().await;
-    assert!(result.is_ok());
-
-    let counts = result.unwrap();
-    assert!(counts.is_empty(), "Expected empty counts map");
-}
-
-#[tokio::test]
-async fn test_get_statistics_returns_empty_map() {
-    let store = setup_test_store().await;
-
-    let result = store.get_statistics().await;
-    assert!(result.is_ok());
-
-    let stats = result.unwrap();
-    assert!(stats.is_empty(), "Expected empty statistics map");
-}
-
-#[tokio::test]
 async fn test_node_delegates_with_mock_data() {
     let store = setup_test_store().await;
     let test_id = Uuid::new_v4();

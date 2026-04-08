@@ -66,18 +66,17 @@ pub async fn list_nodes(
 
     let result = app_state.datastore.list_nodes(&options).await?;
 
-    // Convert to NodeResponse with optional status
     let include_status = query.include_status.unwrap_or(false);
-    let node_responses: Vec<NodeResponse> = result
-        .items
-        .into_iter()
-        .map(|node| {
-            if include_status {
-                // TODO: Fetch actual status from datastore - for now just use None
-            }
-            NodeResponse::from_node(node)
-        })
-        .collect();
+    let mut node_responses = Vec::with_capacity(result.items.len());
+
+    for node in result.items {
+        let status = if include_status {
+            app_state.datastore.get_node_status(&node.id).await?
+        } else {
+            None
+        };
+        node_responses.push(NodeResponse { node, status });
+    }
 
     let paginated = PaginatedResponse {
         data: node_responses,
@@ -155,16 +154,14 @@ pub async fn update_node(
         })?;
 
     // Update fields that were provided
-    let mut fqdn_needs_update = false;
+    let fqdn_needs_update = payload.name.is_some() || payload.domain.is_some();
 
     if let Some(name) = payload.name {
         node.name = name;
-        fqdn_needs_update = true;
     }
 
     if let Some(domain) = payload.domain {
         node.domain = domain;
-        fqdn_needs_update = true;
     }
 
     if fqdn_needs_update {

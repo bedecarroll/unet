@@ -10,6 +10,8 @@ mod tests {
         extract::{Query, State},
         response::Json,
     };
+    use migration::sea_orm::{ActiveModelTrait, Set};
+    use unet_core::entities::node_status;
     use unet_core::models::{DeviceRole, Node, Vendor};
 
     #[tokio::test]
@@ -143,8 +145,28 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_nodes_include_status_flag() {
-        let app_state = setup_test_app_state().await;
-        let _node = create_test_node(&app_state).await;
+        let (connection, app_state) = setup_test_app_state_with_connection().await;
+        let node = create_test_node(&app_state).await;
+
+        node_status::ActiveModel {
+            id: Set("node-list-status".to_string()),
+            node_id: Set(node.id.to_string()),
+            last_updated: Set("2026-04-07T01:02:03Z".to_string()),
+            reachable: Set(true),
+            system_info: Set(Some(
+                r#"{"description":"Listed router","name":"test-node"}"#.to_string(),
+            )),
+            performance: Set(None),
+            environmental: Set(None),
+            vendor_metrics: Set(None),
+            raw_snmp_data: Set(None),
+            last_snmp_success: Set(Some("2026-04-07T01:00:00Z".to_string())),
+            last_error: Set(None),
+            consecutive_failures: Set(0),
+        }
+        .insert(&connection)
+        .await
+        .unwrap();
 
         let query = ListNodesQuery {
             page: None,
@@ -161,8 +183,13 @@ mod tests {
         let Json(ApiResponse { data, success, .. }) = result.unwrap();
         assert!(success);
         assert_eq!(data.data.len(), 1);
-        // Note: status should be populated when include_status is true
-        // This is a placeholder test - actual status behavior depends on implementation
+        assert!(data.data[0].status.is_some());
+        let status = data.data[0].status.as_ref().unwrap();
+        assert!(status.reachable);
+        assert_eq!(
+            status.system_info.as_ref().unwrap().name.as_deref(),
+            Some("test-node")
+        );
     }
 
     #[tokio::test]

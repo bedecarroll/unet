@@ -1,6 +1,6 @@
 //! Main `SQLite` store implementation
 
-use super::{links, locations, nodes, vendors};
+use super::{derived_state, links, locations, metadata, nodes, vendors};
 
 use super::super::DataStore;
 use super::super::types::{
@@ -8,6 +8,7 @@ use super::super::types::{
     Transaction,
 };
 use super::transaction::SqliteTransaction;
+use crate::models::derived::{InterfaceStatus, NodeStatus, PerformanceMetrics};
 use crate::models::{Link, Location, Node};
 use async_trait::async_trait;
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, TransactionTrait};
@@ -210,15 +211,26 @@ impl DataStore for SqliteStore {
 
     // Statistics operations
     async fn get_entity_counts(&self) -> DataStoreResult<HashMap<String, usize>> {
-        // TODO: Implement proper entity counting
-        // For now, return empty counts - this is a placeholder
-        Ok(HashMap::new())
+        metadata::get_entity_counts(self).await
     }
 
     async fn get_statistics(&self) -> DataStoreResult<HashMap<String, serde_json::Value>> {
-        // TODO: Implement proper statistics collection
-        // For now, return empty stats - this is a placeholder
-        Ok(HashMap::new())
+        metadata::get_statistics(self).await
+    }
+
+    async fn get_node_status(&self, node_id: &Uuid) -> DataStoreResult<Option<NodeStatus>> {
+        derived_state::get_node_status(self, node_id).await
+    }
+
+    async fn get_node_interfaces(&self, node_id: &Uuid) -> DataStoreResult<Vec<InterfaceStatus>> {
+        derived_state::get_node_interfaces(self, node_id).await
+    }
+
+    async fn get_node_metrics(
+        &self,
+        node_id: &Uuid,
+    ) -> DataStoreResult<Option<PerformanceMetrics>> {
+        derived_state::get_node_metrics(self, node_id).await
     }
 }
 
@@ -227,3 +239,9 @@ mod store_tests;
 
 #[cfg(test)]
 mod comprehensive_store_tests;
+
+#[cfg(test)]
+mod derived_state_tests;
+
+#[cfg(test)]
+mod metadata_tests;

@@ -51,6 +51,9 @@ impl IntoResponse for ServerError {
             Self::DataStore(DataStoreError::Timeout { .. }) => {
                 (StatusCode::REQUEST_TIMEOUT, "TIMEOUT")
             }
+            Self::DataStore(DataStoreError::UnsupportedOperation { .. }) => {
+                (StatusCode::NOT_IMPLEMENTED, "UNSUPPORTED_OPERATION")
+            }
             Self::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
