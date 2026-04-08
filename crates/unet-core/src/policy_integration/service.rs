@@ -1,7 +1,8 @@
 //! Policy service that orchestrates policy loading, evaluation, and result storage
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 use crate::config::GitConfig;
@@ -20,12 +21,29 @@ pub struct PolicyService {
     loader: PolicyLoader,
     engine: Arc<dyn PolicyEvaluationEngine>,
     orchestrator: PolicyOrchestrator,
+    runtime_status: Arc<PolicyRuntimeStatus>,
+}
+
+#[derive(Debug)]
+struct PolicyRuntimeStatus {
+    evaluation_interval_seconds: u64,
+    last_evaluation: RwLock<Option<SystemTime>>,
+}
+
+impl PolicyRuntimeStatus {
+    const fn new(evaluation_interval_seconds: u64) -> Self {
+        Self {
+            evaluation_interval_seconds,
+            last_evaluation: RwLock::new(None),
+        }
+    }
 }
 
 impl PolicyService {
     /// Creates a new policy service with Git configuration
     #[must_use]
     pub fn new(git_config: GitConfig) -> Self {
+        let runtime_status = Arc::new(PolicyRuntimeStatus::new(git_config.sync_interval));
         let loader = PolicyLoader::new(git_config);
         let engine = Arc::new(DefaultPolicyEvaluationEngine::new());
         let orchestrator = PolicyOrchestrator::new(OrchestrationConfig::default());
@@ -34,6 +52,7 @@ impl PolicyService {
             loader,
             engine,
             orchestrator,
+            runtime_status,
         }
     }
 
@@ -52,16 +71,19 @@ impl PolicyService {
         let loader = PolicyLoader::new(git_config).with_local_dir(policies_directory);
         let engine = Arc::new(DefaultPolicyEvaluationEngine::new());
         let orchestrator = PolicyOrchestrator::new(OrchestrationConfig::default());
+        let runtime_status = Arc::new(PolicyRuntimeStatus::new(300));
 
         Self {
             loader,
             engine,
             orchestrator,
+            runtime_status,
         }
     }
 
     /// Creates a new policy service with custom evaluation engine
     pub fn with_engine(git_config: GitConfig, engine: Arc<dyn PolicyEvaluationEngine>) -> Self {
+        let runtime_status = Arc::new(PolicyRuntimeStatus::new(git_config.sync_interval));
         let loader = PolicyLoader::new(git_config);
         let orchestrator = PolicyOrchestrator::new(OrchestrationConfig::default());
 
@@ -69,6 +91,7 @@ impl PolicyService {
             loader,
             engine,
             orchestrator,
+            runtime_status,
         }
     }
 
@@ -171,5 +194,31 @@ impl PolicyService {
     #[must_use]
     pub const fn orchestrator(&self) -> &PolicyOrchestrator {
         &self.orchestrator
+    }
+
+    /// Records the completion of a policy evaluation cycle.
+    pub fn record_evaluation_run(&self) {
+        let mut last_evaluation = self
+            .runtime_status
+            .last_evaluation
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        *last_evaluation = Some(SystemTime::now());
+    }
+
+    /// Returns the configured background evaluation interval in seconds.
+    #[must_use]
+    pub fn evaluation_interval_seconds(&self) -> u64 {
+        self.runtime_status.evaluation_interval_seconds
+    }
+
+    /// Returns the most recent policy evaluation timestamp, if one has run.
+    #[must_use]
+    pub fn last_evaluation(&self) -> Option<SystemTime> {
+        *self
+            .runtime_status
+            .last_evaluation
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }

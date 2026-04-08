@@ -74,13 +74,11 @@ pub struct DomainConfig {
     pub search_domains: Vec<String>,
 }
 
-/// Authentication configuration (future extensibility)
+/// Authentication configuration for API bearer-token enforcement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthConfig {
     /// Authentication enabled
     pub enabled: bool,
-    /// Token validation endpoint (future)
-    pub token_endpoint: Option<String>,
-    /// Default token expiry in seconds
-    pub token_expiry: u64,
+    /// Static bearer token accepted by the server when auth is enabled
+    pub token: Option<String>,
 }

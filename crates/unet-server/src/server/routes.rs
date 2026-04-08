@@ -1,19 +1,24 @@
 //! Router configuration and route definitions
 
 use axum::{
-    Router,
+    Router, middleware,
     routing::{delete, get, post, put},
 };
 
 use super::app_state::AppState;
+use super::auth::{ApiAuth, require_bearer_auth};
 use crate::handlers;
 
 /// Create the router with all API endpoints
-pub fn create_router() -> Router<AppState> {
-    Router::new()
-        .route("/health", get(handlers::health::health_check))
+pub fn create_router(auth: ApiAuth) -> Router<AppState> {
+    let protected = Router::new()
         .merge(create_node_routes())
         .merge(create_policy_routes())
+        .route_layer(middleware::from_fn_with_state(auth, require_bearer_auth));
+
+    Router::new()
+        .route("/health", get(handlers::health::health_check))
+        .merge(protected)
 }
 
 /// Create node-related routes
@@ -66,7 +71,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_router() {
-        let router = create_router();
+        let router = create_router(ApiAuth::from_config(&unet_core::config::AuthConfig {
+            enabled: false,
+            token: None,
+        }));
         let app_state = create_mock_app_state().await;
         let _router_with_state: axum::Router = router.with_state(app_state);
     }

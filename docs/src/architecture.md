@@ -155,7 +155,7 @@ Commands:
 #### Features
 
 - **Multiple Output Formats**: Table, JSON, YAML
-- **Local Datastore Operation**: Direct database access through the `DataStore` abstraction
+- **Local and Remote Operation**: Direct datastore access or authenticated remote node API requests
 - **Comprehensive Validation**: Input checking and error reporting
 - **Pagination Support**: Handle large datasets efficiently
 
