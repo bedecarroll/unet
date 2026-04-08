@@ -56,15 +56,15 @@ pub async fn get_evaluation_nodes(
     if let Some(node_id) = node_id {
         match datastore.get_node(&node_id).await {
             Ok(Some(node)) => Ok(vec![node]),
-            Ok(None) => Err(anyhow::anyhow!("Node not found: {}", node_id)),
-            Err(e) => Err(anyhow::anyhow!("Failed to get node: {}", e)),
+            Ok(None) => Err(anyhow::anyhow!("Node not found: {node_id}")),
+            Err(e) => Err(anyhow::anyhow!("Failed to get node: {e}")),
         }
     } else {
         // Get all nodes
         let query_options = QueryOptions::default();
         match datastore.list_nodes(&query_options).await {
             Ok(paged_result) => Ok(paged_result.items),
-            Err(e) => Err(anyhow::anyhow!("Failed to list nodes: {}", e)),
+            Err(e) => Err(anyhow::anyhow!("Failed to list nodes: {e}")),
         }
     }
 }

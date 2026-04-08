@@ -31,7 +31,7 @@ pub async fn update_node(
     if let Some(vendor_str) = args.vendor {
         node.vendor = vendor_str
             .parse::<Vendor>()
-            .map_err(|e| anyhow::anyhow!("Invalid vendor '{}': {}", vendor_str, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid vendor '{vendor_str}': {e}"))?;
     }
 
     if let Some(model) = args.model {
@@ -41,13 +41,13 @@ pub async fn update_node(
     if let Some(role_str) = args.role {
         node.role = role_str
             .parse::<DeviceRole>()
-            .map_err(|e| anyhow::anyhow!("Invalid role '{}': {}", role_str, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid role '{role_str}': {e}"))?;
     }
 
     if let Some(lifecycle_str) = args.lifecycle {
         node.lifecycle = lifecycle_str
             .parse::<Lifecycle>()
-            .map_err(|e| anyhow::anyhow!("Invalid lifecycle '{}': {}", lifecycle_str, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid lifecycle '{lifecycle_str}': {e}"))?;
     }
 
     if let Some(location_id) = args.location_id {
@@ -57,7 +57,7 @@ pub async fn update_node(
     if let Some(management_ip_str) = args.management_ip {
         let management_ip = management_ip_str
             .parse()
-            .map_err(|e| anyhow::anyhow!("Invalid management IP '{}': {}", management_ip_str, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid management IP '{management_ip_str}': {e}"))?;
         node.management_ip = Some(management_ip);
     }
 

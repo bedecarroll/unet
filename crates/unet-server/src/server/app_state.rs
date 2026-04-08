@@ -24,7 +24,7 @@ pub async fn initialize_app_state(config: Config, database_url: String) -> Resul
     let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(
         SqliteStore::new(&database_url)
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to initialize SQLite datastore: {}", e))?,
+            .map_err(|e| anyhow::anyhow!("Failed to initialize SQLite datastore: {e}"))?,
     );
 
     info!("Initializing policy service");

@@ -3,7 +3,7 @@
 use super::test_helpers::*;
 use crate::policy::ast::{Action, FieldRef, Value};
 use crate::policy::evaluator::context::{ActionExecutionResult, ActionResult, EvaluationResult};
-use crate::policy::evaluator::results::AggregatedResult;
+use crate::policy::evaluator::results::{AggregatedResult, BatchStatistics};
 use serde_json::json;
 use std::time::Duration;
 use uuid::Uuid;
@@ -261,4 +261,77 @@ fn test_success_rate_calculation() {
     assert!((mixed_result.success_rate() - 50.0).abs() < f64::EPSILON);
     assert_eq!(mixed_result.total_rules, 4);
     assert!(!mixed_result.is_fully_successful());
+}
+
+#[test]
+fn test_batch_statistics_from_aggregated_results() {
+    let successful = AggregatedResult::from_results(
+        Uuid::new_v4(),
+        "batch-success".to_string(),
+        vec![create_test_execution_result(
+            create_test_rule(Some("rule-success".to_string())),
+            EvaluationResult::Satisfied {
+                action: Action::Assert {
+                    field: FieldRef {
+                        path: vec!["test".to_string()],
+                    },
+                    expected: Value::String("value".to_string()),
+                },
+            },
+            Some(ActionExecutionResult {
+                result: ActionResult::Success {
+                    message: "OK".to_string(),
+                },
+                rollback_data: Some(
+                    crate::policy::evaluator::context::RollbackData::AssertRollback,
+                ),
+            }),
+        )],
+        Duration::from_millis(10),
+    );
+    let mixed = AggregatedResult::from_results(
+        Uuid::new_v4(),
+        "batch-mixed".to_string(),
+        vec![
+            create_test_execution_result(
+                create_test_rule(Some("rule-failure".to_string())),
+                EvaluationResult::Satisfied {
+                    action: Action::Assert {
+                        field: FieldRef {
+                            path: vec!["test".to_string()],
+                        },
+                        expected: Value::String("value".to_string()),
+                    },
+                },
+                Some(ActionExecutionResult {
+                    result: ActionResult::ComplianceFailure {
+                        field: "test".to_string(),
+                        expected: json!("value"),
+                        actual: json!("wrong"),
+                    },
+                    rollback_data: Some(
+                        crate::policy::evaluator::context::RollbackData::AssertRollback,
+                    ),
+                }),
+            ),
+            create_test_execution_result(
+                create_test_rule(Some("rule-error".to_string())),
+                EvaluationResult::Error {
+                    message: "evaluation failed".to_string(),
+                },
+                None,
+            ),
+        ],
+        Duration::from_millis(30),
+    );
+
+    let stats = BatchStatistics::from_aggregated_results(&[successful, mixed]);
+
+    assert_eq!(stats.total_nodes, 2);
+    assert_eq!(stats.total_rules_evaluated, 3);
+    assert_eq!(stats.total_execution_time, Duration::from_millis(40));
+    assert_eq!(stats.avg_execution_time_per_node, Duration::from_millis(20));
+    assert_eq!(stats.nodes_with_failures, 1);
+    assert_eq!(stats.nodes_with_errors, 1);
+    assert!((stats.overall_success_rate - 33.333_333_333_333_33).abs() < 1e-12);
 }

@@ -155,7 +155,6 @@ pub async fn update_node(
 
     // Update fields that were provided
     let fqdn_needs_update = payload.name.is_some() || payload.domain.is_some();
-
     if let Some(name) = payload.name {
         node.name = name;
     }

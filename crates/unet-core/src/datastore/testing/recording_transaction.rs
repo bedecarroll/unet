@@ -39,7 +39,7 @@ impl TransactionTracker {
     fn state(&self) -> std::sync::MutexGuard<'_, TransactionSnapshot> {
         self.state
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
 
