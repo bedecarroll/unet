@@ -113,3 +113,42 @@ pub fn parse_value(pair: Pair<Rule>) -> Result<Value, ParseError> {
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_regex_pattern;
+
+    #[test]
+    fn test_parse_regex_pattern_with_flags() {
+        let result = parse_regex_pattern("/dist-.+/im");
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "dist-.+");
+    }
+
+    #[test]
+    fn test_parse_regex_pattern_rejects_missing_leading_slash() {
+        let result = parse_regex_pattern("dist-.+/im");
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid regex literal: dist-.+/im")
+        );
+    }
+
+    #[test]
+    fn test_parse_regex_pattern_rejects_missing_trailing_slash() {
+        let result = parse_regex_pattern("/dist-.+");
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("Invalid regex literal: /dist-.+")
+        );
+    }
+}

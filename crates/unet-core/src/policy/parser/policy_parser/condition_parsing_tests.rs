@@ -56,6 +56,15 @@ fn test_parse_not_condition_wraps_primary_condition() {
 }
 
 #[test]
+fn test_parse_not_condition_passthrough_without_not_keyword() {
+    let pair = create_test_pair(Rule::not_condition, r#"node.vendor == "cisco""#);
+    let result = parse_not_condition(pair);
+
+    assert!(result.is_ok());
+    assert!(matches!(result.unwrap(), Condition::Comparison { .. }));
+}
+
+#[test]
 fn test_parse_existence_check_parses_is_not_null() {
     let pair = create_test_pair(Rule::existence_check, "custom_data.location IS NOT NULL");
     let result = parse_existence_check(pair);
@@ -68,6 +77,23 @@ fn test_parse_existence_check_parses_is_not_null() {
                 path: vec!["custom_data".to_string(), "location".to_string()],
             },
             is_null: false,
+        }
+    );
+}
+
+#[test]
+fn test_parse_existence_check_parses_is_null() {
+    let pair = create_test_pair(Rule::existence_check, "custom_data.location IS NULL");
+    let result = parse_existence_check(pair);
+
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        Condition::Existence {
+            field: crate::policy::ast::FieldRef {
+                path: vec!["custom_data".to_string(), "location".to_string()],
+            },
+            is_null: true,
         }
     );
 }
