@@ -129,11 +129,13 @@ async fn test_get_node_status_default_implementation() {
 
     let result = datastore.get_node_status(&node_id).await;
 
-    assert!(result.is_ok());
-    let status = result.unwrap();
-    assert!(status.is_some());
-    let status = status.unwrap();
-    assert_eq!(status.node_id, node_id);
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_node_status");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
@@ -143,9 +145,13 @@ async fn test_get_node_interfaces_default_implementation() {
 
     let result = datastore.get_node_interfaces(&node_id).await;
 
-    assert!(result.is_ok());
-    let interfaces = result.unwrap();
-    assert!(interfaces.is_empty());
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_node_interfaces");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
@@ -155,9 +161,13 @@ async fn test_get_node_metrics_default_implementation() {
 
     let result = datastore.get_node_metrics(&node_id).await;
 
-    assert!(result.is_ok());
-    let metrics = result.unwrap();
-    assert!(metrics.is_none());
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_node_metrics");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
@@ -192,8 +202,13 @@ async fn test_store_policy_result_default_implementation() {
         .store_policy_result(&node_id, rule_id, &result_data)
         .await;
 
-    // Default implementation should succeed (no-op)
-    assert!(result.is_ok());
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "store_policy_result");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
@@ -203,9 +218,13 @@ async fn test_get_policy_results_default_implementation() {
 
     let result = datastore.get_policy_results(&node_id).await;
 
-    assert!(result.is_ok());
-    let results = result.unwrap();
-    assert!(results.is_empty());
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_policy_results");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
@@ -215,9 +234,13 @@ async fn test_get_latest_policy_results_default_implementation() {
 
     let result = datastore.get_latest_policy_results(&node_id).await;
 
-    assert!(result.is_ok());
-    let results = result.unwrap();
-    assert!(results.is_empty());
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_policy_results");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]
@@ -227,9 +250,13 @@ async fn test_get_rule_results_default_implementation() {
 
     let result = datastore.get_rule_results(rule_id).await;
 
-    assert!(result.is_ok());
-    let results = result.unwrap();
-    assert!(results.is_empty());
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        DataStoreError::UnsupportedOperation { operation } => {
+            assert_eq!(operation, "get_rule_results");
+        }
+        other => panic!("Expected UnsupportedOperation error, got {other:?}"),
+    }
 }
 
 #[tokio::test]

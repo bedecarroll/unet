@@ -50,7 +50,7 @@ derived state (SNMP polling)
 - **NEVER** leave "example code for future development" in the codebase
 - **ALWAYS** follow Test Driven Development (TDD) practices - see TDD section below
 - **NEVER** commit code that doesn't compile or pass tests
-- **ALWAYS** keep Rust files under 300 lines (absolute maximum 500 lines)
+- **ALWAYS** keep Rust files under 300 lines (absolute maximum 500 lines; `mise run check-large-files` warns above `300` and hard-fails on non-baselined `>500` files or growth in recorded legacy exceptions)
 - **ALWAYS** split large files into smaller, focused modules
 - **ALWAYS** run `mise run check-large-files` before commits to verify file sizes
 
@@ -215,7 +215,7 @@ unet/
 - **linting:** `mise run lint` - lints and auto-fixes linting issues (typos, clippy, formatting)
 - **testing:** `mise run test` - runs unit tests with nextest
 - **coverage:** `mise run coverage` - generates code coverage reports with `llvm-cov`
-- **file size check:** `mise run check-large-files` - identifies files exceeding size guidelines
+- **file size check:** `mise run check-large-files` - reports Rust files above the `300`-line target and fails on hard-limit regressions above `500`
 - **LLM status (recommended):** `mise run status` - runs `clippy` and `coverage+tests`, writes full logs to `target/mise-logs/latest/` (overwrites on each run), and prints a concise summary with:
   - clippy error count (and first few error lines)
   - test summary (and top failing tests if any)
@@ -234,7 +234,7 @@ Note: `mise run test` and `mise run coverage` can be long-running and produce la
 
 - **LLM overview:** Run `mise run status` to check clippy, run tests with coverage, and get a concise summary. Inspect `target/mise-logs/latest/` for full logs.
 - **TDD loops:** Use `mise run test -- <filters>` (package and/or name patterns) to iterate quickly; confirm failures first, then implement minimal code.
-- **Before commit:** Run `mise run lint` to auto-fix formatting/typos and surface clippy issues; run `mise run check-large-files` to enforce size guidelines.
+- **Before commit:** Run `mise run lint` to auto-fix formatting/typos and surface clippy issues; run `mise run check-large-files` to review advisory offenders and catch hard-limit regressions.
 - **CI-only tasks:** `ci-*` tasks are invoked by GitHub Actions; do not modify without coordinating with CI config.
 
 ### Nextest Usage Patterns
@@ -493,7 +493,7 @@ Before submitting any code changes, ensure:
 - [ ] Code coverage is adequate (`mise run coverage` - maintain 80%+ coverage)
 - [ ] Code is properly formatted and lint-free (`mise run lint`)
 - [ ] No dead code, unused variables, or placeholder implementations
-- [ ] All files are under 300 lines (`mise run check-large-files` shows no results)
+- [ ] Rust files touched by the change respect the size policy (`mise run check-large-files` shows no hard-fail regressions and any advisory offenders are understood)
 - [ ] No commented-out code blocks or stub functions
 - [ ] **Test coverage**: Every new function/method has corresponding tests
 - [ ] **Test quality**: Tests have descriptive names and clear Arrange-Act-Assert structure
@@ -520,7 +520,7 @@ Before submitting any code changes, ensure:
 - **NEVER** implement custom crypto - use established crates
 - **NEVER** create SQL injection vulnerabilities
 - **NEVER** ignore network timeouts in production code
-- **NEVER** commit files exceeding 500 lines (target: under 300 lines)
+- **NEVER** introduce new files above 500 lines or grow recorded legacy exceptions further (target: under 300 lines)
 
 ---
 

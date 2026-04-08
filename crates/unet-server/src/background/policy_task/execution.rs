@@ -49,7 +49,10 @@ impl TaskExecutor {
 
     /// Run a single policy evaluation cycle
     pub async fn run_policy_evaluation_cycle(&mut self) {
-        if let Err(e) = self.evaluate_all_policies().await {
+        let result = self.evaluate_all_policies().await;
+        self.policy_service.record_evaluation_run();
+
+        if let Err(e) = result {
             error!("Policy evaluation failed: {}", e);
         }
     }

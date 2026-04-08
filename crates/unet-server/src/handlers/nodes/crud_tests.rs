@@ -30,14 +30,15 @@ mod delete_node_tests;
 pub mod test_utils {
     use crate::api::{CreateNodeRequest, UpdateNodeRequest};
     use crate::server::AppState;
+    use migration::sea_orm::DatabaseConnection;
     use std::sync::Arc;
+    use test_support::sqlite::sqlite_store;
     use unet_core::{
         config::Config,
         datastore::DataStore,
         models::{DeviceRole, Lifecycle, Location, Node, Vendor, location::LocationBuilder},
         policy_integration::PolicyService,
     };
-    use test_support::sqlite::sqlite_store;
 
     /// Set up a test app state with in-memory `SQLite`
     pub async fn setup_test_app_state() -> AppState {
@@ -51,6 +52,24 @@ pub mod test_utils {
             datastore,
             policy_service,
         }
+    }
+
+    /// Set up a test app state together with the underlying SQLite connection.
+    pub async fn setup_test_app_state_with_connection() -> (DatabaseConnection, AppState) {
+        let store = sqlite_store().await;
+        let connection = store.connection().clone();
+        let datastore: Arc<dyn DataStore + Send + Sync> = Arc::new(store);
+
+        let config = Config::default();
+        let policy_service = PolicyService::new(config.git);
+
+        (
+            connection,
+            AppState {
+                datastore,
+                policy_service,
+            },
+        )
     }
 
     /// Create a test node in the datastore
