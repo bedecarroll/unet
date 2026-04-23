@@ -7,8 +7,43 @@ use unet_core::config::Config;
 
 #[tokio::test]
 async fn test_initialize_app_with_overrides() {
+    let mut temp_file = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+    writeln!(
+        temp_file,
+        r#"
+[database]
+url = "sqlite://test.db"
+
+[server]
+host = "127.0.0.1"
+port = 8080
+max_request_size = 1048576
+
+[logging]
+level = "info"
+format = "text"
+
+[snmp]
+community = "test-community"
+timeout = 5
+retries = 3
+
+[git]
+branch = "main"
+sync_interval = 300
+
+[domain]
+search_domains = []
+
+[auth]
+enabled = false
+token = ""
+"#
+    )
+    .unwrap();
+
     let args = Args {
-        config: None,
+        config: Some(temp_file.path().to_path_buf()),
         host: Some("0.0.0.0".to_string()),
         port: Some(9000),
         database_url: "sqlite://test.db".to_string(),
@@ -37,15 +72,7 @@ async fn test_initialize_app_with_defaults() {
     };
 
     let result = initialize_app(args).await;
-    assert!(result.is_ok());
-
-    let (config, database_url) = result.unwrap();
-
-    let default_config = Config::default();
-    assert_eq!(config.server.host, default_config.server.host);
-    assert_eq!(config.server.port, default_config.server.port);
-    assert_eq!(config.logging.level, default_config.logging.level);
-    assert_eq!(database_url, default_config.database_url());
+    assert!(result.is_err());
 }
 
 #[tokio::test]
@@ -81,7 +108,7 @@ level = "info"
 format = "text"
 
 [snmp]
-community = "public"
+community = "test-community"
 timeout = 5
 retries = 3
 
@@ -124,6 +151,7 @@ token_expiry = 3600
 #[test]
 fn test_config_validation_success() {
     let mut config = Config::default();
+    config.snmp.community = "test-community".to_string();
     config.server.port = 8080;
     assert!(config.validate().is_ok());
 }
@@ -147,7 +175,7 @@ level = "debug"
 format = "json"
 
 [snmp]
-community = "public"
+community = "test-community"
 timeout = 5
 retries = 3
 

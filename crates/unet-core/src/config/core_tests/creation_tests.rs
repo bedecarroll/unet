@@ -35,10 +35,6 @@ fn test_config_default() {
     assert!(config.logging.file.is_none());
 
     assert_eq!(
-        config.snmp.community,
-        defaults::snmp::DEFAULT_SNMP_COMMUNITY
-    );
-    assert_eq!(
         config.snmp.timeout,
         defaults::snmp::DEFAULT_SNMP_TIMEOUT_SECONDS
     );
@@ -73,4 +69,10 @@ fn test_config_default() {
 
     assert!(!config.auth.enabled);
     assert!(config.auth.token.is_none());
+}
+
+#[test]
+fn test_config_default_snmp_community_is_empty() {
+    let config = Config::default();
+    assert!(config.snmp.community.is_empty());
 }
