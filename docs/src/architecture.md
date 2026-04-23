@@ -1,7 +1,7 @@
 # Architecture Overview – μNet Network Management System
 
 > **Audience:** Engineers and operators working with μNet  
-> **Status:** Documents current implementation (v0.1.0)
+> **Status:** Documents current implementation and workspace layout (v0.1.0)
 
 ---
 
@@ -57,6 +57,16 @@ External Network Devices
 ```
 
 ---
+
+### Workspace Composition
+
+The runtime architecture above focuses on the main operator-facing flow:
+`unet-cli` and `unet-server` share `unet-core`, which persists data through the
+`DataStore` abstraction. The current workspace also includes supporting crates:
+
+- `config-slicer`: configuration slicing and diffing library plus `config-slicer` CLI
+- `migration`: `SeaORM` migrations library and binary
+- `test-support`: shared test utilities for SQLite fixtures, savepoints, and logging
 
 ## Component Architecture
 
@@ -158,6 +168,21 @@ Commands:
 - **Local and Remote Operation**: Direct datastore access or authenticated remote node API requests
 - **Comprehensive Validation**: Input checking and error reporting
 - **Pagination Support**: Handle large datasets efficiently
+
+### Configuration Diff Tool (`config-slicer`)
+
+Standalone library and CLI for configuration slicing and diffing workflows.
+
+#### Features
+
+- **Diff Engine**: Text and structure-aware configuration comparison
+- **CLI Entry Point**: Independent `config-slicer` binary for focused workflows
+- **Library Reuse**: Diffing logic can be consumed without going through `unet-cli`
+
+### Support Crates
+
+- **`migration`**: `SeaORM` migrations packaged as a reusable library and `migration` binary
+- **`test-support`**: Shared SQLite schema setup, savepoints, and test logging helpers
 
 ---
 
