@@ -53,6 +53,9 @@ mod tests {
             .expect_get_node_metrics()
             .returning(|_| ready_ok(None));
         store
+            .expect_get_node_status_history()
+            .returning(|_, _| ready_ok(Vec::new()));
+        store
     }
 
     #[tokio::test]

@@ -180,7 +180,33 @@ unet nodes metrics router-01
 
 - `<NODE_ID>` - Node name or UUID
 
-**Note:** Historical metrics are not yet implemented.
+**Note:** For historical metrics, use `unet nodes history <NODE_ID> metrics`.
+
+#### `unet nodes history`
+
+Display derived-state history snapshots for a node from the local datastore.
+
+```bash
+unet nodes history router-01
+unet nodes history router-01 metrics --last-hours 24
+unet nodes history router-01 all --detailed
+```
+
+**Arguments:**
+
+- `<NODE_ID>` - Node UUID
+- `[HISTORY_TYPE]` - Optional history view: `status`, `interfaces`, `metrics`, `system`, or `all`
+
+**Options:**
+
+- `-l, --limit <COUNT>` - Maximum number of snapshots to return (newest first)
+- `--last-hours <HOURS>` - Filter to snapshots updated within the last N hours
+- `--detailed` - Include fuller per-snapshot payloads (interfaces, metrics, vendor/raw data where applicable)
+
+**Notes:**
+
+- History is backed by local datastore snapshots from `node_status` and `interface_status`.
+- Remote mode still does not support `unet nodes history`.
 
 ---
 
@@ -596,7 +622,8 @@ unet import backup/
 
 - **Template engine**: Not yet implemented (planned for v0.2.0)
 - **SNMP polling controls**: Background polling runs automatically, but CLI controls are not implemented
-- **Node comparison and history**: Planned for future versions
+- **Node comparison**: Planned for a future version
+- **Remote node history**: `unet nodes history` currently works only against the local datastore
 - **Table output formatting**: Currently defaults to JSON format
 - **Advanced filtering**: jq-style filters not yet implemented
 
