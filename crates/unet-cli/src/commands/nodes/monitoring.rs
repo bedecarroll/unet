@@ -2,6 +2,7 @@
 use anyhow::Result;
 use unet_core::datastore::DataStore;
 
+use super::polling::polling_status_value;
 use super::types::{MetricsNodeArgs, StatusNodeArgs, StatusType};
 
 pub async fn status_node(
@@ -60,13 +61,16 @@ pub async fn status_node(
                     });
                 }
             },
-            StatusType::Polling => {
-                // TODO: Add polling task status when implemented
-                output["polling"] = serde_json::json!({
-                    "message": "Polling task status display not yet implemented",
-                    "note": "This will show SNMP polling task status for the node"
-                });
-            }
+            StatusType::Polling => match datastore.get_node_polling_task(&args.id).await {
+                Ok(task) => {
+                    output["polling"] = polling_status_value(task.as_ref(), false);
+                }
+                Err(e) => {
+                    output["polling"] = serde_json::json!({
+                        "error": format!("Failed to fetch polling task: {}", e)
+                    });
+                }
+            },
         }
     }
 
