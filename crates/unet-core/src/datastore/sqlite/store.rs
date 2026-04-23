@@ -8,6 +8,7 @@ use super::super::types::{
     Transaction,
 };
 use super::transaction::SqliteTransaction;
+use crate::config::connection_string::redact_connection_string;
 use crate::models::derived::{InterfaceStatus, NodeStatus, PerformanceMetrics};
 use crate::models::{Link, Location, Node};
 use async_trait::async_trait;
@@ -41,7 +42,10 @@ impl SqliteStore {
         let db = Database::connect(opt)
             .await
             .map_err(|e| DataStoreError::ConnectionError {
-                message: format!("Failed to connect to database: {e}"),
+                message: redact_connection_string(
+                    &format!("Failed to connect to database: {e}"),
+                    database_url,
+                ),
             })?;
 
         Ok(Self { db })
