@@ -49,12 +49,19 @@ pub async fn get_policy_status(
 
 #[cfg(test)]
 mod tests {
+    use super::super::{response_handling::evaluate_policies, types::PolicyEvaluationRequest};
     use super::*;
     use crate::server::AppState;
+    use migration::{Migrator, MigratorTrait};
+    use std::fs;
     use std::sync::Arc;
-    use unet_core::{datastore::DataStore, models::*, policy_integration::PolicyService};
+    use unet_core::{
+        datastore::{DataStore, sqlite::SqliteStore},
+        models::*,
+        policy_integration::PolicyService,
+    };
 
-    async fn create_test_node(datastore: &dyn DataStore) -> Node {
+    async fn create_test_node(datastore: &SqliteStore) -> Node {
         let mut node = Node::new(
             "test-node".to_string(),
             "example.com".to_string(),
@@ -64,6 +71,12 @@ mod tests {
         node.model = "ASR1000".to_string();
         node.lifecycle = Lifecycle::Live;
         datastore.create_node(&node).await.unwrap()
+    }
+
+    async fn setup_isolated_test_datastore() -> SqliteStore {
+        let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+        Migrator::up(store.connection(), None).await.unwrap();
+        store
     }
 
     #[tokio::test]
@@ -106,5 +119,34 @@ mod tests {
             assert!(chrono::DateTime::parse_from_rfc3339(last_evaluation).is_ok());
         })
         .await;
+    }
+
+    #[tokio::test]
+    async fn test_get_policy_status_reports_last_evaluation_after_on_demand_evaluation() {
+        let store = setup_isolated_test_datastore().await;
+        let temp_dir = tempfile::tempdir().unwrap();
+        let policy_file = temp_dir.path().join("test.policy");
+        fs::write(
+            &policy_file,
+            "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"\n",
+        )
+        .unwrap();
+        let node = create_test_node(&store).await;
+        let app_state = AppState {
+            datastore: Arc::new(store),
+            policy_service: PolicyService::with_local_dir(temp_dir.path().to_str().unwrap()),
+        };
+        let request = PolicyEvaluationRequest {
+            node_ids: Some(vec![node.id]),
+            policies: None,
+            store_results: Some(false),
+        };
+
+        let evaluation = evaluate_policies(State(app_state.clone()), Json(request)).await;
+        assert!(evaluation.is_ok());
+
+        let response = get_policy_status(State(app_state)).await.unwrap().0;
+        let last_evaluation = response["last_evaluation"].as_str().unwrap();
+        assert!(chrono::DateTime::parse_from_rfc3339(last_evaluation).is_ok());
     }
 }
