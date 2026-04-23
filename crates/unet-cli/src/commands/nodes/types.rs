@@ -203,7 +203,7 @@ pub struct CompareNodeArgs {
     #[arg(short = 'a', long)]
     pub node_a: Uuid,
 
-    /// Second node ID to compare (optional for historical comparison)
+    /// Second node ID to compare. Historical comparison is not yet supported when omitted.
     #[arg(short = 'b', long)]
     pub node_b: Option<Uuid>,
 

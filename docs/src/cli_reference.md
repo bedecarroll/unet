@@ -182,6 +182,31 @@ unet nodes metrics router-01
 
 **Note:** Historical metrics are not yet implemented.
 
+#### `unet nodes compare`
+
+Compare two nodes across basic attributes, interfaces, metrics, or system info.
+
+```bash
+unet nodes compare -a router-a -b router-b
+unet nodes compare -a router-a -b router-b --compare-type interfaces --diff-only
+unet nodes compare -a router-a -b router-b --compare-type metrics --compare-type system
+```
+
+**Required Options:**
+
+- `-a, --node-a <UUID>` - First node UUID
+- `-b, --node-b <UUID>` - Second node UUID
+
+**Optional Options:**
+
+- `--compare-type <TYPE>` - One or more sections to compare: `all`, `interfaces`, `metrics`, `system`
+- `--diff-only` - Return only entries that differ between the two nodes
+
+**Notes:**
+
+- The command compares the current datastore-backed state for both nodes.
+- Omitting `--node-b` is reserved for a future historical comparison mode and currently returns an explicit error.
+
 ---
 
 ### Location Management
@@ -596,7 +621,7 @@ unet import backup/
 
 - **Template engine**: Not yet implemented (planned for v0.2.0)
 - **SNMP polling controls**: Background polling runs automatically, but CLI controls are not implemented
-- **Node comparison and history**: Planned for future versions
+- **Node history**: Planned for future versions
 - **Table output formatting**: Currently defaults to JSON format
 - **Advanced filtering**: jq-style filters not yet implemented
 

@@ -28,7 +28,6 @@ This document outlines the planned features and release timeline for μNet.
 - **CLI Commands** (planned):
   - `unet nodes polling start/stop/status`
   - `unet nodes history --metrics --since 1d`
-  - `unet nodes compare <node1> <node2>`
 
 ### **Milestone 6: Configuration Push**
 

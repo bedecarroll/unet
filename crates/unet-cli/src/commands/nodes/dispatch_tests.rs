@@ -18,7 +18,7 @@ mod tests {
             .unwrap()
     }
 
-    fn store(node: Node) -> MockDataStore {
+    fn store(node: &Node) -> MockDataStore {
         let node_for_get = node.clone();
         let node_for_update = node.clone();
         let node_for_status = node.clone();
@@ -58,7 +58,7 @@ mod tests {
     #[tokio::test]
     async fn test_dispatch_add_and_list() {
         let node = make_node();
-        let datastore = store(node);
+        let datastore = store(&node);
         let add = AddNodeArgs {
             name: "n1".into(),
             domain: "example.com".into(),
@@ -101,7 +101,7 @@ mod tests {
     #[tokio::test]
     async fn test_dispatch_status_and_polling() {
         let node = make_node();
-        let datastore = store(node.clone());
+        let datastore = store(&node);
         let status = StatusNodeArgs {
             id: node.id,
             status_type: vec![StatusType::Basic],
@@ -150,10 +150,10 @@ mod tests {
     #[tokio::test]
     async fn test_dispatch_compare_and_delete() {
         let node = make_node();
-        let datastore = store(node.clone());
+        let datastore = store(&node);
         let compare = CompareNodeArgs {
             node_a: node.id,
-            node_b: None,
+            node_b: Some(Uuid::new_v4()),
             compare_type: vec![CompareType::All],
             diff_only: false,
         };
@@ -202,7 +202,7 @@ mod tests {
     #[tokio::test]
     async fn test_dispatch_update_and_show() {
         let node = make_node();
-        let datastore = store(node.clone());
+        let datastore = store(&node);
         let update = UpdateNodeArgs {
             id: node.id,
             name: Some("edge-1a".into()),
