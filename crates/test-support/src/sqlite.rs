@@ -1,7 +1,7 @@
+use sea_orm::Statement;
 use sea_orm::{ConnectionTrait, Database, DatabaseBackend, DatabaseConnection, Schema};
 use tokio::sync::OnceCell;
 use unet_core::entities;
-use sea_orm::Statement;
 
 static DB_CONN: OnceCell<DatabaseConnection> = OnceCell::const_new();
 
@@ -19,7 +19,9 @@ pub async fn entity_db() -> DatabaseConnection {
         .clone()
 }
 
-async fn apply_entity_schema(connection: &impl ConnectionTrait) -> Result<(), Box<dyn std::error::Error>> {
+async fn apply_entity_schema(
+    connection: &impl ConnectionTrait,
+) -> Result<(), Box<dyn std::error::Error>> {
     let schema = Schema::new(DatabaseBackend::Sqlite);
 
     for stmt in [
@@ -40,7 +42,9 @@ async fn apply_entity_schema(connection: &impl ConnectionTrait) -> Result<(), Bo
     use sea_orm::{ActiveModelTrait, Set};
     let vendor_names = ["Cisco", "Juniper"];
     for name in vendor_names {
-        let active = entities::vendors::ActiveModel { name: Set(name.to_string()) };
+        let active = entities::vendors::ActiveModel {
+            name: Set(name.to_string()),
+        };
         let _ = active.insert(connection).await; // ignore errors if already seeded
     }
     Ok(())
@@ -64,16 +68,12 @@ where
     let save = format!("SAVEPOINT {name}");
     let rollback = format!("ROLLBACK TO {name}");
     let release = format!("RELEASE {name}");
-    let _ = conn
-        .execute(Statement::from_string(backend, save))
-        .await;
+    let _ = conn.execute(Statement::from_string(backend, save)).await;
     let store = unet_core::datastore::sqlite::SqliteStore::from_connection(conn.clone());
     let out = f(store).await;
     let _ = conn
         .execute(Statement::from_string(backend, rollback))
         .await;
-    let _ = conn
-        .execute(Statement::from_string(backend, release))
-        .await;
+    let _ = conn.execute(Statement::from_string(backend, release)).await;
     out
 }

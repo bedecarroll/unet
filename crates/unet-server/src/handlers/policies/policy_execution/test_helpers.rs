@@ -6,7 +6,6 @@ use unet_core::{
 };
 
 pub async fn setup_test_datastore() -> SqliteStore {
-    
     test_support::sqlite::sqlite_store().await
 }
 

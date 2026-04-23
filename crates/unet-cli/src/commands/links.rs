@@ -33,7 +33,7 @@ mod dispatch_tests {
     use super::*;
     use crate::commands::links::types::ListLinkArgs;
     use mockall::predicate::always;
-    use unet_core::datastore::{types::PagedResult, MockDataStore};
+    use unet_core::datastore::{MockDataStore, types::PagedResult};
 
     #[tokio::test]
     async fn test_execute_list_links_dispatch() {
@@ -42,7 +42,12 @@ mod dispatch_tests {
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
 
-        let args = ListLinkArgs { node_id: None, min_bandwidth: None, page: 1, per_page: 20 };
+        let args = ListLinkArgs {
+            node_id: None,
+            min_bandwidth: None,
+            page: 1,
+            per_page: 20,
+        };
 
         let res = execute(
             types::LinkCommands::List(args),

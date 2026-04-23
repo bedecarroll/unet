@@ -54,10 +54,12 @@ async fn get_all_nodes_for_evaluation(datastore: &dyn DataStore) -> Result<Vec<N
 #[cfg(test)]
 mod tests {
     use super::*;
-    use unet_core::{datastore::sqlite::SqliteStore, models::*};
     use test_support::sqlite::sqlite_store;
+    use unet_core::{datastore::sqlite::SqliteStore, models::*};
 
-    async fn setup_test_datastore() -> SqliteStore { sqlite_store().await }
+    async fn setup_test_datastore() -> SqliteStore {
+        sqlite_store().await
+    }
 
     async fn create_test_node(datastore: &SqliteStore) -> Node {
         let mut node = Node::new(

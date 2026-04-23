@@ -80,6 +80,7 @@ derived state (SNMP polling)
 - **NEVER** assume file locations - search first
 - **ALWAYS** use Read tool before Edit/MultiEdit operations
 - **ALWAYS** run `mise run lint` after code changes
+- **USE** `mise run lint-fix` when local auto-fixes are desired
 - **NEVER** skip the TodoWrite tool for multi-step tasks
 - **REFERENCE** `docs/src/developer_guide.md` for detailed implementation patterns and decision trees
 
@@ -212,7 +213,8 @@ unet/
 
 ### Development Tools (mise.toml)
 
-- **linting:** `mise run lint` - lints and auto-fixes linting issues (typos, clippy, formatting)
+- **linting:** `mise run lint` - runs read-only typo, formatting, and clippy checks
+- **autofix:** `mise run lint-fix` - applies typo, formatting, and clippy fixes locally
 - **testing:** `mise run test` - runs unit tests with nextest
 - **coverage:** `mise run coverage` - generates code coverage reports with `llvm-cov`
 - **file size check:** `mise run check-large-files` - reports Rust files above the `300`-line target and fails on hard-limit regressions above `500`
@@ -234,7 +236,7 @@ Note: `mise run test` and `mise run coverage` can be long-running and produce la
 
 - **LLM overview:** Run `mise run status` to check clippy, run tests with coverage, and get a concise summary. Inspect `target/mise-logs/latest/` for full logs.
 - **TDD loops:** Use `mise run test -- <filters>` (package and/or name patterns) to iterate quickly; confirm failures first, then implement minimal code.
-- **Before commit:** Run `mise run lint` to auto-fix formatting/typos and surface clippy issues; run `mise run check-large-files` to review advisory offenders and catch hard-limit regressions.
+- **Before commit:** Run `mise run lint` to verify formatting/typo/clippy checks without rewriting files. When local auto-fixes are desired, run `mise run lint-fix` before the final read-only lint pass. Run `mise run check-large-files` to review advisory offenders and catch hard-limit regressions.
 - **CI-only tasks:** `ci-*` tasks are invoked by GitHub Actions; do not modify without coordinating with CI config.
 
 ### Nextest Usage Patterns
@@ -308,13 +310,16 @@ vim crates/unet-core/src/models/node.rs
 # 6. Run tests after each refactoring step
 mise run test
 
-# 7. Check if any manual fixes are needed, will format code
+# 7. Apply local auto-fixes if needed
+mise run lint-fix
+
+# 8. Verify read-only lint passes
 mise run lint
 
-# 8. Generate coverage report to ensure adequate test coverage
+# 9. Generate coverage report to ensure adequate test coverage
 mise run coverage
 
-# 9. Verify file sizes are within guidelines
+# 10. Verify file sizes are within guidelines
 mise run check-large-files
 ```
 

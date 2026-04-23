@@ -139,7 +139,7 @@
 | ----------------- | ------------- | --------------- | ------------- | ------------------------------ |
 | Rust async/Axum   | @alice        | @mentor\_dev    | Yes (mid)     | Critical path for poller split |
 | SNMP/Vendor RPC   | @bob          | –               | No            | Could outsource driver stubs   |
-| Postgres tuning   | –             | external SME    | Yes (consult) | For RLS & partitioning         |
+| Postgres tuning   | –             | external advisor | Yes (consult) | For RLS & partitioning         |
 | Front‑end (Tauri) | @carol        | –               | No            | Junior can shadow              |
 | DevOps/Nix        | –             | @mentor\_dev    | Maybe         | Flake packaging upkeep         |
 

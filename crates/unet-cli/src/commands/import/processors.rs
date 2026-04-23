@@ -139,7 +139,12 @@ mod tests {
                 Box::pin(async move { Ok(l) })
             });
         // A bit of a hack: ignore return value type specifics; we only assert Ok path
-        let _ = import_location(&Location::new_root("HQ".into(), "building".into()), &mock, false).await;
+        let _ = import_location(
+            &Location::new_root("HQ".into(), "building".into()),
+            &mock,
+            false,
+        )
+        .await;
     }
 
     #[tokio::test]
@@ -167,7 +172,13 @@ mod tests {
     #[tokio::test]
     async fn test_import_link_dry_run_and_real() {
         use unet_core::models::Link;
-        let link = Link::new("L1".into(), Uuid::new_v4(), "Gi0/0".into(), Uuid::new_v4(), "Gi0/1".into());
+        let link = Link::new(
+            "L1".into(),
+            Uuid::new_v4(),
+            "Gi0/0".into(),
+            Uuid::new_v4(),
+            "Gi0/1".into(),
+        );
         let mut mock = MockDataStore::new();
         assert!(import_link(&link, &mock, true).await.is_ok());
         let link_clone = link.clone();
