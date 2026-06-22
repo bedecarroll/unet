@@ -25,6 +25,14 @@ mod add_tests;
 #[cfg(test)]
 mod advanced_tests;
 #[cfg(test)]
+mod compare_exec_tests;
+#[cfg(test)]
+mod compare_output_diff_tests;
+#[cfg(test)]
+mod compare_output_tests;
+#[cfg(test)]
+mod compare_test_support;
+#[cfg(test)]
 mod compare_tests;
 #[cfg(test)]
 mod delete_exec_tests;
