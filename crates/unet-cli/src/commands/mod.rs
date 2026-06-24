@@ -6,6 +6,9 @@ pub mod nodes;
 pub mod policy;
 pub mod vendors;
 
+#[cfg(test)]
+pub(crate) mod test_support;
+
 use anyhow::Result;
 
 /// Common output formatting utilities
