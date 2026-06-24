@@ -31,6 +31,8 @@ mod delete_exec_tests;
 #[cfg(test)]
 mod dispatch_tests;
 #[cfg(test)]
+mod history_exec_tests;
+#[cfg(test)]
 mod history_tests;
 #[cfg(test)]
 mod list_tests;

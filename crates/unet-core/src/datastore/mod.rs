@@ -22,7 +22,8 @@ pub mod types;
 // Re-export main types for backward compatibility
 pub use types::{
     BatchOperation, BatchResult, DataStoreError, DataStoreResult, Filter, FilterOperation,
-    FilterValue, PagedResult, Pagination, QueryOptions, Sort, SortDirection, Transaction,
+    FilterValue, HistoryQueryOptions, PagedResult, Pagination, QueryOptions, Sort, SortDirection,
+    Transaction,
 };
 
 pub use helpers::{filter_contains, filter_equals_string, filter_equals_uuid, sort_asc, sort_desc};
@@ -292,6 +293,27 @@ pub trait DataStore: Send + Sync {
     ) -> DataStoreResult<Option<crate::models::derived::PerformanceMetrics>> {
         Err(DataStoreError::UnsupportedOperation {
             operation: "get_node_metrics".to_string(),
+        })
+    }
+
+    /// Stores a derived-state snapshot for historical queries.
+    async fn store_node_status_snapshot(
+        &self,
+        _snapshot: &crate::models::derived::NodeStatus,
+    ) -> DataStoreResult<()> {
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "store_node_status_snapshot".to_string(),
+        })
+    }
+
+    /// Gets historical derived-state snapshots for a specific node.
+    async fn get_node_status_history(
+        &self,
+        _node_id: &Uuid,
+        _options: &HistoryQueryOptions,
+    ) -> DataStoreResult<Vec<crate::models::derived::NodeStatus>> {
+        Err(DataStoreError::UnsupportedOperation {
+            operation: "get_node_status_history".to_string(),
         })
     }
 

@@ -3,8 +3,16 @@
 use super::super::SqliteStore;
 use crate::datastore::DataStore;
 use crate::entities;
+use crate::models::derived::{
+    InterfaceAdminStatus, InterfaceOperStatus, InterfaceStats, InterfaceStatus, NodeStatus,
+    PerformanceMetrics, SystemInfo,
+};
 use crate::models::{DeviceRole, Node, Vendor};
+use chrono::{DateTime, Utc};
+use migration::Migrator;
 use sea_orm::{ActiveModelTrait, ConnectionTrait, Database, DatabaseBackend, Schema, Set};
+use sea_orm_migration::MigratorTrait;
+use std::time::SystemTime;
 
 fn test_node() -> Node {
     Node::new(
@@ -39,6 +47,81 @@ async fn apply_entity_schema(connection: &impl ConnectionTrait) {
             .execute(connection.get_database_backend().build(&stmt))
             .await
             .unwrap();
+    }
+}
+
+async fn setup_migrated_store() -> SqliteStore {
+    let store = SqliteStore::new("sqlite::memory:").await.unwrap();
+    Migrator::up(store.connection(), None).await.unwrap();
+    store
+}
+
+fn parse_timestamp(value: &str) -> SystemTime {
+    DateTime::parse_from_rfc3339(value)
+        .unwrap()
+        .with_timezone(&Utc)
+        .into()
+}
+
+fn snapshot(
+    node_id: uuid::Uuid,
+    last_updated: &str,
+    reachable: bool,
+    name: &str,
+    oper_status: InterfaceOperStatus,
+    cpu: u8,
+) -> NodeStatus {
+    NodeStatus {
+        node_id,
+        last_updated: parse_timestamp(last_updated),
+        reachable,
+        system_info: Some(SystemInfo {
+            description: Some(format!("{name} chassis")),
+            object_id: None,
+            uptime_ticks: Some(12_345),
+            contact: None,
+            name: Some(name.to_string()),
+            location: Some("rack-1".to_string()),
+            services: Some(72),
+        }),
+        interfaces: vec![InterfaceStatus {
+            index: 1,
+            name: "GigabitEthernet0/1".to_string(),
+            interface_type: 6,
+            mtu: Some(1500),
+            speed: Some(1_000_000_000),
+            physical_address: Some("00:11:22:33:44:55".to_string()),
+            admin_status: InterfaceAdminStatus::Up,
+            oper_status,
+            last_change: Some(10),
+            input_stats: InterfaceStats {
+                octets: 1000,
+                packets: 10,
+                errors: 0,
+                discards: 0,
+            },
+            output_stats: InterfaceStats {
+                octets: 2000,
+                packets: 20,
+                errors: 0,
+                discards: 0,
+            },
+        }],
+        performance: Some(PerformanceMetrics {
+            cpu_utilization: Some(cpu),
+            memory_utilization: Some(70),
+            total_memory: Some(8192),
+            used_memory: Some(4096),
+            load_average: Some(0.5),
+        }),
+        environmental: None,
+        vendor_metrics: std::collections::HashMap::new(),
+        raw_snmp_data: std::collections::HashMap::new(),
+        last_snmp_success: Some(parse_timestamp(last_updated)),
+        last_error: reachable
+            .then(String::new)
+            .filter(|value| !value.is_empty()),
+        consecutive_failures: if reachable { 0 } else { 2 },
     }
 }
 
@@ -200,4 +283,121 @@ async fn test_get_node_metrics_returns_none_without_persisted_status() {
 
     let metrics = store.get_node_metrics(&node.id).await.unwrap();
     assert!(metrics.is_none());
+}
+
+#[tokio::test]
+async fn test_store_node_status_snapshot_supports_history_queries_after_migrations() {
+    let store = setup_migrated_store().await;
+    let node = test_node();
+    store.create_node(&node).await.unwrap();
+
+    let older = snapshot(
+        node.id,
+        "2026-04-07T01:00:00Z",
+        false,
+        "derived-node-old",
+        InterfaceOperStatus::Down,
+        15,
+    );
+    let newer = snapshot(
+        node.id,
+        "2026-04-07T02:00:00Z",
+        true,
+        "derived-node-new",
+        InterfaceOperStatus::Up,
+        55,
+    );
+
+    store.store_node_status_snapshot(&older).await.unwrap();
+    store.store_node_status_snapshot(&newer).await.unwrap();
+
+    let latest = store.get_node_status(&node.id).await.unwrap().unwrap();
+    assert!(latest.reachable);
+    assert_eq!(
+        latest.system_info.unwrap().name.as_deref(),
+        Some("derived-node-new")
+    );
+    assert_eq!(latest.interfaces[0].oper_status, InterfaceOperStatus::Up);
+
+    let history = store
+        .get_node_status_history(
+            &node.id,
+            &crate::datastore::HistoryQueryOptions {
+                limit: 10,
+                since: None,
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(history.len(), 2);
+    assert_eq!(
+        history[0].system_info.as_ref().unwrap().name.as_deref(),
+        Some("derived-node-new")
+    );
+    assert_eq!(
+        history[1].system_info.as_ref().unwrap().name.as_deref(),
+        Some("derived-node-old")
+    );
+
+    let metrics = store.get_node_metrics(&node.id).await.unwrap().unwrap();
+    assert_eq!(metrics.cpu_utilization, Some(55));
+}
+
+#[tokio::test]
+async fn test_get_node_status_history_applies_limit_and_since_filter() {
+    let store = setup_migrated_store().await;
+    let node = test_node();
+    store.create_node(&node).await.unwrap();
+
+    for (timestamp, reachable, cpu) in [
+        ("2026-04-07T01:00:00Z", false, 10),
+        ("2026-04-07T02:00:00Z", true, 20),
+        ("2026-04-07T03:00:00Z", true, 30),
+    ] {
+        let snapshot = snapshot(
+            node.id,
+            timestamp,
+            reachable,
+            "derived-node-filter",
+            InterfaceOperStatus::Up,
+            cpu,
+        );
+        store.store_node_status_snapshot(&snapshot).await.unwrap();
+    }
+
+    let limited = store
+        .get_node_status_history(
+            &node.id,
+            &crate::datastore::HistoryQueryOptions {
+                limit: 1,
+                since: None,
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(limited.len(), 1);
+    assert_eq!(
+        limited[0].performance.as_ref().unwrap().cpu_utilization,
+        Some(30)
+    );
+
+    let filtered = store
+        .get_node_status_history(
+            &node.id,
+            &crate::datastore::HistoryQueryOptions {
+                limit: 10,
+                since: Some(parse_timestamp("2026-04-07T01:30:00Z")),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(filtered.len(), 2);
+    assert_eq!(
+        filtered[0].performance.as_ref().unwrap().cpu_utilization,
+        Some(30)
+    );
+    assert_eq!(
+        filtered[1].performance.as_ref().unwrap().cpu_utilization,
+        Some(20)
+    );
 }

@@ -6,7 +6,7 @@ use crate::entities::{
     interface_status, links, locations, node_status, nodes, polling_tasks, vendors,
 };
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub async fn get_entity_counts(store: &SqliteStore) -> DataStoreResult<HashMap<String, usize>> {
     let mut counts = HashMap::new();
@@ -59,25 +59,18 @@ pub async fn get_statistics(
     store: &SqliteStore,
 ) -> DataStoreResult<HashMap<String, serde_json::Value>> {
     let counts = get_entity_counts(store).await?;
-    let nodes_with_status = *counts.get("node_status").unwrap_or(&0);
-    let interfaces_monitored = *counts.get("interface_status").unwrap_or(&0);
-    let reachable_nodes = node_status::Entity::find()
-        .filter(node_status::Column::Reachable.eq(true))
-        .count(&store.db)
-        .await
-        .map_err(|e| DataStoreError::InternalError {
-            message: format!("Failed to count reachable node_status rows: {e}"),
-        })?
-        .try_into()
-        .unwrap_or(usize::MAX);
-    let latest_status_update = node_status::Entity::find()
-        .order_by_desc(node_status::Column::LastUpdated)
-        .one(&store.db)
-        .await
-        .map_err(|e| DataStoreError::InternalError {
-            message: format!("Failed to query latest node_status row: {e}"),
-        })?
-        .map(|model| model.last_updated);
+    let latest_snapshots = latest_status_rows(store).await?;
+    let nodes_with_status = latest_snapshots.len();
+    let reachable_nodes = latest_snapshots
+        .iter()
+        .filter(|snapshot| snapshot.reachable)
+        .count();
+    let latest_status_update = latest_snapshots
+        .iter()
+        .map(|snapshot| snapshot.last_updated.as_str())
+        .max()
+        .map(ToOwned::to_owned);
+    let interfaces_monitored = count_latest_interfaces(store, &latest_snapshots).await?;
 
     let mut stats = HashMap::new();
     stats.insert("datastore".to_string(), serde_json::Value::from("sqlite"));
@@ -117,4 +110,45 @@ fn count_query(result: Result<u64, sea_orm::DbErr>, label: &str) -> DataStoreRes
         .map_err(|e| DataStoreError::InternalError {
             message: format!("Failed to convert count for {label}: {e}"),
         })
+}
+
+async fn latest_status_rows(store: &SqliteStore) -> DataStoreResult<Vec<node_status::Model>> {
+    let rows = node_status::Entity::find()
+        .order_by_asc(node_status::Column::NodeId)
+        .order_by_desc(node_status::Column::LastUpdated)
+        .all(&store.db)
+        .await
+        .map_err(|e| DataStoreError::InternalError {
+            message: format!("Failed to query latest node_status rows: {e}"),
+        })?;
+    let mut seen_node_ids = HashSet::new();
+    let mut latest_rows = Vec::new();
+
+    for row in rows {
+        if seen_node_ids.insert(row.node_id.clone()) {
+            latest_rows.push(row);
+        }
+    }
+
+    Ok(latest_rows)
+}
+
+async fn count_latest_interfaces(
+    store: &SqliteStore,
+    latest_snapshots: &[node_status::Model],
+) -> DataStoreResult<usize> {
+    if latest_snapshots.is_empty() {
+        return Ok(0);
+    }
+
+    count_query(
+        interface_status::Entity::find()
+            .filter(
+                interface_status::Column::NodeStatusId
+                    .is_in(latest_snapshots.iter().map(|snapshot| snapshot.id.clone())),
+            )
+            .count(&store.db)
+            .await,
+        "latest interface_status",
+    )
 }

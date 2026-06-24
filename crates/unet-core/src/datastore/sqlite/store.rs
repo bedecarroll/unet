@@ -1,11 +1,11 @@
 //! Main `SQLite` store implementation
 
-use super::{derived_state, links, locations, metadata, nodes, vendors};
+use super::{derived_state, derived_state_history, links, locations, metadata, nodes, vendors};
 
 use super::super::DataStore;
 use super::super::types::{
-    BatchOperation, BatchResult, DataStoreError, DataStoreResult, PagedResult, QueryOptions,
-    Transaction,
+    BatchOperation, BatchResult, DataStoreError, DataStoreResult, HistoryQueryOptions, PagedResult,
+    QueryOptions, Transaction,
 };
 use super::transaction::SqliteTransaction;
 use crate::models::derived::{InterfaceStatus, NodeStatus, PerformanceMetrics};
@@ -231,6 +231,18 @@ impl DataStore for SqliteStore {
         node_id: &Uuid,
     ) -> DataStoreResult<Option<PerformanceMetrics>> {
         derived_state::get_node_metrics(self, node_id).await
+    }
+
+    async fn store_node_status_snapshot(&self, snapshot: &NodeStatus) -> DataStoreResult<()> {
+        derived_state_history::store_node_status_snapshot(self, snapshot).await
+    }
+
+    async fn get_node_status_history(
+        &self,
+        node_id: &Uuid,
+        options: &HistoryQueryOptions,
+    ) -> DataStoreResult<Vec<NodeStatus>> {
+        derived_state_history::get_node_status_history(self, node_id, options).await
     }
 }
 

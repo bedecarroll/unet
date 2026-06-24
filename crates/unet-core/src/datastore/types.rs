@@ -2,6 +2,7 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 /// Errors that can occur during datastore operations
@@ -201,6 +202,15 @@ pub struct QueryOptions {
     pub sort: Vec<Sort>,
     /// Pagination parameters
     pub pagination: Option<Pagination>,
+}
+
+/// Query parameters for derived-state history lookups.
+#[derive(Debug, Clone)]
+pub struct HistoryQueryOptions {
+    /// Maximum number of snapshots to return, newest first.
+    pub limit: usize,
+    /// Optional lower bound for `last_updated`.
+    pub since: Option<SystemTime>,
 }
 
 /// Result of a paginated query

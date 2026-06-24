@@ -9,6 +9,8 @@ use unet_core::prelude::*;
 
 pub mod commands;
 pub mod dry_run;
+#[cfg(test)]
+mod dry_run_tests;
 mod remote;
 pub mod runtime;
 

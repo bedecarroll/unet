@@ -100,7 +100,7 @@ mod exec_tests {
     use crate::commands::nodes::history::history_node;
     use crate::commands::nodes::types::{HistoryNodeArgs, HistoryType};
     use mockall::predicate::eq;
-    use unet_core::datastore::MockDataStore;
+    use unet_core::datastore::{MockDataStore, testing::ready_ok};
     use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
     use uuid::Uuid;
 
@@ -125,6 +125,8 @@ mod exec_tests {
                 let node = node.clone();
                 Box::pin(async move { Ok(node) })
             });
+        mock.expect_get_node_status_history()
+            .returning(|_, _| ready_ok(Vec::new()));
 
         // Exercise each HistoryType arm
         for history_type in [

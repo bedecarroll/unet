@@ -24,10 +24,10 @@ This document outlines the planned features and release timeline for μNet.
 
 - **SNMP Polling Controls**: CLI commands to manage background polling
 - **Device Discovery**: Automatic capability detection
-- **Historical Metrics**: Time-series data storage and retrieval
+- **Historical Metrics**: Continue expanding time-series storage and retrieval beyond the local datastore-backed `unet nodes history <node-id> metrics --last-hours 24` surface
 - **CLI Commands** (planned):
   - `unet nodes polling start/stop/status`
-  - `unet nodes history --metrics --since 1d`
+  - `unet nodes history <node-id> metrics --last-hours 24`
   - `unet nodes compare <node1> <node2>`
 
 ### **Milestone 6: Configuration Push**

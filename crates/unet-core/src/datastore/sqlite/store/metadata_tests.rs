@@ -220,3 +220,100 @@ async fn test_get_statistics_returns_null_latest_status_without_status_rows() {
     assert_eq!(stats.get("unreachable_nodes").unwrap(), &Value::from(0));
     assert_eq!(stats.get("latest_status_update").unwrap(), &Value::Null);
 }
+
+#[tokio::test]
+async fn test_get_statistics_uses_latest_snapshot_per_node_for_counts() {
+    let store = setup_schema_store().await;
+    let flapping = Node::new(
+        "flapping-node".to_string(),
+        "example.com".to_string(),
+        Vendor::Cisco,
+        DeviceRole::Router,
+    );
+    let stable = Node::new(
+        "stable-node".to_string(),
+        "example.com".to_string(),
+        Vendor::Cisco,
+        DeviceRole::Router,
+    );
+    store.create_node(&flapping).await.unwrap();
+    store.create_node(&stable).await.unwrap();
+
+    for (id, node_id, last_updated, reachable) in [
+        (
+            "status-flapping-old",
+            flapping.id.to_string(),
+            "2026-04-07T01:00:00Z",
+            false,
+        ),
+        (
+            "status-flapping-new",
+            flapping.id.to_string(),
+            "2026-04-07T02:00:00Z",
+            true,
+        ),
+        (
+            "status-stable",
+            stable.id.to_string(),
+            "2026-04-07T03:00:00Z",
+            false,
+        ),
+    ] {
+        crate::entities::node_status::ActiveModel {
+            id: sea_orm::Set(id.to_string()),
+            node_id: sea_orm::Set(node_id),
+            last_updated: sea_orm::Set(last_updated.to_string()),
+            reachable: sea_orm::Set(reachable),
+            system_info: sea_orm::Set(None),
+            performance: sea_orm::Set(None),
+            environmental: sea_orm::Set(None),
+            vendor_metrics: sea_orm::Set(None),
+            raw_snmp_data: sea_orm::Set(None),
+            last_snmp_success: sea_orm::Set(None),
+            last_error: sea_orm::Set(None),
+            consecutive_failures: sea_orm::Set(0),
+        }
+        .insert(store.connection())
+        .await
+        .unwrap();
+    }
+
+    for (id, node_status_id, index, oper_status) in [
+        ("iface-old", "status-flapping-old", 1, "down"),
+        ("iface-new", "status-flapping-new", 2, "up"),
+        ("iface-stable", "status-stable", 7, "down"),
+    ] {
+        crate::entities::interface_status::ActiveModel {
+            id: sea_orm::Set(id.to_string()),
+            node_status_id: sea_orm::Set(node_status_id.to_string()),
+            index: sea_orm::Set(index),
+            name: sea_orm::Set(format!("GigabitEthernet0/{index}")),
+            interface_type: sea_orm::Set(6),
+            mtu: sea_orm::Set(Some(1500)),
+            speed: sea_orm::Set(Some(1_000_000_000)),
+            physical_address: sea_orm::Set(None),
+            admin_status: sea_orm::Set("up".to_string()),
+            oper_status: sea_orm::Set(oper_status.to_string()),
+            last_change: sea_orm::Set(None),
+            input_stats: sea_orm::Set(
+                r#"{"octets":1000,"packets":10,"errors":0,"discards":0}"#.to_string(),
+            ),
+            output_stats: sea_orm::Set(
+                r#"{"octets":2000,"packets":20,"errors":0,"discards":0}"#.to_string(),
+            ),
+        }
+        .insert(store.connection())
+        .await
+        .unwrap();
+    }
+
+    let stats = store.get_statistics().await.unwrap();
+    assert_eq!(stats.get("nodes_with_status").unwrap(), &Value::from(2));
+    assert_eq!(stats.get("reachable_nodes").unwrap(), &Value::from(1));
+    assert_eq!(stats.get("unreachable_nodes").unwrap(), &Value::from(1));
+    assert_eq!(stats.get("interfaces_monitored").unwrap(), &Value::from(2));
+    assert_eq!(
+        stats.get("latest_status_update").unwrap(),
+        &Value::from("2026-04-07T03:00:00Z")
+    );
+}
