@@ -1,5 +1,8 @@
-//! Configuration Slicer CLI Tool (binary shim)
+//! `config-slicer` binary entrypoint.
 
 fn main() {
-    let _ = config_slicer::run(std::env::args_os());
+    if let Err(error) = config_slicer::run(std::env::args_os()) {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
 }

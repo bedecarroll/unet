@@ -33,6 +33,7 @@ thiserror = { workspace = true }
 clap = { workspace = true }
 
 # Configuration diffing
+regex = { workspace = true }
 similar = { workspace = true }
 
 # Logging and tracing
@@ -44,4 +45,3 @@ assert_cmd = { workspace = true }
 predicates = { workspace = true }
 tempfile = { workspace = true }
 criterion = { workspace = true }
-

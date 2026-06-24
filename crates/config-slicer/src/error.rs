@@ -1,29 +1,34 @@
 //! Error types for config-slicer
 
+use regex::Error as RegexError;
 use std::io;
 use thiserror::Error;
 
 /// Config-slicer error type
 #[derive(Error, Debug)]
 pub enum ConfigSlicerError {
-    /// Diff error
-    #[error("Diff error: {0}")]
+    /// Diffing failed.
+    #[error("diff error: {0}")]
     Diff(String),
 
-    /// I/O error
+    /// I/O failed.
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
 
-    /// Other error
-    #[error("Other error: {0}")]
-    Other(String),
-
-    /// Parsing error
-    #[error("Parsing error: {0}")]
+    /// Match-expression parsing failed.
+    #[error("invalid match expression: {0}")]
     Parse(String),
 
-    /// Slicing error
-    #[error("Slicing error: {0}")]
+    /// Regex compilation failed.
+    #[error("regex error: {0}")]
+    Regex(#[from] RegexError),
+
+    /// Serialization failed.
+    #[error("serialization error: {0}")]
+    Serialize(#[from] serde_json::Error),
+
+    /// Slicing failed.
+    #[error("slice error: {0}")]
     Slice(String),
 }
 
