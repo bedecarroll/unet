@@ -500,10 +500,17 @@ Get policy engine status.
   "policy_engine_enabled": true,
   "nodes_available": 25,
   "policies_available": 10,
-  "last_evaluation": null,
-  "evaluation_frequency": "on-demand"
+  "last_evaluation": "2026-04-08T06:52:13Z",
+  "evaluation_frequency": "every 300 seconds",
+  "evaluation_frequency_seconds": 300
 }
 ```
+
+- `last_evaluation` is `null` until the first policy evaluation cycle completes.
+  Successful background and on-demand policy evaluations both update this
+  timestamp.
+- `evaluation_frequency` and `evaluation_frequency_seconds` describe the
+  configured periodic background evaluation schedule.
 
 ---
 
