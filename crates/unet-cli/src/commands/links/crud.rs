@@ -195,10 +195,7 @@ pub fn confirm_link_deletion(
     println!(
         "Are you sure you want to delete link {} <-> {} (ID: {})? [y/N]",
         link.node_a_interface,
-        link
-            .node_z_interface
-            .as_deref()
-            .unwrap_or("internet"),
+        link.node_z_interface.as_deref().unwrap_or("internet"),
         link.id
     );
     let mut input = String::new();

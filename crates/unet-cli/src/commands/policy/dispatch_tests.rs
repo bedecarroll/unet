@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use crate::commands::policy::{execute, DiffPolicyArgs, EvalPolicyArgs, ListPolicyArgs, PolicyCommands, ShowPolicyArgs, ValidatePolicyArgs};
+    use crate::commands::policy::{
+        DiffPolicyArgs, EvalPolicyArgs, ListPolicyArgs, PolicyCommands, ShowPolicyArgs,
+        ValidatePolicyArgs, execute,
+    };
     use mockall::predicate::eq;
     use std::io::Write;
     use tempfile::{NamedTempFile, TempDir};
-    use unet_core::datastore::{types::PagedResult, MockDataStore};
+    use unet_core::datastore::{MockDataStore, types::PagedResult};
     use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
     use uuid::Uuid;
 
@@ -42,7 +45,11 @@ mod tests {
     #[tokio::test]
     async fn test_execute_eval_no_nodes() {
         let mut tf = NamedTempFile::new().unwrap();
-        writeln!(tf, "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"").unwrap();
+        writeln!(
+            tf,
+            "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\""
+        )
+        .unwrap();
 
         let args = EvalPolicyArgs {
             path: tf.path().into(),
@@ -62,7 +69,11 @@ mod tests {
     #[tokio::test]
     async fn test_execute_diff_with_node() {
         let mut tf = NamedTempFile::new().unwrap();
-        writeln!(tf, "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"").unwrap();
+        writeln!(
+            tf,
+            "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\""
+        )
+        .unwrap();
 
         let node = make_node();
         let node_id = node.id;
@@ -90,7 +101,11 @@ mod tests {
     async fn test_execute_list() {
         let dir = TempDir::new().unwrap();
         let policy_file = dir.path().join("valid.policy");
-        std::fs::write(&policy_file, "WHEN TRUE THEN ASSERT node.role IS \"router\"").unwrap();
+        std::fs::write(
+            &policy_file,
+            "WHEN TRUE THEN ASSERT node.role IS \"router\"",
+        )
+        .unwrap();
 
         let args = ListPolicyArgs {
             path: dir.path().into(),
@@ -105,7 +120,11 @@ mod tests {
     #[tokio::test]
     async fn test_execute_show() {
         let mut tf = NamedTempFile::new().unwrap();
-        writeln!(tf, "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\"").unwrap();
+        writeln!(
+            tf,
+            "WHEN node.vendor == \"cisco\" THEN ASSERT node.version IS \"15.1\""
+        )
+        .unwrap();
 
         let args = ShowPolicyArgs {
             path: tf.path().into(),

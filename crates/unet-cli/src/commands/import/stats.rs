@@ -149,7 +149,13 @@ mod process_tests {
     #[tokio::test]
     async fn test_process_import_item_error_continue() {
         let mut stats = ImportStats::new();
-        let res = process_import_item(|| async { Err(anyhow::anyhow!("boom")) }, "node 'n1'", true, &mut stats).await;
+        let res = process_import_item(
+            || async { Err(anyhow::anyhow!("boom")) },
+            "node 'n1'",
+            true,
+            &mut stats,
+        )
+        .await;
         assert!(res.is_ok());
         assert_eq!(stats.success_count(), 0);
         assert_eq!(stats.error_count(), 1);
@@ -158,7 +164,13 @@ mod process_tests {
     #[tokio::test]
     async fn test_process_import_item_error_stop() {
         let mut stats = ImportStats::new();
-        let res = process_import_item(|| async { Err(anyhow::anyhow!("boom")) }, "node 'n1'", false, &mut stats).await;
+        let res = process_import_item(
+            || async { Err(anyhow::anyhow!("boom")) },
+            "node 'n1'",
+            false,
+            &mut stats,
+        )
+        .await;
         assert!(res.is_err());
         assert_eq!(stats.success_count(), 0);
         assert_eq!(stats.error_count(), 1);

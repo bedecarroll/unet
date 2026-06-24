@@ -109,7 +109,10 @@ async fn vendor_duplicate_insertion_errors() {
     // First insert succeeds
     store.create_vendor("DupCorp").await.expect("add vendor");
     // Second insert should error
-    let err = store.create_vendor("DupCorp").await.expect_err("expected error on duplicate");
+    let err = store
+        .create_vendor("DupCorp")
+        .await
+        .expect_err("expected error on duplicate");
     // Ensure error message path covered
     let msg = format!("{err}");
     assert!(msg.to_lowercase().contains("insert") || msg.to_lowercase().contains("failed"));
@@ -120,7 +123,10 @@ async fn vendor_duplicate_insertion_errors() {
 async fn get_node_required_not_found() {
     let store = sqlite_store().await;
     let missing = uuid::Uuid::new_v4();
-    let err = store.get_node_required(&missing).await.expect_err("expected not found");
+    let err = store
+        .get_node_required(&missing)
+        .await
+        .expect_err("expected not found");
     let msg = format!("{err}");
     assert!(msg.to_lowercase().contains("not found") || msg.to_lowercase().contains("node"));
 }
@@ -129,7 +135,10 @@ async fn get_node_required_not_found() {
 #[tokio::test]
 async fn delete_vendor_nonexistent_errors() {
     let store = sqlite_store().await;
-    let err = store.delete_vendor("does-not-exist").await.expect_err("expected not found");
+    let err = store
+        .delete_vendor("does-not-exist")
+        .await
+        .expect_err("expected not found");
     let msg = format!("{err}");
     assert!(msg.to_lowercase().contains("not found") || msg.to_lowercase().contains("vendor"));
 }

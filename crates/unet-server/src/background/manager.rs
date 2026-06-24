@@ -52,7 +52,6 @@ mod tests {
     use unet_core::datastore::sqlite::SqliteStore;
 
     async fn setup_test_datastore() -> SqliteStore {
-        
         test_support::sqlite::sqlite_store().await
     }
 

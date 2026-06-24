@@ -56,14 +56,16 @@ mod tests {
     use super::*;
     use crate::server::AppState;
     use std::sync::Arc;
+    use test_support::sqlite::sqlite_store;
     use unet_core::{
         datastore::sqlite::SqliteStore,
         policy::{Action, ComparisonOperator, Condition, FieldRef, PolicyRule, Value},
         policy_integration::PolicyService,
     };
-    use test_support::sqlite::sqlite_store;
 
-    async fn setup_test_datastore() -> SqliteStore { sqlite_store().await }
+    async fn setup_test_datastore() -> SqliteStore {
+        sqlite_store().await
+    }
 
     fn create_test_policy_rule() -> PolicyRule {
         PolicyRule {

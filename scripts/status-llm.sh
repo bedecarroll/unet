@@ -20,14 +20,14 @@ echo "[status]  - Failures exact: rg -n '(?i)^(failures:|.*\\bFAILED\\b)|panicke
 echo "[status]  - Coverage total: rg -n '^TOTAL' ${run_dir}/coverage.log"
 echo "[status]  - Missing lines:  rg -n '^[^ ]+\\.rs:' ${run_dir}/coverage.log"
 
-# 1) Clippy (non-invasive: no --fix, no formatting)
+# 1) Clippy (read-only by default; auto-fix is opt-in)
 phase_start=${SECONDS}
-CLIPPY_FIX_DEFAULT=1
+CLIPPY_FIX_DEFAULT=0
 CLIPPY_FIX=${STATUS_CLIPPY_FIX:-$CLIPPY_FIX_DEFAULT}
 if [[ "$CLIPPY_FIX" == "1" ]]; then
-  echo "[status] Running clippy with auto-fix (allow-dirty)"
+  echo "[status] Running clippy with auto-fix (STATUS_CLIPPY_FIX=1)"
 else
-  echo "[status] Running clippy (no auto-fix)"
+  echo "[status] Running clippy (read-only; set STATUS_CLIPPY_FIX=1 to auto-fix)"
 fi
 set -o pipefail
 set +e

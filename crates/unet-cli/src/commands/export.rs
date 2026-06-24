@@ -264,8 +264,6 @@ async fn export_links(args: &ExportArgs, datastore: &dyn DataStore) -> Result<us
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    
-    
 
     #[tokio::test]
     async fn test_export_stats_new() {
@@ -382,7 +380,7 @@ mod exec_tests {
     use super::*;
     use mockall::predicate::always;
     use tempfile::TempDir;
-    use unet_core::datastore::{types::PagedResult, MockDataStore};
+    use unet_core::datastore::{MockDataStore, types::PagedResult};
     use unet_core::models::{DeviceRole, NodeBuilder, Vendor};
 
     #[tokio::test]
@@ -399,7 +397,12 @@ mod exec_tests {
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
 
-        let args = ExportArgs { to: temp.path().to_path_buf(), format: "json".into(), force: false, only: None };
+        let args = ExportArgs {
+            to: temp.path().to_path_buf(),
+            format: "json".into(),
+            force: false,
+            only: None,
+        };
         let res = execute(args, &mock, crate::OutputFormat::Json).await;
         assert!(res.is_ok());
     }
@@ -424,17 +427,20 @@ mod exec_tests {
         mock.expect_list_locations()
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
-        mock.expect_list_nodes()
-            .with(always())
-            .returning(move |_| {
-                let n = node.clone();
-                Box::pin(async move { Ok(PagedResult::new(vec![n], 1, None)) })
-            });
+        mock.expect_list_nodes().with(always()).returning(move |_| {
+            let n = node.clone();
+            Box::pin(async move { Ok(PagedResult::new(vec![n], 1, None)) })
+        });
         mock.expect_list_links()
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
 
-        let args = ExportArgs { to: temp.path().to_path_buf(), format: "json".into(), force: false, only: Some(vec!["nodes".into()]) };
+        let args = ExportArgs {
+            to: temp.path().to_path_buf(),
+            format: "json".into(),
+            force: false,
+            only: Some(vec!["nodes".into()]),
+        };
         let res = execute(args, &mock, crate::OutputFormat::Json).await;
         assert!(res.is_err());
     }
@@ -442,7 +448,7 @@ mod exec_tests {
     #[tokio::test]
     async fn test_execute_locations_yaml_writes_file() {
         use mockall::predicate::always;
-        use unet_core::datastore::{types::PagedResult, MockDataStore};
+        use unet_core::datastore::{MockDataStore, types::PagedResult};
         use unet_core::models::Location;
         let temp = TempDir::new().unwrap();
         let loc = Location::new_root("HQ".into(), "building".into());
@@ -462,7 +468,12 @@ mod exec_tests {
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
 
-        let args = ExportArgs { to: temp.path().to_path_buf(), format: "yaml".into(), force: true, only: Some(vec!["locations".into()]) };
+        let args = ExportArgs {
+            to: temp.path().to_path_buf(),
+            format: "yaml".into(),
+            force: true,
+            only: Some(vec!["locations".into()]),
+        };
         let res = execute(args, &mock, crate::OutputFormat::Json).await;
         assert!(res.is_ok());
         // Verify file exists
@@ -473,7 +484,7 @@ mod exec_tests {
     #[tokio::test]
     async fn test_execute_links_json_writes_file() {
         use mockall::predicate::always;
-        use unet_core::datastore::{types::PagedResult, MockDataStore};
+        use unet_core::datastore::{MockDataStore, types::PagedResult};
         let temp = TempDir::new().unwrap();
         let a = uuid::Uuid::new_v4();
         let z = uuid::Uuid::new_v4();
@@ -486,14 +497,17 @@ mod exec_tests {
         mock.expect_list_nodes()
             .with(always())
             .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
-        mock.expect_list_links()
-            .with(always())
-            .returning(move |_| {
-                let l = link.clone();
-                Box::pin(async move { Ok(PagedResult::new(vec![l], 1, None)) })
-            });
+        mock.expect_list_links().with(always()).returning(move |_| {
+            let l = link.clone();
+            Box::pin(async move { Ok(PagedResult::new(vec![l], 1, None)) })
+        });
 
-        let args = ExportArgs { to: temp.path().to_path_buf(), format: "json".into(), force: true, only: Some(vec!["links".into()]) };
+        let args = ExportArgs {
+            to: temp.path().to_path_buf(),
+            format: "json".into(),
+            force: true,
+            only: Some(vec!["links".into()]),
+        };
         let res = execute(args, &mock, crate::OutputFormat::Json).await;
         assert!(res.is_ok());
         let out = temp.path().join("links.json");
@@ -503,23 +517,30 @@ mod exec_tests {
     #[tokio::test]
     async fn test_execute_unsupported_format_errors() {
         use mockall::predicate::always;
-        use unet_core::datastore::{types::PagedResult, MockDataStore};
+        use unet_core::datastore::{MockDataStore, types::PagedResult};
         let temp = TempDir::new().unwrap();
         let mut mock = MockDataStore::new();
-        mock.expect_list_locations()
-            .with(always())
-            .returning(|_| {
-                let loc = unet_core::models::location::model::Location::new_root(
-                    "HQ".into(),
-                    "building".into(),
-                );
-                Box::pin(async move { Ok(PagedResult::new(vec![loc], 1, None)) })
-            });
+        mock.expect_list_locations().with(always()).returning(|_| {
+            let loc = unet_core::models::location::model::Location::new_root(
+                "HQ".into(),
+                "building".into(),
+            );
+            Box::pin(async move { Ok(PagedResult::new(vec![loc], 1, None)) })
+        });
         // keep nodes/links empty
-        mock.expect_list_nodes().with(always()).returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
-        mock.expect_list_links().with(always()).returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
+        mock.expect_list_nodes()
+            .with(always())
+            .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
+        mock.expect_list_links()
+            .with(always())
+            .returning(|_| Box::pin(async { Ok(PagedResult::new(vec![], 0, None)) }));
 
-        let args = ExportArgs { to: temp.path().to_path_buf(), format: "xml".into(), force: true, only: Some(vec!["locations".into()]) };
+        let args = ExportArgs {
+            to: temp.path().to_path_buf(),
+            format: "xml".into(),
+            force: true,
+            only: Some(vec!["locations".into()]),
+        };
         let res = execute(args, &mock, crate::OutputFormat::Json).await;
         assert!(res.is_err());
     }

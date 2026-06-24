@@ -24,8 +24,8 @@ pub struct SeaOrmConnector;
 #[allow(clippy::module_name_repetitions)]
 impl DbConnector for SeaOrmConnector {
     fn connect(&self, url: &str) -> Pin<Box<dyn Future<Output = Result<Db>> + Send>> {
-        use sea_orm::Database;
         use sea_orm::ConnectOptions;
+        use sea_orm::Database;
         let url = url.to_owned();
         Box::pin(async move {
             let mut opt = ConnectOptions::new(&url);
@@ -91,7 +91,7 @@ mod tests {
     impl DbConnector for NoopConnector {
         fn connect(&self, _url: &str) -> Pin<Box<dyn Future<Output = Result<Db>> + Send>> {
             // Return an error-free placeholder by connecting to in-memory SQLite
-            use sea_orm::{Database, ConnectOptions};
+            use sea_orm::{ConnectOptions, Database};
             Box::pin(async move {
                 let mut opt = ConnectOptions::new("sqlite::memory:");
                 opt.sqlx_logging(false);

@@ -13,8 +13,16 @@ typos = "latest"
 "npm:markdownlint-cli2" = "latest"
 
 [tasks.lint]
-description = "Fix code issues and run linters"
+description = "Run read-only linting and formatting checks"
+run = ["typos", "cargo fmt --check", "cargo clippy --workspace"]
+
+[tasks.lint-fix]
+description = "Auto-fix typos and Rust formatting/lint issues"
 run = ["typos -w", "cargo fmt", "cargo clippy --workspace --allow-dirty --fix"]
+
+[tasks.check-read-only-tasks]
+description = "Validate that `status` and CI lint tasks stay read-only by default"
+run = ["bash scripts/check-read-only-tasks.sh"]
 
 [tasks.test]
 description = "Run unit tests"
@@ -58,7 +66,7 @@ run = [
 
 [tasks.ci-lint]
 description = "Run linting and formatting checks for CI"
-depends = ["lint"]
+depends = ["check-read-only-tasks", "lint"]
 
 [tasks.ci-test]
 description = "Run unit tests for CI"
@@ -89,7 +97,7 @@ run = ["cargo doc --workspace --no-deps --document-private-items"]
 
 [tasks.pre-commit]
 description = "Pre-commit checks"
-depends = ["lint"]
+depends = ["lint-fix"]
 
 [tasks.status]
 description = "LLM-friendly project status overview (clippy + coverage tests + summaries)"

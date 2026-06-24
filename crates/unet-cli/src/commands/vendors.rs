@@ -405,22 +405,28 @@ mod exec_tests {
         mock.expect_create_vendor()
             .with(eq("cisco"))
             .returning(|_| Box::pin(async { Ok(()) }));
-        assert!(execute(
-            VendorCommands::Add(AddVendorArgs { name: "cisco".into() }),
-            &mock,
-            crate::OutputFormat::Json
-        )
-        .await
-        .is_ok());
+        assert!(
+            execute(
+                VendorCommands::Add(AddVendorArgs {
+                    name: "cisco".into()
+                }),
+                &mock,
+                crate::OutputFormat::Json
+            )
+            .await
+            .is_ok()
+        );
 
         // List
         let mut mock_list = MockDataStore::new();
         mock_list
             .expect_list_vendors()
             .returning(|| Box::pin(async { Ok(vec!["cisco".into(), "juniper".into()]) }));
-        assert!(execute(VendorCommands::List, &mock_list, crate::OutputFormat::Json)
-            .await
-            .is_ok());
+        assert!(
+            execute(VendorCommands::List, &mock_list, crate::OutputFormat::Json)
+                .await
+                .is_ok()
+        );
 
         // Delete with yes flag skips stdin
         let mut mock_del = MockDataStore::new();
@@ -428,13 +434,18 @@ mod exec_tests {
             .expect_delete_vendor()
             .with(eq("cisco"))
             .returning(|_| Box::pin(async { Ok(()) }));
-        assert!(execute(
-            VendorCommands::Delete(DeleteVendorArgs { name: "cisco".into(), yes: true }),
-            &mock_del,
-            crate::OutputFormat::Json
-        )
-        .await
-        .is_ok());
+        assert!(
+            execute(
+                VendorCommands::Delete(DeleteVendorArgs {
+                    name: "cisco".into(),
+                    yes: true
+                }),
+                &mock_del,
+                crate::OutputFormat::Json
+            )
+            .await
+            .is_ok()
+        );
     }
 
     #[test]

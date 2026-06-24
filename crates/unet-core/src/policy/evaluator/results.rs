@@ -10,9 +10,18 @@ use uuid::Uuid;
 
 /// Priority level for policy rules
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    Default,
 )]
-#[derive(Default)]
 pub enum PolicyPriority {
     /// Low priority execution
     Low = 0,
@@ -24,7 +33,6 @@ pub enum PolicyPriority {
     /// Critical priority execution (highest)
     Critical = 3,
 }
-
 
 impl std::fmt::Display for PolicyPriority {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
