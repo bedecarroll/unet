@@ -4,6 +4,7 @@
 //! configuration support and environment variable overrides.
 
 // Re-export submodules
+pub mod connection_string;
 pub mod core;
 pub mod defaults;
 pub mod network;
