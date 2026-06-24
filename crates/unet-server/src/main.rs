@@ -19,7 +19,51 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod main_tests {
     use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
     use unet_server::config_loader::Args;
+
+    fn write_valid_config_file() -> NamedTempFile {
+        let mut temp_file = NamedTempFile::with_suffix(".toml").unwrap();
+        writeln!(
+            temp_file,
+            r#"
+[database]
+url = "sqlite://test.db"
+max_connections = 10
+timeout = 30
+
+[logging]
+level = "warn"
+format = "text"
+
+[snmp]
+community = "test-community"
+timeout = 5
+retries = 3
+
+[server]
+host = "0.0.0.0"
+port = 9000
+max_request_size = 1048576
+
+[git]
+branch = "main"
+sync_interval = 300
+
+[domain]
+default_domain = "example.com"
+search_domains = []
+
+[auth]
+enabled = false
+token = "bed-24-secret"
+"#
+        )
+        .unwrap();
+        temp_file.flush().unwrap();
+        temp_file
+    }
 
     #[tokio::test]
     async fn test_args_parsing() {
@@ -41,9 +85,9 @@ mod main_tests {
 
     #[test]
     fn test_initialize_app_functionality() {
-        // Test initialize_app function call (covers line 21)
+        let temp_file = write_valid_config_file();
         let args = Args {
-            config: None,
+            config: Some(temp_file.path().to_path_buf()),
             host: Some("127.0.0.1".to_string()),
             port: Some(3000),
             database_url: "sqlite://test.db".to_string(),
@@ -61,23 +105,7 @@ mod main_tests {
 
     #[test]
     fn test_initialize_app_with_config_file() {
-        // Test initialize_app with config file
-        use std::io::Write;
-        use tempfile::NamedTempFile;
-
-        let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(
-            temp_file,
-            r#"
-[server]
-host = "0.0.0.0"
-port = 9000
-
-[logging]
-level = "warn"
-"#
-        )
-        .unwrap();
+        let temp_file = write_valid_config_file();
 
         let args = Args {
             config: Some(temp_file.path().to_path_buf()),
@@ -88,14 +116,12 @@ level = "warn"
         };
 
         let result = initialize_app(&args);
-        // Config loading might fail in test environment, just verify it doesn't panic
-        if let Ok((config, database_url)) = result {
-            assert!(!config.server.host.is_empty());
-            assert!(config.server.port > 0);
-            assert!(!database_url.is_empty());
-        } else {
-            // Config loading can fail in test environments, that's okay
-        }
+        assert!(result.is_ok());
+        let (config, database_url) = result.unwrap();
+        assert_eq!(config.server.host, "0.0.0.0");
+        assert_eq!(config.server.port, 9000);
+        assert_eq!(config.snmp.community, "test-community");
+        assert_eq!(database_url, "sqlite://test.db");
     }
 
     // Note: We can't easily test the actual main() function and server::run()

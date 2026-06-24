@@ -149,7 +149,7 @@ mod tests {
             address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 161),
             version: 2,
             credentials: SnmpCredentials::Community {
-                community: "public".to_string(),
+                community: "test-community".to_string(),
             },
             timeout: Duration::from_secs(5),
             retries: 3,

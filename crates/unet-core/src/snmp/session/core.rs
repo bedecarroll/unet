@@ -40,6 +40,11 @@ impl SnmpSession {
     pub(super) async fn create_client(config: &SessionConfig) -> SnmpResult<Snmp2cClient> {
         match &config.credentials {
             SnmpCredentials::Community { community } => {
+                if community.trim().is_empty() {
+                    return Err(SnmpError::Protocol {
+                        message: "SNMP community must be configured explicitly".to_string(),
+                    });
+                }
                 let client = Snmp2cClient::new(
                     config.address,
                     community.as_bytes().to_vec(),

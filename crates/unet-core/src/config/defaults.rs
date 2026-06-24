@@ -30,8 +30,6 @@ pub mod database {
 
 /// SNMP configuration constants
 pub mod snmp {
-    /// Default SNMP community string
-    pub const DEFAULT_SNMP_COMMUNITY: &str = "public";
     /// Default SNMP timeout in seconds
     pub const DEFAULT_SNMP_TIMEOUT_SECONDS: u64 = 5;
     /// Default SNMP retries

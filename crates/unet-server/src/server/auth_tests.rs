@@ -72,7 +72,7 @@ level = "info"
 format = "text"
 
 [snmp]
-community = "public"
+community = "test-community"
 timeout = 5
 retries = 3
 

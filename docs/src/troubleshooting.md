@@ -360,7 +360,7 @@ done
 unet nodes show node-name | grep management_ip
 
 # 2. Test SNMP connectivity manually
-snmpget -v2c -c public 192.168.1.1 1.3.6.1.2.1.1.1.0
+snmpget -v2c -c <community> 192.168.1.1 1.3.6.1.2.1.1.1.0
 
 # 3. Check server logs for SNMP errors
 unet-server --log-level debug | grep -i snmp
@@ -386,8 +386,8 @@ curl http://localhost:8080/api/v1/nodes/node-id/status
 # 2. Verify management IP is set
 unet nodes update node-name --management-ip 192.168.1.1
 
-# 3. Check SNMP credentials (when implemented)
-# Currently uses default community "public"
+# 3. Check SNMP credentials
+# Configure an explicit SNMP community or SNMPv3 credentials before polling
 
 # 4. Monitor polling in server logs
 unet-server --log-level debug | grep -i "snmp\|polling"

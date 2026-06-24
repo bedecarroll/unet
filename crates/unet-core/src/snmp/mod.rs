@@ -139,7 +139,7 @@ mod tests {
         let creds = SnmpCredentials::default();
         match creds {
             SnmpCredentials::Community { community } => {
-                assert_eq!(community, "public");
+                assert!(community.is_empty());
             }
             SnmpCredentials::UserBased { .. } => panic!("Expected community credentials"),
         }
@@ -176,7 +176,7 @@ mod tests {
             address,
             version: 2,
             credentials: SnmpCredentials::Community {
-                community: "public".to_string(),
+                community: "test-community".to_string(),
             },
             timeout: Duration::from_secs(5),
             retries: 3,

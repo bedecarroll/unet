@@ -27,7 +27,7 @@ pub enum SnmpCredentials {
 impl Default for SnmpCredentials {
     fn default() -> Self {
         Self::Community {
-            community: "public".to_string(),
+            community: String::new(),
         }
     }
 }

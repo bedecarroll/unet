@@ -97,7 +97,7 @@ port = 8080
 max_request_size = 1048576
 
 [snmp]
-community = "public"
+community = "test-community"
 timeout = 5
 retries = 3
 
