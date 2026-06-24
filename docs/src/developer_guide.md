@@ -265,52 +265,40 @@ async fn test_create_example_duplicate_name() {
 ### SNMP Integration Patterns
 
 ```rust,ignore
-// crates/unet-core/src/snmp/collectors/example.rs
-use crate::snmp::{SnmpSession, SnmpError};
+// crates/unet-core/src/snmp/poller/execution/mod.rs
+use crate::snmp::{SessionConfig, SnmpClient, SnmpError, SnmpValue, StandardOid};
+use std::net::SocketAddr;
 use std::time::Duration;
 
-pub struct ExampleCollector {
-    session: SnmpSession,
-}
+pub async fn collect_example_data(
+    client: &SnmpClient,
+    target: SocketAddr,
+    session_config: SessionConfig,
+) -> Result<ExampleData, SnmpError> {
+    // 1. Define the OIDs to query
+    let oids = [StandardOid::SysDescr.oid(), StandardOid::SysUpTime.oid()];
 
-impl ExampleCollector {
-    pub fn new(session: SnmpSession) -> Self {
-        Self { session }
-    }
-    
-    pub async fn collect_example_data(&mut self, node_id: &str) -> Result<ExampleData, SnmpError> {
-        // 1. Define OIDs to query
-        let oids = vec![
-            "1.3.6.1.2.1.1.1.0".to_string(), // sysDescr
-            "1.3.6.1.2.1.1.3.0".to_string(), // sysUpTime
-        ];
-        
-        // 2. Perform bulk query with timeout
-        let results = self.session
-            .bulk_get(oids)
-            .timeout(Duration::from_secs(30))
-            .await?;
-        
-        // 3. Parse results with error handling
-        let mut data = ExampleData::default();
-        for (oid, value) in results {
-            match oid.as_str() {
-                "1.3.6.1.2.1.1.1.0" => {
-                    data.description = value.as_string().ok();
-                }
-                "1.3.6.1.2.1.1.3.0" => {
-                    data.uptime = value.as_counter64()
-                        .map(Duration::from_centiseconds)
-                        .ok();
-                }
-                _ => {
-                    tracing::warn!("Unexpected OID in response: {}", oid);
-                }
+    // 2. Query them in one SNMP operation
+    let results = client.get(target, &oids, Some(session_config)).await?;
+
+    // 3. Parse the returned values
+    let mut data = ExampleData::default();
+    for (oid, value) in results {
+        match (oid.as_str(), value) {
+            (oid, SnmpValue::String(description)) if oid == StandardOid::SysDescr.oid() => {
+                data.description = Some(description);
             }
+            (oid, SnmpValue::TimeTicks(ticks)) if oid == StandardOid::SysUpTime.oid() => {
+                data.uptime = Some(Duration::from_millis(u64::from(ticks) * 10));
+            }
+            (oid, SnmpValue::Counter32(ticks)) if oid == StandardOid::SysUpTime.oid() => {
+                data.uptime = Some(Duration::from_millis(u64::from(ticks) * 10));
+            }
+            _ => {}
         }
-        
-        Ok(data)
     }
+
+    Ok(data)
 }
 
 #[derive(Debug, Default)]
@@ -326,7 +314,7 @@ pub struct ExampleData {
 
 #### SNMP Polling Strategy
 
-- **Bulk operations**: Always use `bulk_get` for multiple OIDs
+- **Batch related OIDs**: Use a single `SnmpClient::get` call or `PollingTask` with the full OID set
 - **Timeout handling**: Set reasonable timeouts (30s for system info, 60s for large tables)
 - **Error recovery**: Distinguish between temporary (network) and permanent (auth) failures
 - **Rate limiting**: Respect device capabilities - don't overwhelm network equipment
@@ -372,13 +360,16 @@ let locations = datastore.get_locations_by_ids(&location_ids).await?;
 let result = std::thread::spawn(|| snmp_sync_call()).join();
 
 // DO: Use async SNMP operations
-let result = snmp_session.get(oid).await?;
+let result = snmp_client.get(target, &[oid], Some(session_config.clone())).await?;
 
 // DON'T: Ignore timeouts
-let result = snmp_session.get(oid).await?;
+let result = snmp_client.get(target, &[oid], Some(session_config.clone())).await?;
 
 // DO: Set appropriate timeouts
-let result = snmp_session.get(oid).timeout(Duration::from_secs(30)).await?;
+let result = tokio::time::timeout(
+    Duration::from_secs(30),
+    snmp_client.get(target, &[oid], Some(session_config.clone())),
+).await??;
 ```
 
 #### Error Handling Anti-Patterns
@@ -470,17 +461,27 @@ return Err(ApiError::conflict("A node with this name already exists"));
 
    ```rust,ignore
    // crates/unet-core/src/snmp/oids/standard.rs
-   pub const NEW_METRIC_OID: &str = "1.3.6.1.2.1.x.x.x";
+   pub enum StandardOid {
+       // existing variants...
+       NewMetric,
+   }
    ```
 
-3. **Update collector**
+   Also update `StandardOid::oid`, `StandardOid::description`, and any helper such as
+   `system_oids` or `interface_oids` if the new OID belongs in those groups.
+
+3. **Register and schedule the OID**
 
    ```rust,ignore
-   // Add to relevant collector in crates/unet-core/src/snmp/collectors/
+   // crates/unet-core/src/snmp/oids/map.rs
+   map.add_custom("new_metric".to_string(), "1.3.6.1.2.1.x.x.x".to_string());
+
+   // crates/unet-core/src/snmp/poller/mod.rs or the caller that builds `PollingTask`
    let oids = vec![
-       // existing OIDs...
-       NEW_METRIC_OID.to_string(),
+       StandardOid::SysDescr.oid().to_string(),
+       "1.3.6.1.2.1.x.x.x".to_string(),
    ];
+   let task = PollingTask::new(target, node_id, oids, interval, session_config);
    ```
 
 4. **Add to data model**
@@ -523,9 +524,12 @@ return Err(ApiError::conflict("A node with this name already exists"));
 2. **Update parser**
 
    ```pest
-   // crates/unet-core/src/policy/grammar.pest  
+   // crates/unet-core/src/policy/policy.pest
    new_rule = { "new_rule" ~ "(" ~ field ~ operator ~ value ~ ")" }
    ```
+
+   Then wire the new rule into the current parser entry points under
+   `crates/unet-core/src/policy/parser/policy_parser/`.
 
 3. **Implement evaluator**
 
