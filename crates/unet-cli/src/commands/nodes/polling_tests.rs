@@ -25,7 +25,6 @@ mod tests {
         assert!(matches!(PollingAction::Start, PollingAction::Start));
         assert!(matches!(PollingAction::Stop, PollingAction::Stop));
         assert!(matches!(PollingAction::Restart, PollingAction::Restart));
-        assert!(matches!(PollingAction::History, PollingAction::History));
     }
 
     #[tokio::test]
@@ -71,21 +70,6 @@ mod tests {
         assert_eq!(args.id, node_id);
         assert!(matches!(args.action, PollingAction::Restart));
         assert!(args.detailed);
-    }
-
-    #[tokio::test]
-    async fn test_polling_node_history_action() {
-        let node_id = Uuid::new_v4();
-
-        let args = PollingNodeArgs {
-            id: node_id,
-            action: PollingAction::History,
-            detailed: false,
-        };
-
-        assert_eq!(args.id, node_id);
-        assert!(matches!(args.action, PollingAction::History));
-        assert!(!args.detailed);
     }
 
     #[tokio::test]

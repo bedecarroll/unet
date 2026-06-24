@@ -10,6 +10,7 @@ mod links;
 mod locations;
 mod metadata;
 mod nodes;
+mod polling_tasks;
 mod store;
 mod transaction;
 mod vendors;

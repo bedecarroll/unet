@@ -22,11 +22,9 @@ This document outlines the planned features and release timeline for μNet.
 
 ### **Milestone 5: Advanced SNMP CLI**
 
-- **SNMP Polling Controls**: CLI commands to manage background polling
 - **Device Discovery**: Automatic capability detection
 - **Historical Metrics**: Time-series data storage and retrieval
 - **CLI Commands** (planned):
-  - `unet nodes polling start/stop/status`
   - `unet nodes history --metrics --since 1d`
   - `unet nodes compare <node1> <node2>`
 

@@ -595,7 +595,6 @@ unet import backup/
 ## Limitations (Current Version)
 
 - **Template engine**: Not yet implemented (planned for v0.2.0)
-- **SNMP polling controls**: Background polling runs automatically, but CLI controls are not implemented
 - **Node comparison and history**: Planned for future versions
 - **Table output formatting**: Currently defaults to JSON format
 - **Advanced filtering**: jq-style filters not yet implemented

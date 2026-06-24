@@ -253,8 +253,6 @@ pub enum PollingAction {
     Stop,
     /// Restart polling for this node
     Restart,
-    /// Show polling task history
-    History,
 }
 
 #[derive(Args)]
