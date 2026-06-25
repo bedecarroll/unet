@@ -23,10 +23,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7.0.0
 
       - name: Setup Rust toolchain
-        uses: jdx/mise-action@v4.1.0
+        uses: jdx/mise-action@v4.2.0
         with:
           experimental: true
 
@@ -38,7 +38,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v5
+        uses: actions/cache@v5.0.5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
@@ -64,10 +64,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7.0.0
 
       - name: Setup Rust toolchain
-        uses: jdx/mise-action@v4.1.0
+        uses: jdx/mise-action@v4.2.0
         with:
           experimental: true
 
@@ -79,7 +79,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v5
+        uses: actions/cache@v5.0.5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
@@ -126,10 +126,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7.0.0
 
       - name: Setup Rust toolchain
-        uses: jdx/mise-action@v4.1.0
+        uses: jdx/mise-action@v4.2.0
         with:
           experimental: true
 
@@ -141,7 +141,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v5
+        uses: actions/cache@v5.0.5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
@@ -160,10 +160,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7.0.0
 
       - name: Setup Rust toolchain
-        uses: jdx/mise-action@v4.1.0
+        uses: jdx/mise-action@v4.2.0
         with:
           experimental: true
 
@@ -175,7 +175,7 @@ jobs:
           cargo binstall -y sccache || cargo install sccache
 
       - name: Cache sccache
-        uses: actions/cache@v5
+        uses: actions/cache@v5.0.5
         with:
           path: ~/.cache/sccache
           key: sccache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
