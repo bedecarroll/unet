@@ -56,7 +56,7 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-time = "=0.3.47"
+time = "=0.3.49"
 
 # Error handling
 anyhow = "1.0"
@@ -77,7 +77,7 @@ sea-orm-migration = "1"
 # HTTP client/server
 axum = "0.8"
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
 reqwest = { version = "0.13", features = ["json", "query"] }
 
 # CLI parsing
