@@ -1,0 +1,10 @@
+# Cargo audit configuration
+# Temporarily ignore security advisories that are in transitive dependencies
+# until upstream crates provide fixes
+
+[advisories]
+# RSA vulnerability in SQLx/SeaORM - no fixed upgrade available
+# This affects database TLS connections, not critical for μNet's operation
+# Derivative is unmaintained but used by csnmp - added to ignore list
+# Acceptable risk as it's only used for derive macros, no runtime impact
+ignore = ["RUSTSEC-2023-0071", "RUSTSEC-2024-0388"]

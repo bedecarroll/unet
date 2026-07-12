@@ -1,0 +1,54 @@
+// Policy DSL Grammar for μNet Policy Engine
+// Defines the syntax for policy rules with WHEN/THEN structure
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{ "//" ~ (!"\n" ~ ANY)* ~ "\n" | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+// Top-level rule structure
+policy_file = { SOI ~ rule* ~ EOI }
+rule = { "WHEN" ~ condition ~ "THEN" ~ action }
+
+// Conditions - boolean expressions that can be combined
+condition = { or_condition }
+
+or_condition = { and_condition ~ ("OR" ~ and_condition)* }
+and_condition = { not_condition ~ ("AND" ~ not_condition)* }
+not_condition = { "NOT" ~ primary_condition | primary_condition }
+primary_condition = { "(" ~ condition ~ ")" | comparison | existence_check }
+
+// Comparison operators and expressions
+comparison = { field_ref ~ operator ~ value }
+operator = { "==" | "!=" | "<=" | ">=" | "<" | ">" | "CONTAINS" | "MATCHES" }
+
+// Existence checking
+existence_check = { field_ref ~ ("IS" ~ "NULL" | "IS" ~ "NOT" ~ "NULL") }
+
+// Field references - dot notation for accessing node properties
+field_ref = { identifier ~ ("." ~ identifier)* }
+
+// Actions that can be taken when conditions are met
+action = { assert_action | set_action | apply_template_action }
+
+assert_action = { "ASSERT" ~ field_ref ~ "IS" ~ value }
+set_action = { "SET" ~ field_ref ~ "TO" ~ value }
+apply_template_action = { "APPLY" ~ string_literal }
+
+// Value types
+value = { string_literal | number_literal | regex_literal | boolean_literal | null_literal | field_ref }
+
+// Literals
+string_literal = { "\"" ~ string_inner ~ "\"" | "'" ~ string_inner_single ~ "'" }
+string_inner = @{ (!("\"" | "\\") ~ ANY | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "u" ~ ASCII_HEX_DIGIT{4}))* }
+string_inner_single = @{ (!("'" | "\\") ~ ANY | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "u" ~ ASCII_HEX_DIGIT{4}))* }
+
+number_literal = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT+)? ~ (("e" | "E") ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+
+regex_literal = { "/" ~ regex_inner ~ "/" ~ regex_flags? }
+regex_inner = @{ (!("/" | "\\") ~ ANY | "\\" ~ ANY)* }
+regex_flags = @{ ("i" | "m" | "s" | "x")* }
+
+boolean_literal = { "true" | "false" }
+null_literal = { "null" }
+
+// Identifiers for field names
+identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }

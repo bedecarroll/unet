@@ -1,0 +1,66 @@
+[package]
+name = "unet-server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "HTTP server for μNet network configuration management"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "unet-server"
+path = "src/main.rs"
+
+[dependencies]
+# Core library
+unet-core = { path = "../unet-core" }
+
+# Core async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Configuration management
+config = { workspace = true }
+
+# CLI parsing
+clap = { workspace = true }
+
+# HTTP server
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Database and ORM (will be added in milestone 1)
+# sea-orm = { workspace = true }
+
+# Logging and tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Additional dependencies
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+# reqwest = { workspace = true } # Will be added when HTTP client is needed
+tempfile = { workspace = true }
+mockall = { workspace = true }
+unet-core = { path = "../unet-core", features = ["test-utils"] }
+migration = { path = "../migrations" }
+test-support = { path = "../test-support" }

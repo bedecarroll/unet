@@ -1,0 +1,41 @@
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+
+allowed-duplicate-crates = [
+    "async-channel",
+    # `hashbrown 0.16`/`sqlx` split brings both foldhash and hashlink lines.
+    "cpufeatures",
+    "foldhash",
+    "hashlink",
+    "regex-automata", 
+    "regex-syntax",
+    "event-listener",
+    "getrandom",
+    "heck",
+    "syn",
+    "wasi",
+    "webpki-roots",
+    "windows-sys",
+    "windows-targets",
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_gnullvm",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
+    "base64",
+    "hashbrown",
+    "thiserror",
+    "thiserror-impl",
+    "toml_datetime",
+    # `sea-orm-migration` pulls Redox-only variants through `sea-orm-cli`.
+    "redox_syscall",
+    # `reqwest`/`quinn` introduce target-specific and pre-1.0 duplicate trees.
+    "core-foundation",
+    "r-efi",
+    "rand",
+    "rand_chacha",
+    "rand_core",
+]

@@ -1,0 +1,80 @@
+[package]
+name = "unet-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Core library for μNet network configuration management"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[lints]
+workspace = true
+
+[features]
+test-utils = ["mockall"]
+
+[dependencies]
+# Core async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Serialization and data handling
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+time = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Configuration management
+config = { workspace = true }
+toml = { workspace = true }
+
+# Database and ORM
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }
+
+# Template engine (will be added in milestone 4)
+# minijinja = { workspace = true }
+
+# SNMP client
+csnmp = { workspace = true }
+
+# Git integration (will be added in milestone 6)
+# git2 = { workspace = true }
+
+# Policy parsing
+pest = { workspace = true }
+pest_derive = { workspace = true }
+regex = { workspace = true }
+dashmap = { workspace = true }
+
+# Configuration diffing
+similar = { workspace = true }
+
+# Logging and tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# File system utilities
+walkdir = { workspace = true }
+
+# Optional dependencies for features
+mockall = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
+criterion = { workspace = true }
+mockall = { workspace = true }
+migration = { path = "../migrations" }
+test-support = { path = "../test-support" }

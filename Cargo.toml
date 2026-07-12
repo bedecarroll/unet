@@ -1,0 +1,130 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/unet-core",
+  "crates/unet-server",
+  "crates/unet-cli",
+  "crates/config-slicer",
+  "crates/migrations",
+  "crates/test-support",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["μNet Development Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/bedecarroll/unet"
+homepage = "https://unet.bedecarroll.com"
+description = "Network configuration management and automation tool"
+keywords = ["network", "configuration", "automation", "snmp", "templates"]
+categories = ["command-line-utilities", "network-programming", "config"]
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "deny"
+nursery = "deny"
+cargo = "deny"
+
+[workspace.metadata.typos.default]
+locale = "en-us"
+
+[workspace.metadata.typos.default.extend-words]
+hpe = "hpe"
+sme = "SME"
+
+[profile.dev]
+opt-level = 0
+debug = 2
+incremental = true
+codegen-units = 16
+lto = false
+
+[profile.test]
+inherits = "dev"
+
+[workspace.dependencies]
+# Core async runtime
+tokio = { version = "1.0", features = ["full"] }
+tokio-test = "0.4"
+async-trait = "0.1"
+
+# Serialization and data handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+time = "=0.3.51"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Configuration management
+config = "0.15"
+toml = "1.0"
+
+# Database and ORM
+sea-orm = { version = "1", features = [
+  "sqlx-sqlite",
+  "runtime-tokio-rustls",
+  "macros",
+] }
+sea-orm-migration = "1"
+
+# HTTP client/server
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.7", features = ["cors", "trace"] }
+reqwest = { version = "0.13", features = ["json", "query"] }
+
+# CLI parsing
+clap = { version = "4.0", features = ["derive", "color", "suggestions"] }
+
+# Template engine
+minijinja = { version = "2", features = ["json"] }
+
+# SNMP client  
+csnmp = "0.6.0"
+
+# Policy parsing
+pest = "2.7"
+pest_derive = "2.7"
+
+# Configuration diffing
+similar = "3.0"
+
+# Utility crates
+regex = "1.0"
+dashmap = "6"
+walkdir = "2.4"
+bytes = "1.0"
+futures-util = "0.3"
+strum = "0.28"
+strum_macros = "0.27"
+ipnet = "2.9"
+
+# Task scheduling
+tokio-cron-scheduler = "0.14"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
+
+# File handling
+tempfile = "3.8"
+
+# Testing
+criterion = { version = "0.8", features = ["html_reports"] }
+mockall = "0.14"
+
+# Development and testing dependencies
+assert_cmd = "2.0"
+predicates = "3.0"
+insta = "1.39"
+proptest = "1.5"
+
+# Async runtime for migration
+async-std = { version = "1", features = ["attributes", "tokio1"] }

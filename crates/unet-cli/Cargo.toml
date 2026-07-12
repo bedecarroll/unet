@@ -1,0 +1,68 @@
+[package]
+name = "unet-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Command-line interface for μNet network configuration management"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "unet"
+path = "src/main.rs"
+
+[dependencies]
+# Core library (enable test-utils to allow MockDataStore in tests)
+unet-core = { path = "../unet-core", features = ["test-utils"] }
+async-trait = { workspace = true }
+
+# Database migrations
+migration = { path = "../../crates/migrations" }
+sea-orm = { workspace = true }
+
+# Core async runtime
+tokio = { workspace = true }
+
+# UUID support
+uuid = { workspace = true }
+
+# Time handling
+chrono = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Configuration management
+config = { workspace = true }
+
+# CLI parsing
+clap = { workspace = true }
+
+# HTTP client (will be added when needed)
+reqwest = { workspace = true }
+
+# Logging and tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+tempfile = { workspace = true }
+async-trait = { workspace = true }
+mockall = { workspace = true }
+test-support = { path = "../test-support" }

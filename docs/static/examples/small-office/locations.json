@@ -1,0 +1,58 @@
+[
+  {
+    "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "name": "Small Office Building",
+    "location_type": "building",
+    "parent_id": null,
+    "custom_data": {
+      "address": "123 Business Park Dr, Suite 100",
+      "city": "Techville",
+      "state": "CA",
+      "zip": "94000",
+      "contact": "facilities@smallcorp.com",
+      "phone": "+1-555-0123",
+      "square_feet": 5000,
+      "floors": 1,
+      "emergency_contact": "Building Security: +1-555-0199"
+    }
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Server Room",
+    "location_type": "room", 
+    "parent_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "custom_data": {
+      "room_number": "SR-101",
+      "access_control": "keycard_required",
+      "temperature_controlled": true,
+      "ups_backup": true,
+      "rack_count": 2,
+      "power_circuits": ["A1", "B1"]
+    }
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440002", 
+    "name": "Main Office Floor",
+    "location_type": "floor",
+    "parent_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "custom_data": {
+      "floor_number": 1,
+      "workstations": 35,
+      "conference_rooms": 3,
+      "network_drops": 48,
+      "wifi_coverage": "full"
+    }
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440003",
+    "name": "Reception Area", 
+    "location_type": "area",
+    "parent_id": "550e8400-e29b-41d4-a716-446655440002",
+    "custom_data": {
+      "network_drops": 4,
+      "wifi_required": true,
+      "guest_network": true,
+      "security_cameras": 2
+    }
+  }
+]
