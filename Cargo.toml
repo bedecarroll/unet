@@ -56,7 +56,7 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-time = "=0.3.51"
+time = "=0.3.53"
 
 # Error handling
 anyhow = "1.0"
@@ -118,7 +118,7 @@ tempfile = "3.8"
 
 # Testing
 criterion = { version = "0.8", features = ["html_reports"] }
-mockall = "0.14"
+mockall = "0.15"
 
 # Development and testing dependencies
 assert_cmd = "2.0"
