@@ -56,7 +56,7 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-time = "=0.3.51"
+time = "=0.3.54"
 
 # Error handling
 anyhow = "1.0"
@@ -67,12 +67,12 @@ config = "0.15"
 toml = "1.0"
 
 # Database and ORM
-sea-orm = { version = "1", features = [
+sea-orm = { version = "2", features = [
   "sqlx-sqlite",
   "runtime-tokio-rustls",
   "macros",
 ] }
-sea-orm-migration = "1"
+sea-orm-migration = "2"
 
 # HTTP client/server
 axum = "0.8"
@@ -118,7 +118,7 @@ tempfile = "3.8"
 
 # Testing
 criterion = { version = "0.8", features = ["html_reports"] }
-mockall = "0.14"
+mockall = "0.15"
 
 # Development and testing dependencies
 assert_cmd = "2.0"
