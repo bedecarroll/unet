@@ -67,7 +67,7 @@ config = "0.15"
 toml = "1.0"
 
 # Database and ORM
-sea-orm = { version = "1", features = [
+sea-orm = { version = "1", default-features = false, features = [
   "sqlx-sqlite",
   "runtime-tokio-rustls",
   "macros",

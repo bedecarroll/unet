@@ -25,15 +25,8 @@ path = "src/main.rs"
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
+sea-orm = { workspace = true }
 sea-orm-migration = { workspace = true }
-
-[dependencies.sea-orm]
-workspace = true
-features = [
-  "sqlx-sqlite",
-  "runtime-tokio-rustls",
-  "macros",
-]
 
 [dev-dependencies]
 unet-core = { path = "../unet-core" }
