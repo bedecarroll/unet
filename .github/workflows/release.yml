@@ -3,33 +3,18 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+permissions: {}
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
-    steps:
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
   build-and-upload:
     name: Build and Upload
-    needs: create-release
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
@@ -49,28 +34,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
         with:
+          toolchain: "1.96.0"
           targets: ${{ matrix.target }}
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.target }}
-
-      - name: Install sccache
-        run: |
-          cargo install sccache || true
-      - name: Cache sccache
-        uses: actions/cache@v6.1.0
-        with:
-          path: ~/.cache/sccache
-          key: sccache-${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            sccache-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
@@ -80,25 +52,43 @@ jobs:
 
       - name: Build release binary
         env:
-          RUSTC_WRAPPER: sccache
-        run: cargo build --release --target ${{ matrix.target }} --bin unet-server --bin unet-cli
+          TARGET: ${{ matrix.target }}
+        run: cargo build --locked --release --target "$TARGET" --bin unet-server --bin unet-cli
 
       - name: Create archive
+        env:
+          ARCHIVE_NAME: ${{ matrix.name }}
+          TARGET: ${{ matrix.target }}
         run: |
           mkdir release
-          cp target/${{ matrix.target }}/release/unet-server release/
-          cp target/${{ matrix.target }}/release/unet-cli release/
+          cp "target/$TARGET/release/unet-server" release/
+          cp "target/$TARGET/release/unet-cli" release/
           cp README.md release/
           cp -r docs/src release/docs
-          cd release
-          tar czf ../${{ matrix.name }} *
+          tar --create --gzip --file="$ARCHIVE_NAME" --directory=release .
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ matrix.name }}
-          asset_name: ${{ matrix.name }}
-          asset_content_type: application/octet-stream
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    needs: build-and-upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" artifacts/* --title "Release $RELEASE_TAG" --verify-tag
